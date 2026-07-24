@@ -27,6 +27,17 @@ namespace StudentRegistry.Data.Configurations
             builder.HasIndex(s => s.NationalId)
                 .IsUnique();
 
+            builder.Property(s => s.WishCollege)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            builder.Property(s => s.WishProgram)
+                .HasMaxLength(100);
+
+            builder.Property(s => s.Gender)
+                .IsRequired()
+                .HasMaxLength(10);
+
             builder.Property(s => s.Phone)
                 .IsRequired()
                 .HasMaxLength(20);
@@ -36,6 +47,14 @@ namespace StudentRegistry.Data.Configurations
                 .HasMaxLength(150);
 
             builder.Property(s => s.GuardianName)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            builder.Property(s => s.GuardianNationalId)
+                .IsRequired()
+                .HasMaxLength(20);
+
+            builder.Property(s => s.GuardianOccupation)
                 .IsRequired()
                 .HasMaxLength(100);
 

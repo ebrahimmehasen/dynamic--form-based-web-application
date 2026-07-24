@@ -89,6 +89,14 @@ namespace StudentRegistry.Application.Services
             {
                 ProcessBahrainiCertificate(createDto, student);
             }
+            else if (cert.Contains("فلسطين") || cert.Equals("palestinian", StringComparison.OrdinalIgnoreCase))
+            {
+                ProcessPalestinianCertificate(createDto, student);
+            }
+            else if (cert.Contains("أخرى") || cert.Equals("other", StringComparison.OrdinalIgnoreCase))
+            {
+                ProcessOtherCertificate(createDto, student);
+            }
             else
             {
                 ProcessStandardCertificate(createDto, student);
@@ -167,7 +175,13 @@ namespace StudentRegistry.Application.Services
                 schoolPercentage += yearPercentage * (weightPercent / 100m);
             }
 
-            decimal finalPercentage = (schoolPercentage + dto.AptitudeScore.Value) / 2;
+            // Rounded to 2dp FIRST because this is the exact value displayed on the site — the
+            // equivalent total must be derived from what the student sees, never from the raw
+            // unrounded intermediate value.
+            decimal finalPercentage = Math.Round((schoolPercentage + dto.AptitudeScore.Value) / 2, 2);
+
+            // المجموع الاعتباري (المجموع المصري) = (finalPercentage ÷ 100) × 410.
+            decimal equivalentTotal = (finalPercentage / 100m) * EquivalencyConstants.EgyptianScientificTrackTotal;
 
             student.SaudiTotals = new SaudiStudentTotals
             {
@@ -178,7 +192,8 @@ namespace StudentRegistry.Application.Services
                 TotalCoefficients = overallCoefficients,
                 SchoolPercentage = Math.Round(schoolPercentage, 2),
                 AptitudeScore = dto.AptitudeScore.Value,
-                FinalPercentage = Math.Round(finalPercentage, 2)
+                FinalPercentage = finalPercentage,
+                EquivalentTotal = Math.Round(equivalentTotal, 2)
             };
         }
 
@@ -235,7 +250,10 @@ namespace StudentRegistry.Application.Services
             // Apply Sports Bonus
             scorePercentage += sportsBonus;
 
-            // Calculate Egyptian Government score out of 410
+            // Rounded to 2dp FIRST — this is the exact percentage displayed on the site, and the
+            // equivalent total (المجموع الاعتباري / المجموع المصري) must be derived from it, never
+            // from the raw unrounded intermediate value.
+            scorePercentage = Math.Round(scorePercentage, 2);
             decimal governmentScore = (scorePercentage / 100) * EquivalencyConstants.EgyptianScientificTrackTotal;
 
             student.IgGrades = new IgStudentGrades
@@ -244,7 +262,7 @@ namespace StudentRegistry.Application.Services
                 IgProgram = program,
                 Factor = factor,
                 SportsBonus = sportsBonus,
-                ScorePercentage = Math.Round(scorePercentage, 2),
+                ScorePercentage = scorePercentage,
                 GovernmentScore = Math.Round(governmentScore, 2)
             };
         }
@@ -308,6 +326,10 @@ namespace StudentRegistry.Application.Services
                     finalPercentage += grade10Percentage!.Value * grade10Weight!.Value / 100;
             }
 
+            // Rounded to 2dp FIRST — this is the exact percentage displayed on the site, and the
+            // equivalent total (المجموع الاعتباري / المجموع المصري) must be derived from it, never
+            // from the raw unrounded intermediate value.
+            finalPercentage = Math.Round(finalPercentage, 2);
             decimal equivalentTotal = (finalPercentage / 100) * EquivalencyConstants.EgyptianScientificTrackTotal;
 
             student.KuwaitiTotals = new KuwaitiStudentTotals
@@ -320,7 +342,7 @@ namespace StudentRegistry.Application.Services
                 Grade10Weight = grade10Weight,
                 Grade11Weight = grade11Weight,
                 Grade12Weight = grade12Weight,
-                FinalPercentage = Math.Round(finalPercentage, 2),
+                FinalPercentage = finalPercentage,
                 EquivalentTotal = Math.Round(equivalentTotal, 2),
                 HasSecondAttempt = kw.HasSecondAttempt
             };
@@ -376,14 +398,18 @@ namespace StudentRegistry.Application.Services
                 qa.Subjects, QatariConstants.ScientificTrackSubjects, student,
                 "بيانات المواد والدرجات للشهادة القطرية مفقودة.");
 
-            // TODO: the source rules for Qatari do not specify an Egyptian equivalent total (unlike
-            // Kuwaiti's percentage × 4.10) — do not apply that conversion here until confirmed.
+            // Rounded to 2dp FIRST — this is the exact percentage displayed on the site, and the
+            // equivalent total (المجموع الاعتباري / المجموع المصري) must be derived from it, never
+            // from the raw unrounded intermediate value.
+            percentage = Math.Round(percentage, 2);
+            decimal equivalentTotal = (percentage / 100m) * EquivalencyConstants.EgyptianScientificTrackTotal;
 
             student.QatariTotals = new QatariStudentTotals
             {
                 Student = student,
                 FinalTotal = Math.Round(finalTotal, 2),
-                Percentage = Math.Round(percentage, 2)
+                Percentage = percentage,
+                EquivalentTotal = Math.Round(equivalentTotal, 2)
             };
         }
 
@@ -397,14 +423,18 @@ namespace StudentRegistry.Application.Services
                 om.Subjects, OmaniConstants.Subjects, student,
                 "بيانات المواد والدرجات للشهادة العمانية مفقودة.");
 
-            // TODO: the source rules for Omani do not specify an Egyptian equivalent total (unlike
-            // Kuwaiti's percentage × 4.10) — do not apply that conversion here until confirmed.
+            // Rounded to 2dp FIRST — this is the exact percentage displayed on the site, and the
+            // equivalent total (المجموع الاعتباري / المجموع المصري) must be derived from it, never
+            // from the raw unrounded intermediate value.
+            percentage = Math.Round(percentage, 2);
+            decimal equivalentTotal = (percentage / 100m) * EquivalencyConstants.EgyptianScientificTrackTotal;
 
             student.OmaniTotals = new OmaniStudentTotals
             {
                 Student = student,
                 FinalTotal = Math.Round(finalTotal, 2),
-                Percentage = Math.Round(percentage, 2)
+                Percentage = percentage,
+                EquivalentTotal = Math.Round(equivalentTotal, 2)
             };
         }
 
@@ -418,21 +448,24 @@ namespace StudentRegistry.Application.Services
                 ye.Subjects, YemeniConstants.Subjects, student,
                 "بيانات المواد والدرجات للشهادة اليمنية مفقودة.");
 
-            // TODO: the source rules for Yemeni do not specify an Egyptian equivalent total (unlike
-            // Kuwaiti's percentage × 4.10) — do not apply that conversion here until confirmed.
+            // Rounded to 2dp FIRST — this is the exact percentage displayed on the site, and the
+            // equivalent total (المجموع الاعتباري / المجموع المصري) must be derived from it, never
+            // from the raw unrounded intermediate value.
+            percentage = Math.Round(percentage, 2);
+            decimal equivalentTotal = (percentage / 100m) * EquivalencyConstants.EgyptianScientificTrackTotal;
 
             student.YemeniTotals = new YemeniStudentTotals
             {
                 Student = student,
                 FinalTotal = Math.Round(finalTotal, 2),
-                Percentage = Math.Round(percentage, 2)
+                Percentage = percentage,
+                EquivalentTotal = Math.Round(equivalentTotal, 2)
             };
         }
 
         // Egyptian-equivalency for the Bahraini certificate (last-two-years, track-dependent subject
-        // list). Reuses the shared single-year fixed-total math, then — unlike Qatari/Omani/Yemeni,
-        // whose Egyptian-equivalent total is not yet confirmed — scales the percentage to /410
-        // exactly like the Kuwaiti and IG formulas, per the source rules provided for this certificate.
+        // list). Reuses the shared single-year fixed-total math, then scales the percentage to /410
+        // exactly like the Kuwaiti/IG/Saudi/Qatari/Omani/Yemeni formulas.
         private void ProcessBahrainiCertificate(StudentCreateDto dto, Student student)
         {
             var ba = dto.BahrainiData;
@@ -448,6 +481,11 @@ namespace StudentRegistry.Application.Services
                 "بيانات المواد والدرجات للشهادة البحرينية مفقودة.");
 
             decimal totalMax = subjectList.Length * SingleYearFixedTotalConstants.MaxMarkPerSubject;
+
+            // Rounded to 2dp FIRST — this is the exact percentage displayed on the site, and the
+            // equivalent total (المجموع الاعتباري / المجموع المصري) must be derived from it, never
+            // from the raw unrounded intermediate value.
+            percentage = Math.Round(percentage, 2);
             decimal equivalentTotal = (percentage / 100m) * EquivalencyConstants.EgyptianScientificTrackTotal;
 
             student.BahrainiTotals = new BahrainiStudentTotals
@@ -456,8 +494,52 @@ namespace StudentRegistry.Application.Services
                 Track = dto.Track,
                 FinalTotal = Math.Round(finalTotal, 2),
                 TotalMax = totalMax,
-                Percentage = Math.Round(percentage, 2),
+                Percentage = percentage,
                 EquivalentTotal = Math.Round(equivalentTotal, 2)
+            };
+        }
+
+        // §1.1/1.2 — percentage-in only: no subjects, no max marks, no denominator, no
+        // StandardStudentGrades rows. The student's typed percentage is echoed back (rounded to
+        // 2dp) and converted via the shared CalculateEquivalentTotal helper. Track (علمي/أدبي) is
+        // recorded as Branch but never forks the calculation.
+        private void ProcessPalestinianCertificate(StudentCreateDto dto, Student student)
+        {
+            var pa = dto.PalestinianData;
+            if (pa == null)
+                throw new ArgumentException("بيانات الشهادة الفلسطينية مفقودة.");
+
+            decimal percentage = Math.Round(pa.Percentage, 2);
+
+            student.PalestinianTotals = new PalestinianStudentTotals
+            {
+                Student = student,
+                Percentage = percentage,
+                EquivalentTotal = CalculateEquivalentTotal(percentage),
+                Branch = pa.Branch
+            };
+        }
+
+        // Shared conversion: المجموع الاعتباري (المجموع المصري) = (displayedPercentage ÷ 100) × 410.
+        // Takes the percentage as already displayed/rounded to 2dp — never a raw unrounded value —
+        // so the number on screen and the number persisted always agree.
+        private static decimal CalculateEquivalentTotal(decimal displayedPercentage) =>
+            Math.Round((displayedPercentage / 100m) * EquivalencyConstants.EgyptianScientificTrackTotal, 2);
+
+        // §1.2/1.3 — "أخرى": percentage-in only, free-text certificate name, no track selector at
+        // all. No equivalent-total conversion for this certificate — percentage only, by explicit
+        // product decision (unlike every other percentage-in certificate in this system).
+        private void ProcessOtherCertificate(StudentCreateDto dto, Student student)
+        {
+            var ot = dto.OtherData;
+            if (ot == null)
+                throw new ArgumentException("بيانات الشهادة مفقودة.");
+
+            student.OtherTotals = new OtherStudentTotals
+            {
+                Student = student,
+                CertificateName = ot.CertificateName.Trim(),
+                Percentage = Math.Round(ot.Percentage, 2)
             };
         }
 

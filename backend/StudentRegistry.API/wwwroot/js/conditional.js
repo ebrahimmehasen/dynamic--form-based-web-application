@@ -201,12 +201,60 @@ function getActiveSubjects(certKey, yearVal) {
   }
 }
 
+// "الرغبة" (Wish) section — desired college + program. Selection-only, never used in any
+// equivalence calculation. Mirrors backend WishConstants.
+const WISH_PROGRAMS_BY_COLLEGE = {
+  'هندسة': ['تشييد', 'ميكاترونكس'],
+  'حاسبات': ['نظم معلومات طيران', 'معلوماتية طبية', 'ذكاء اصطناعي'],
+  'تجارة': ['إدارة أعمال', 'محاسبة']
+};
+const WISH_NO_PROGRAM_COLLEGES = ['طب بشري', 'طب أسنان', 'تمريض'];
+const WISH_PHARMACY_COLLEGE = 'صيدلة';
+const WISH_PHARMACY_PROGRAM = 'إكلينيكية';
+
+// Rebuild Section C (Wish) program dropdown based on the selected college.
+function initWishSection() {
+  const collegeSelect = document.getElementById('wish-college');
+  const programSelect = document.getElementById('wish-program');
+  const programGroup = document.getElementById('wish-program-group');
+
+  collegeSelect.addEventListener('change', function () {
+    const college = this.value;
+
+    programSelect.innerHTML = '<option value="">-- اختر --</option>';
+    programGroup.style.display = 'block';
+    programSelect.disabled = true;
+    programSelect.value = '';
+
+    if (WISH_PROGRAMS_BY_COLLEGE[college]) {
+      WISH_PROGRAMS_BY_COLLEGE[college].forEach(program => {
+        const option = document.createElement('option');
+        option.value = program;
+        option.textContent = program;
+        programSelect.appendChild(option);
+      });
+      programSelect.disabled = false;
+    } else if (college === WISH_PHARMACY_COLLEGE) {
+      const option = document.createElement('option');
+      option.value = WISH_PHARMACY_PROGRAM;
+      option.textContent = WISH_PHARMACY_PROGRAM;
+      programSelect.appendChild(option);
+      programSelect.value = WISH_PHARMACY_PROGRAM;
+      programSelect.disabled = true;
+    } else if (WISH_NO_PROGRAM_COLLEGES.includes(college)) {
+      programGroup.style.display = 'none';
+    }
+  });
+}
+
 // Initialise Conditional Handlers
 function initConditionals() {
   const certSelect = document.getElementById('cert-select');
   const trackSelect = document.getElementById('track-select');
   const yearSelect = document.getElementById('year-select');
   const trackLockedIndicator = document.getElementById('track-locked-msg');
+
+  initWishSection();
 
   // Load configuration
   loadSubjectsConfig().then(() => {
@@ -237,6 +285,7 @@ function initConditionals() {
 
     adjustYearSelect(certKey);
     yearSelect.value = '';
+    yearSelect.disabled = !certKey;
 
     // Hide following sections
     deactivateSection('section-track');
@@ -251,6 +300,8 @@ function initConditionals() {
     document.getElementById('omani-grades-container').style.display = 'none';
     document.getElementById('yemeni-grades-container').style.display = 'none';
     document.getElementById('bahraini-grades-container').style.display = 'none';
+    document.getElementById('palestinian-grades-container').style.display = 'none';
+    document.getElementById('other-grades-container').style.display = 'none';
     document.getElementById('section-year').style.display = 'block';
     document.getElementById('section-grades-title').textContent = 'جدول إدخال الدرجات';
     document.getElementById('section-grades-desc').textContent = 'أدخل الدرجة والنسبة الموزونة لكل مادة أدناه. سيتم احتساب الدرجة المتحصلة تلقائياً.';
@@ -301,17 +352,39 @@ function initConditionals() {
         document.getElementById('bahraini-grades-container').style.display = 'block';
         document.getElementById('section-grades-title').textContent = '🧮 حاسبة الشهادة البحرينية';
         document.getElementById('section-grades-desc').textContent = 'أدخل درجة كل مادة من مواد المسار المختار (آخر سنتين دراسيتين فقط). المسار المهني/الفني غير مدعوم حالياً.';
+      } else if (certKey === 'palestinian') {
+        // Palestinian Tawjihi is percentage-in only — no subjects, no grades grid, no year-select.
+        document.getElementById('section-year').style.display = 'none';
+        document.getElementById('non-ig-grades-container').style.display = 'none';
+        document.getElementById('palestinian-grades-container').style.display = 'block';
+        document.getElementById('section-grades-title').textContent = '🧮 حاسبة الشهادة الفلسطينية (توجيهي)';
+        document.getElementById('section-grades-desc').textContent = 'أدخل النسبة المئوية النهائية كما هي مدونة بشهادة التوجيهي.';
+      } else if (certKey === 'other') {
+        // "أخرى" has NO track selector at all — percentage-in only, free-text certificate name.
+        document.getElementById('section-year').style.display = 'none';
+        document.getElementById('non-ig-grades-container').style.display = 'none';
+        document.getElementById('other-grades-container').style.display = 'block';
+        document.getElementById('section-grades-title').textContent = '🧮 حاسبة شهادة أخرى';
+        document.getElementById('section-grades-desc').textContent = 'أدخل اسم الشهادة والنسبة المئوية النهائية.';
       }
 
-      // Populate track options
-      const tracks = appConfig.certifications[certKey].tracks;
-      tracks.forEach(track => {
-        const option = document.createElement('option');
-        option.value = track;
-        option.textContent = track;
-        trackSelect.appendChild(option);
-      });
-      activateSection('section-track');
+      if (certKey === 'other') {
+        // Skip the track step entirely — go straight to section-grades.
+        activateSection('section-grades');
+        if (typeof recalculateOther === 'function') {
+          recalculateOther();
+        }
+      } else {
+        // Populate track options
+        const tracks = appConfig.certifications[certKey].tracks;
+        tracks.forEach(track => {
+          const option = document.createElement('option');
+          option.value = track;
+          option.textContent = track;
+          trackSelect.appendChild(option);
+        });
+        activateSection('section-track');
+      }
     }
 
     updateProgressIndicator();
@@ -365,6 +438,11 @@ function initConditionals() {
         activateSection('section-grades');
         if (typeof generateBahrainiGradesUI === 'function') {
           generateBahrainiGradesUI(trackVal);
+        }
+      } else if (certKey === 'palestinian') {
+        activateSection('section-grades');
+        if (typeof recalculatePalestinian === 'function') {
+          recalculatePalestinian();
         }
       } else {
         yearSelect.value = '';

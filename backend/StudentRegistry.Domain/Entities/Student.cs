@@ -9,9 +9,14 @@ namespace StudentRegistry.Domain.Entities
         public string StudentName { get; set; } = string.Empty;
         public string StudentNameEn { get; set; } = string.Empty;
         public string NationalId { get; set; } = string.Empty;
+        public string WishCollege { get; set; } = string.Empty;   // "الرغبة" — desired college, selection-only
+        public string? WishProgram { get; set; }   // desired program, when applicable to the college
+        public string Gender { get; set; } = string.Empty;   // ذكر / أنثى
         public string Phone { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string GuardianName { get; set; } = string.Empty;
+        public string GuardianNationalId { get; set; } = string.Empty;
+        public string GuardianOccupation { get; set; } = string.Empty;
         public string GuardianPhone { get; set; } = string.Empty;
         public string GuardianRelation { get; set; } = string.Empty;
         public string AddressGov { get; set; } = string.Empty;
@@ -36,5 +41,7 @@ namespace StudentRegistry.Domain.Entities
         public virtual OmaniStudentTotals? OmaniTotals { get; set; }
         public virtual YemeniStudentTotals? YemeniTotals { get; set; }
         public virtual BahrainiStudentTotals? BahrainiTotals { get; set; }
+        public virtual PalestinianStudentTotals? PalestinianTotals { get; set; }
+        public virtual OtherStudentTotals? OtherTotals { get; set; }
     }
 }

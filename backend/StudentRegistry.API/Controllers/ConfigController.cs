@@ -24,7 +24,14 @@ namespace StudentRegistry.API.Controllers
                     // §1.6 — Omani has one track only; the dropdown offers a single fixed value.
                     { "omani", new { name = "شهادة عمانية", tracks = new[] { OmaniConstants.SingleTrack } } },
                     // §1.1 — Yemeni has one track only; the dropdown offers a single fixed value.
-                    { "yemeni", new { name = "شهادة يمنية", tracks = new[] { YemeniConstants.SingleTrack } } }
+                    { "yemeni", new { name = "شهادة يمنية", tracks = new[] { YemeniConstants.SingleTrack } } },
+                    // §1.1 — percentage-in only: no subjects, no subjects-palestinian config endpoint.
+                    // Track (علمي/أدبي) is recorded but never changes the calculation.
+                    { "palestinian", new { name = "شهادة فلسطينية (توجيهي)", tracks = new[] { PalestinianConstants.ScientificBranch, PalestinianConstants.LiteraryBranch } } },
+                    // §1.1 — must stay LAST in the list. Percentage-in only, free-text certificate
+                    // name, no track selector at all (empty tracks array — the UI renders no track
+                    // dropdown for this cert and never populates one).
+                    { "other", new { name = "أخرى", tracks = System.Array.Empty<string>() } }
                 },
                 subjects = new Dictionary<string, string[]>
                 {

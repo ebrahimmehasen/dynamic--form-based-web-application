@@ -11,6 +11,8 @@ function initFormHandlers() {
   setupOmaniCalculatorListeners();
   setupYemeniCalculatorListeners();
   setupBahrainiCalculatorListeners();
+  setupPalestinianCalculatorListeners();
+  setupOtherCalculatorListeners();
   setupSubmissionHandler();
 }
 
@@ -368,17 +370,29 @@ function recalculateSaudi() {
         aptitudeInput.style.borderColor = (aptitudeRaw !== '' && !hasValidAptitude) ? 'var(--danger-color)' : '';
       }
 
+      const elEquivalentTotal = document.getElementById('saudi-equivalent-total');
+
       if (elFinalGPA) {
         if (hasError) {
           elFinalGPA.textContent = '⚠️ يوجد أخطاء في الدرجات المدخلة (تأكد أن المعامل رقم صحيح لكل مادة)';
           elFinalGPA.style.color = 'var(--danger-color)';
+          if (elEquivalentTotal) { elEquivalentTotal.textContent = '—'; elEquivalentTotal.style.color = ''; }
         } else if (!hasValidAptitude) {
           elFinalGPA.textContent = '— (أدخل درجة القدرات)';
           elFinalGPA.style.color = '';
+          if (elEquivalentTotal) { elEquivalentTotal.textContent = '— (أدخل درجة القدرات)'; elEquivalentTotal.style.color = ''; }
         } else {
-          const finalGrade = (schoolPercentage + aptitudeVal) / 2;
+          // Rounded to 2dp FIRST — this is the exact percentage displayed on the site, and the
+          // equivalent total (المجموع الاعتباري / المجموع المصري) must be derived from it, never
+          // from the raw unrounded value. Mirrors StudentService.
+          const finalGrade = Math.round(((schoolPercentage + aptitudeVal) / 2) * 100) / 100;
           elFinalGPA.textContent = finalGrade.toFixed(2) + '%';
           elFinalGPA.style.color = 'var(--success-color)';
+          if (elEquivalentTotal) {
+            const equivalentTotal = (finalGrade / 100) * 410;
+            elEquivalentTotal.textContent = equivalentTotal.toFixed(2) + ' / 410';
+            elEquivalentTotal.style.color = 'var(--success-color)';
+          }
         }
       }
 
@@ -860,7 +874,9 @@ function calculateIGScore() {
   const sportsBonus = parseFloat(document.getElementById('ig-sports-bonus').value) || 0;
   scorePercentage += sportsBonus;
 
-  // Government Score
+  // Rounded to 2dp FIRST — this is the exact percentage displayed on the site, and the equivalent
+  // total (المجموع الاعتباري / المجموع المصري) must be derived from it. Mirrors StudentService.
+  scorePercentage = Math.round(scorePercentage * 100) / 100;
   const governmentScore = (scorePercentage / 100) * 410;
 
   // Display Results
@@ -1034,6 +1050,9 @@ function recalculateKuwaiti() {
   if (weightsEntered && Math.abs(weightSum - 100) <= 0.01) {
     finalPercentage = includedLevels.reduce((sum, level) => sum + (percentages[level] * weights[level] / 100), 0);
   }
+  // Rounded to 2dp FIRST — this is the exact percentage displayed on the site, and the equivalent
+  // total (المجموع الاعتباري / المجموع المصري) must be derived from it. Mirrors StudentService.
+  finalPercentage = Math.round(finalPercentage * 100) / 100;
   const equivalentTotal = (finalPercentage / 100) * KUWAITI_EGYPTIAN_SCIENTIFIC_TOTAL;
 
   const finalEl = document.getElementById('kuwaiti-final-percentage');
@@ -1152,15 +1171,17 @@ function recalculateSingleYearFixedTotal(prefix) {
   });
 
   const totalMax = config.total_max;
-  const percentage = totalMax > 0 ? (finalTotal / totalMax) * 100 : 0;
+  const rawPercentage = totalMax > 0 ? (finalTotal / totalMax) * 100 : 0;
+  // Rounded to 2dp FIRST — this is the exact percentage displayed on the site, and the equivalent
+  // total (المجموع الاعتباري / المجموع المصري) must be derived from it, mirroring StudentService.
+  const percentage = Math.round(rawPercentage * 100) / 100;
 
   const totalEl = document.getElementById(prefix + '-final-total');
   const percentageEl = document.getElementById(prefix + '-percentage');
   if (totalEl) totalEl.textContent = finalTotal.toFixed(2) + ' / ' + totalMax;
   if (percentageEl) percentageEl.textContent = percentage.toFixed(2) + '%';
 
-  // Only Bahraini renders an equivalent-total element (Qatari/Omani/Yemeni don't have a confirmed
-  // Egyptian-equivalent formula yet — see the TODOs in StudentService).
+  // Qatari, Omani, Bahraini and Yemeni all render an equivalent-total element.
   const equivalentEl = document.getElementById(prefix + '-equivalent-total');
   if (equivalentEl) {
     const equivalentTotal = (percentage / 100) * 410;
@@ -1316,6 +1337,62 @@ function setupBahrainiCalculatorListeners() {
   setupSingleYearFixedTotalListeners('bahraini');
 }
 
+// 3f. Palestinian Tawjihi Calculator — percentage-in only, no subjects/grades grid. Mirrors
+// StudentService.ProcessPalestinianCertificate: the typed percentage is rounded to 2dp and
+// converted via (percentage / 100) * 410.
+function recalculatePalestinian() {
+  const input = document.getElementById('palestinian-percentage');
+  const percentageEl = document.getElementById('palestinian-percentage-val');
+  const equivalentEl = document.getElementById('palestinian-equivalent-total');
+  if (!input) return;
+
+  const raw = parseFloat(input.value);
+  const valid = input.value !== '' && !isNaN(raw) && raw >= 0 && raw <= 100;
+  input.style.borderColor = (input.value !== '' && !valid) ? 'var(--danger-color)' : '';
+
+  const percentage = valid ? Math.round(raw * 100) / 100 : 0;
+  const equivalentTotal = (percentage / 100) * 410;
+
+  if (percentageEl) percentageEl.textContent = percentage.toFixed(2) + '%';
+  if (equivalentEl) equivalentEl.textContent = equivalentTotal.toFixed(2) + ' / 410';
+
+  updateProgressIndicator();
+}
+
+function setupPalestinianCalculatorListeners() {
+  const input = document.getElementById('palestinian-percentage');
+  if (input) {
+    input.addEventListener('input', recalculatePalestinian);
+    input.addEventListener('change', recalculatePalestinian);
+  }
+}
+
+// 3g. "أخرى" (Other) Calculator — percentage-in only, free-text certificate name, no track. The
+// certificate name never affects the number.
+function recalculateOther() {
+  const input = document.getElementById('other-percentage');
+  const percentageEl = document.getElementById('other-percentage-val');
+  if (!input) return;
+
+  const raw = parseFloat(input.value);
+  const valid = input.value !== '' && !isNaN(raw) && raw >= 0 && raw <= 100;
+  input.style.borderColor = (input.value !== '' && !valid) ? 'var(--danger-color)' : '';
+
+  const percentage = valid ? Math.round(raw * 100) / 100 : 0;
+
+  if (percentageEl) percentageEl.textContent = percentage.toFixed(2) + '%';
+
+  updateProgressIndicator();
+}
+
+function setupOtherCalculatorListeners() {
+  const input = document.getElementById('other-percentage');
+  if (input) {
+    input.addEventListener('input', recalculateOther);
+    input.addEventListener('change', recalculateOther);
+  }
+}
+
 // 4. Form Submission and Validation
 function setupSubmissionHandler() {
   const mainForm = document.getElementById('student-reg-form');
@@ -1435,9 +1512,13 @@ function validateForm() {
 
   // Personal Info & Address Validation
   const requiredFields = [
+    { id: 'wish-college', name: 'الكلية' },
+    { id: 'student-gender', name: 'النوع' },
     { id: 'student-phone', name: 'رقم هاتف الطالب' },
     { id: 'student-email', name: 'ايميل الشخصي للطالب' },
     { id: 'guardian-name', name: 'اسم ولي الامر' },
+    { id: 'guardian-national-id', name: 'الرقم القومي لولي الامر' },
+    { id: 'guardian-occupation', name: 'وظيفة ولي الامر' },
     { id: 'guardian-phone', name: 'رقم هاتف ولي الامر' },
     { id: 'guardian-relation', name: 'صلة قرابة ولي الامر' },
     { id: 'address-gov', name: 'المحافظه' },
@@ -1455,6 +1536,16 @@ function validateForm() {
         element: el
       };
     }
+  }
+
+  // Wish Program (only required when the selected college has a program list)
+  const wishProgramInput = document.getElementById('wish-program');
+  if (!wishProgramInput.disabled && wishProgramInput.closest('.form-group').style.display !== 'none' && !wishProgramInput.value.trim()) {
+    return {
+      valid: false,
+      message: 'الرجاء اختيار البرنامج.',
+      element: wishProgramInput
+    };
   }
 
   // Email format check
@@ -1486,6 +1577,15 @@ function validateForm() {
     };
   }
 
+  const guardianNationalIdInput = document.getElementById('guardian-national-id');
+  if (guardianNationalIdInput.value.length < 8 || guardianNationalIdInput.value.length > 20) {
+    return {
+      valid: false,
+      message: 'الرجاء إدخال رقم قومي صحيح لولي الأمر (بين 8 و 20 خانة).',
+      element: guardianNationalIdInput
+    };
+  }
+
   // 4. Certification
   const certSelect = document.getElementById('cert-select');
   if (!certSelect.value) {
@@ -1494,6 +1594,29 @@ function validateForm() {
       message: 'الرجاء اختيار نوع الشهادة المعادلة.',
       element: certSelect
     };
+  }
+
+  // "أخرى" has NO track selector at all — validate its own two fields and return early,
+  // bypassing the generic track requirement below.
+  if (certSelect.value === 'other') {
+    const nameInput = document.getElementById('other-certificate-name');
+    if (!nameInput.value.trim()) {
+      return {
+        valid: false,
+        message: 'الرجاء إدخال اسم الشهادة.',
+        element: nameInput
+      };
+    }
+    const percentageInput = document.getElementById('other-percentage');
+    const val = parseFloat(percentageInput.value);
+    if (percentageInput.value === '' || isNaN(val) || val < 0 || val > 100) {
+      return {
+        valid: false,
+        message: 'الرجاء إدخال نسبة مئوية صحيحة (بين 0 و100).',
+        element: percentageInput
+      };
+    }
+    return { valid: true };
   }
 
   // 5. Track
@@ -1659,6 +1782,20 @@ function validateForm() {
     return validateSingleYearFixedTotalMarks('bahraini', 'الرجاء توليد جدول مواد الشهادة البحرينية أولاً.', trackSelect);
   }
 
+  // Check if Palestinian Cert is active — percentage-in only, no subjects.
+  if (certSelect.value === 'palestinian') {
+    const percentageInput = document.getElementById('palestinian-percentage');
+    const val = parseFloat(percentageInput.value);
+    if (percentageInput.value === '' || isNaN(val) || val < 0 || val > 100) {
+      return {
+        valid: false,
+        message: 'الرجاء إدخال نسبة مئوية صحيحة (بين 0 و100).',
+        element: percentageInput
+      };
+    }
+    return { valid: true };
+  }
+
   // Check if Saudi Cert is active
   if (certSelect.value === 'saudi') {
     const yearSelect = document.getElementById('year-select');
@@ -1803,9 +1940,14 @@ function compilePayload() {
     studentName: document.getElementById('student-name-ar').value.trim(),
     studentNameAr: document.getElementById('student-name-ar').value.trim(),
     studentNameEn: document.getElementById('student-name-en').value.trim(),
+    wishCollege: document.getElementById('wish-college').value.trim(),
+    wishProgram: document.getElementById('wish-program').value.trim(),
+    gender: document.getElementById('student-gender').value.trim(),
     studentPhone: document.getElementById('student-phone').value.trim(),
     studentEmail: document.getElementById('student-email').value.trim(),
     guardianName: document.getElementById('guardian-name').value.trim(),
+    guardianNationalId: document.getElementById('guardian-national-id').value.trim(),
+    guardianOccupation: document.getElementById('guardian-occupation').value.trim(),
     guardianPhone: document.getElementById('guardian-phone').value.trim(),
     guardianRelation: document.getElementById('guardian-relation').value.trim(),
     addressGov: document.getElementById('address-gov').value.trim(),
@@ -1828,6 +1970,7 @@ function compilePayload() {
       qatariData: collected.data,
       finalTotal: collected.finalTotal,
       percentage: collected.percentage,
+      equivalentTotal: (collected.percentage / 100) * 410,
       submittedAt: new Date().toISOString()
     };
   }
@@ -1844,6 +1987,7 @@ function compilePayload() {
       omaniData: collected.data,
       finalTotal: collected.finalTotal,
       percentage: collected.percentage,
+      equivalentTotal: (collected.percentage / 100) * 410,
       submittedAt: new Date().toISOString()
     };
   }
@@ -1860,6 +2004,7 @@ function compilePayload() {
       yemeniData: collected.data,
       finalTotal: collected.finalTotal,
       percentage: collected.percentage,
+      equivalentTotal: (collected.percentage / 100) * 410,
       submittedAt: new Date().toISOString()
     };
   }
@@ -1879,6 +2024,39 @@ function compilePayload() {
       totalMax: config ? config.total_max : 0,
       percentage: collected.percentage,
       equivalentTotal: (collected.percentage / 100) * 410,
+      submittedAt: new Date().toISOString()
+    };
+  }
+
+  if (certSelect.value === 'palestinian') {
+    const percentage = Math.round((parseFloat(document.getElementById('palestinian-percentage').value) || 0) * 100) / 100;
+    const equivalentTotal = (percentage / 100) * 410;
+    return {
+      ...personalInfo,
+      nationalId: document.getElementById('national-id').value.trim(),
+      certification: certSelect.options[certSelect.selectedIndex].text,
+      track: trackVal,
+      yearOfStudy: '',
+      photo: uploadedPhotoBase64,
+      palestinianData: { percentage: percentage, branch: trackVal },
+      percentage: percentage,
+      equivalentTotal: equivalentTotal,
+      submittedAt: new Date().toISOString()
+    };
+  }
+
+  if (certSelect.value === 'other') {
+    const certificateName = document.getElementById('other-certificate-name').value.trim();
+    const percentage = Math.round((parseFloat(document.getElementById('other-percentage').value) || 0) * 100) / 100;
+    return {
+      ...personalInfo,
+      nationalId: document.getElementById('national-id').value.trim(),
+      certification: certSelect.options[certSelect.selectedIndex].text,
+      track: 'أخرى',   // "أخرى" has no track selector — a fixed placeholder satisfies the shared Track column.
+      yearOfStudy: '',
+      photo: uploadedPhotoBase64,
+      otherData: { certificateName: certificateName, percentage: percentage },
+      percentage: percentage,
       submittedAt: new Date().toISOString()
     };
   }
@@ -2064,7 +2242,10 @@ function compilePayload() {
     });
 
     const aptitudeScore = parseFloat(document.getElementById('saudi-aptitude-score').value) || 0;
-    const finalPercentage = (schoolPercentage + aptitudeScore) / 2;
+    // Rounded to 2dp FIRST — matches the value shown on the calculator (saudi-final-gpa) and what
+    // StudentService stores; the equivalent total must be derived from that, not a raw value.
+    const finalPercentage = Math.round(((schoolPercentage + aptitudeScore) / 2) * 100) / 100;
+    const equivalentTotal = (finalPercentage / 100) * 410;
 
     return {
       ...personalInfo,
@@ -2081,7 +2262,8 @@ function compilePayload() {
         totalCoefficients: overallCoefficients,
         schoolPercentage: parseFloat(schoolPercentage.toFixed(2)),
         aptitudeScore: aptitudeScore,
-        finalPercentage: parseFloat(finalPercentage.toFixed(2))
+        finalPercentage: parseFloat(finalPercentage.toFixed(2)),
+        equivalentTotal: parseFloat(equivalentTotal.toFixed(2))
       },
       submittedAt: new Date().toISOString()
     };
@@ -2123,9 +2305,14 @@ function sendData(payload, submitBtn, originalText) {
     studentName: payload.studentName,
     studentNameEn: payload.studentNameEn,
     nationalId: payload.nationalId,
+    wishCollege: payload.wishCollege,
+    wishProgram: payload.wishProgram,
+    gender: payload.gender,
     phone: payload.studentPhone,
     email: payload.studentEmail,
     guardianName: payload.guardianName,
+    guardianNationalId: payload.guardianNationalId,
+    guardianOccupation: payload.guardianOccupation,
     guardianPhone: payload.guardianPhone,
     guardianRelation: payload.guardianRelation,
     addressGov: payload.addressGov,
@@ -2205,6 +2392,16 @@ function sendData(payload, submitBtn, originalText) {
   } else if (payload.bahrainiData) {
     apiPayload.bahrainiData = {
       subjects: payload.bahrainiData.subjects
+    };
+  } else if (payload.palestinianData) {
+    apiPayload.palestinianData = {
+      percentage: payload.palestinianData.percentage,
+      branch: payload.palestinianData.branch
+    };
+  } else if (payload.otherData) {
+    apiPayload.otherData = {
+      certificateName: payload.otherData.certificateName,
+      percentage: payload.otherData.percentage
     };
   } else {
     apiPayload.yearOfStudy = payload.yearOfStudy;
@@ -2294,6 +2491,8 @@ function showSuccessScreen(payload, mode, serverPath = '') {
   } else if (payload.igProgram) {
     if (programRow) {
       programRow.style.display = 'flex';
+      const programLabel = document.getElementById('receipt-program-label');
+      if (programLabel) programLabel.textContent = 'برنامج الـ IG:';
       document.getElementById('receipt-program').textContent = payload.track;
     }
     if (yearRow) yearRow.style.display = 'none';
@@ -2313,8 +2512,8 @@ function showSuccessScreen(payload, mode, serverPath = '') {
     if (programRow) programRow.style.display = 'none';
     if (yearRow) {
       yearRow.style.display = 'flex';
-      if (yearLabel) yearLabel.textContent = 'المجموع (من 700):';
-      document.getElementById('receipt-year').textContent = (payload.finalTotal || 0).toFixed(2) + ' / 700';
+      if (yearLabel) yearLabel.textContent = 'المجموع الاعتباري (من 410):';
+      document.getElementById('receipt-year').textContent = (payload.equivalentTotal || 0).toFixed(2) + ' / 410';
     }
     if (saudiGpaRow && saudiGpaVal) {
       saudiGpaRow.style.display = 'flex';
@@ -2324,8 +2523,8 @@ function showSuccessScreen(payload, mode, serverPath = '') {
     if (programRow) programRow.style.display = 'none';
     if (yearRow) {
       yearRow.style.display = 'flex';
-      if (yearLabel) yearLabel.textContent = 'المجموع (من 700):';
-      document.getElementById('receipt-year').textContent = (payload.finalTotal || 0).toFixed(2) + ' / 700';
+      if (yearLabel) yearLabel.textContent = 'المجموع الاعتباري (من 410):';
+      document.getElementById('receipt-year').textContent = (payload.equivalentTotal || 0).toFixed(2) + ' / 410';
     }
     if (saudiGpaRow && saudiGpaVal) {
       saudiGpaRow.style.display = 'flex';
@@ -2335,8 +2534,8 @@ function showSuccessScreen(payload, mode, serverPath = '') {
     if (programRow) programRow.style.display = 'none';
     if (yearRow) {
       yearRow.style.display = 'flex';
-      if (yearLabel) yearLabel.textContent = 'المجموع (من 600):';
-      document.getElementById('receipt-year').textContent = (payload.finalTotal || 0).toFixed(2) + ' / 600';
+      if (yearLabel) yearLabel.textContent = 'المجموع الاعتباري (من 410):';
+      document.getElementById('receipt-year').textContent = (payload.equivalentTotal || 0).toFixed(2) + ' / 410';
     }
     if (saudiGpaRow && saudiGpaVal) {
       saudiGpaRow.style.display = 'flex';
@@ -2349,6 +2548,29 @@ function showSuccessScreen(payload, mode, serverPath = '') {
       if (yearLabel) yearLabel.textContent = 'المجموع الاعتباري (من 410):';
       document.getElementById('receipt-year').textContent = (payload.equivalentTotal || 0).toFixed(2) + ' / 410';
     }
+    if (saudiGpaRow && saudiGpaVal) {
+      saudiGpaRow.style.display = 'flex';
+      saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+    }
+  } else if (payload.palestinianData) {
+    if (programRow) programRow.style.display = 'none';
+    if (yearRow) {
+      yearRow.style.display = 'flex';
+      if (yearLabel) yearLabel.textContent = 'المجموع الاعتباري (من 410):';
+      document.getElementById('receipt-year').textContent = (payload.equivalentTotal || 0).toFixed(2) + ' / 410';
+    }
+    if (saudiGpaRow && saudiGpaVal) {
+      saudiGpaRow.style.display = 'flex';
+      saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+    }
+  } else if (payload.otherData) {
+    if (programRow) {
+      programRow.style.display = 'flex';
+      const programLabel = document.getElementById('receipt-program-label');
+      if (programLabel) programLabel.textContent = 'اسم الشهادة:';
+      document.getElementById('receipt-program').textContent = payload.otherData.certificateName;
+    }
+    if (yearRow) yearRow.style.display = 'none';
     if (saudiGpaRow && saudiGpaVal) {
       saudiGpaRow.style.display = 'flex';
       saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
@@ -2407,9 +2629,14 @@ function downloadReceiptFile(payload, format) {
     csvRows.push(`اسم الطالب (عربي),"${payload.studentNameAr || payload.studentName}"`);
     csvRows.push(`اسم الطالب (انجليزي),"${payload.studentNameEn || ''}"`);
     csvRows.push(`الرقم القومي,${payload.nationalId}`);
+    csvRows.push(`الكلية (الرغبة),"${payload.wishCollege || ''}"`);
+    csvRows.push(`البرنامج (الرغبة),"${payload.wishProgram || ''}"`);
+    csvRows.push(`النوع,"${payload.gender || ''}"`);
     csvRows.push(`رقم هاتف الطالب,${payload.studentPhone || ''}`);
     csvRows.push(`ايميل الشخصي للطالب,${payload.studentEmail || ''}`);
     csvRows.push(`اسم ولي الامر,"${payload.guardianName || ''}"`);
+    csvRows.push(`الرقم القومي لولي الامر,${payload.guardianNationalId || ''}`);
+    csvRows.push(`وظيفة ولي الامر,"${payload.guardianOccupation || ''}"`);
     csvRows.push(`رقم هاتف ولي الامر,${payload.guardianPhone || ''}`);
     csvRows.push(`صلة قرابة ولي الامر,"${payload.guardianRelation || ''}"`);
     csvRows.push(`المحافظه,"${payload.addressGov || ''}"`);
@@ -2485,6 +2712,7 @@ function downloadReceiptFile(payload, format) {
       csvRows.push(`المسار الأكاديمي,"${payload.track}"`);
       csvRows.push(`المجموع (من 700),${(payload.finalTotal || 0)}`);
       csvRows.push(`النسبة المئوية,${(payload.percentage || 0)}%`);
+      csvRows.push(`المجموع الاعتباري (المجموع المصري),${(payload.equivalentTotal || 0)}/410`);
       csvRows.push(`تاريخ الإرسال,${payload.submittedAt}`);
       csvRows.push('');
       csvRows.push('المادة,الدرجة');
@@ -2496,6 +2724,7 @@ function downloadReceiptFile(payload, format) {
       csvRows.push(`المسار الأكاديمي,"${payload.track}"`);
       csvRows.push(`المجموع (من 700),${(payload.finalTotal || 0)}`);
       csvRows.push(`النسبة المئوية,${(payload.percentage || 0)}%`);
+      csvRows.push(`المجموع الاعتباري (المجموع المصري),${(payload.equivalentTotal || 0)}/410`);
       csvRows.push(`تاريخ الإرسال,${payload.submittedAt}`);
       csvRows.push('');
       csvRows.push('المادة,الدرجة');
@@ -2507,12 +2736,22 @@ function downloadReceiptFile(payload, format) {
       csvRows.push(`المسار الأكاديمي,"${payload.track}"`);
       csvRows.push(`المجموع (من 600),${(payload.finalTotal || 0)}`);
       csvRows.push(`النسبة المئوية,${(payload.percentage || 0)}%`);
+      csvRows.push(`المجموع الاعتباري (المجموع المصري),${(payload.equivalentTotal || 0)}/410`);
       csvRows.push(`تاريخ الإرسال,${payload.submittedAt}`);
       csvRows.push('');
       csvRows.push('المادة,الدرجة');
       ye.subjects.forEach(s => {
         csvRows.push(`"${s.subjectName}",${s.mark}`);
       });
+    } else if (payload.palestinianData) {
+      csvRows.push(`الفرع,"${payload.palestinianData.branch}"`);
+      csvRows.push(`النسبة المئوية,${(payload.percentage || 0)}%`);
+      csvRows.push(`المجموع الاعتباري (المجموع المصري),${(payload.equivalentTotal || 0)}/410`);
+      csvRows.push(`تاريخ الإرسال,${payload.submittedAt}`);
+    } else if (payload.otherData) {
+      csvRows.push(`اسم الشهادة,"${payload.otherData.certificateName}"`);
+      csvRows.push(`النسبة المئوية,${(payload.percentage || 0)}%`);
+      csvRows.push(`تاريخ الإرسال,${payload.submittedAt}`);
     } else {
       csvRows.push(`المسار الأكاديمي,"${payload.track}"`);
       csvRows.push(`السنة الدراسية,"${payload.yearOfStudy}"`);

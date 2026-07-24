@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using StudentRegistry.Data.DbContext;
 
@@ -11,9 +12,11 @@ using StudentRegistry.Data.DbContext;
 namespace StudentRegistry.Data.Migrations
 {
     [DbContext(typeof(StudentRegistryDbContext))]
-    partial class StudentRegistryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260724183307_AddPalestinianCertificateSupport")]
+    partial class AddPalestinianCertificateSupport
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -185,25 +188,6 @@ namespace StudentRegistry.Data.Migrations
                     b.HasKey("StudentId");
 
                     b.ToTable("OmaniStudentTotals", "dbo");
-                });
-
-            modelBuilder.Entity("StudentRegistry.Domain.Entities.OtherStudentTotals", b =>
-                {
-                    b.Property<int>("StudentId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("CertificateName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<decimal>("Percentage")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
-
-                    b.HasKey("StudentId");
-
-                    b.ToTable("OtherStudentTotals", "dbo");
                 });
 
             modelBuilder.Entity("StudentRegistry.Domain.Entities.PalestinianStudentTotals", b =>
@@ -425,22 +409,7 @@ namespace StudentRegistry.Data.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
-                    b.Property<string>("Gender")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
                     b.Property<string>("GuardianName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("GuardianNationalId")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("GuardianOccupation")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -487,15 +456,6 @@ namespace StudentRegistry.Data.Migrations
 
                     b.Property<string>("Track")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("WishCollege")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("WishProgram")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
@@ -584,17 +544,6 @@ namespace StudentRegistry.Data.Migrations
                     b.Navigation("Student");
                 });
 
-            modelBuilder.Entity("StudentRegistry.Domain.Entities.OtherStudentTotals", b =>
-                {
-                    b.HasOne("StudentRegistry.Domain.Entities.Student", "Student")
-                        .WithOne("OtherTotals")
-                        .HasForeignKey("StudentRegistry.Domain.Entities.OtherStudentTotals", "StudentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Student");
-                });
-
             modelBuilder.Entity("StudentRegistry.Domain.Entities.PalestinianStudentTotals", b =>
                 {
                     b.HasOne("StudentRegistry.Domain.Entities.Student", "Student")
@@ -672,8 +621,6 @@ namespace StudentRegistry.Data.Migrations
                     b.Navigation("KuwaitiTotals");
 
                     b.Navigation("OmaniTotals");
-
-                    b.Navigation("OtherTotals");
 
                     b.Navigation("PalestinianTotals");
 

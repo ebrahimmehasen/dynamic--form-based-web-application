@@ -8,9 +8,14 @@ namespace StudentRegistry.Application.DTOs
         public string StudentName { get; set; } = string.Empty;
         public string StudentNameEn { get; set; } = string.Empty;
         public string NationalId { get; set; } = string.Empty;
+        public string WishCollege { get; set; } = string.Empty;   // "الرغبة" — desired college, selection-only
+        public string? WishProgram { get; set; }   // desired program, when applicable to the college
+        public string Gender { get; set; } = string.Empty;   // ذكر / أنثى
         public string Phone { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string GuardianName { get; set; } = string.Empty;
+        public string GuardianNationalId { get; set; } = string.Empty;
+        public string GuardianOccupation { get; set; } = string.Empty;
         public string GuardianPhone { get; set; } = string.Empty;
         public string GuardianRelation { get; set; } = string.Empty;
         public string AddressGov { get; set; } = string.Empty;
@@ -54,6 +59,12 @@ namespace StudentRegistry.Application.DTOs
 
         // Bahraini specific fields
         public BahrainiDataCreateDto? BahrainiData { get; set; }
+
+        // Palestinian specific fields
+        public PalestinianDataCreateDto? PalestinianData { get; set; }
+
+        // "أخرى" (other) specific fields
+        public OtherDataCreateDto? OtherData { get; set; }
     }
 
     public class KuwaitiDataCreateDto
@@ -105,6 +116,22 @@ namespace StudentRegistry.Application.DTOs
         public List<SingleYearSubjectMarkCreateDto>? Subjects { get; set; }
     }
 
+    // Percentage-in only — no subjects, no max marks, no denominator. The student types their
+    // Tawjihi percentage directly and the site converts it.
+    public class PalestinianDataCreateDto
+    {
+        public decimal Percentage { get; set; }
+        public string Branch { get; set; } = string.Empty;   // علمي / أدبي — recorded only, never forks the calculation.
+    }
+
+    // Percentage-in only, free-text certificate name, no track — for certificates not otherwise
+    // supported in this system.
+    public class OtherDataCreateDto
+    {
+        public string CertificateName { get; set; } = string.Empty;
+        public decimal Percentage { get; set; }
+    }
+
     // Shared by Qatari, Omani, Yemeni and Bahraini (all single-year, fixed-100-per-subject certificates).
     public class SingleYearSubjectMarkCreateDto
     {
@@ -141,9 +168,14 @@ namespace StudentRegistry.Application.DTOs
         public string StudentName { get; set; } = string.Empty;
         public string StudentNameEn { get; set; } = string.Empty;
         public string NationalId { get; set; } = string.Empty;
+        public string WishCollege { get; set; } = string.Empty;
+        public string? WishProgram { get; set; }
+        public string Gender { get; set; } = string.Empty;
         public string Phone { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string GuardianName { get; set; } = string.Empty;
+        public string GuardianNationalId { get; set; } = string.Empty;
+        public string GuardianOccupation { get; set; } = string.Empty;
         public string GuardianPhone { get; set; } = string.Empty;
         public string GuardianRelation { get; set; } = string.Empty;
         public string AddressGov { get; set; } = string.Empty;
@@ -172,6 +204,8 @@ namespace StudentRegistry.Application.DTOs
         public List<SingleYearSubjectMarkResponseDto>? YemeniGrades { get; set; }
         public BahrainiTotalsResponseDto? BahrainiTotals { get; set; }
         public List<SingleYearSubjectMarkResponseDto>? BahrainiGrades { get; set; }
+        public PalestinianTotalsResponseDto? PalestinianTotals { get; set; }
+        public OtherTotalsResponseDto? OtherTotals { get; set; }
     }
 
     public class KuwaitiTotalsResponseDto
@@ -203,6 +237,7 @@ namespace StudentRegistry.Application.DTOs
     {
         public decimal FinalTotal { get; set; }   // out of 700
         public decimal Percentage { get; set; }
+        public decimal EquivalentTotal { get; set; }   // المجموع الاعتباري (المجموع المصري), out of 410
         public string Disclaimer { get; set; } = string.Empty;
     }
 
@@ -210,6 +245,7 @@ namespace StudentRegistry.Application.DTOs
     {
         public decimal FinalTotal { get; set; }   // out of 700
         public decimal Percentage { get; set; }
+        public decimal EquivalentTotal { get; set; }   // المجموع الاعتباري (المجموع المصري), out of 410
         public string Disclaimer { get; set; } = string.Empty;
     }
 
@@ -217,6 +253,7 @@ namespace StudentRegistry.Application.DTOs
     {
         public decimal FinalTotal { get; set; }   // out of 600
         public decimal Percentage { get; set; }
+        public decimal EquivalentTotal { get; set; }   // المجموع الاعتباري (المجموع المصري), out of 410
         public string Disclaimer { get; set; } = string.Empty;
     }
 
@@ -227,6 +264,21 @@ namespace StudentRegistry.Application.DTOs
         public decimal TotalMax { get; set; }   // 700 (علمي) or 800 (أدبي)
         public decimal Percentage { get; set; }
         public decimal EquivalentTotal { get; set; }   // out of 410
+        public string Disclaimer { get; set; } = string.Empty;
+    }
+
+    public class PalestinianTotalsResponseDto
+    {
+        public decimal Percentage { get; set; }
+        public decimal EquivalentTotal { get; set; }   // المجموع الاعتباري (المجموع المصري), out of 410
+        public string Branch { get; set; } = string.Empty;
+        public string Disclaimer { get; set; } = string.Empty;
+    }
+
+    public class OtherTotalsResponseDto
+    {
+        public string CertificateName { get; set; } = string.Empty;
+        public decimal Percentage { get; set; }
         public string Disclaimer { get; set; } = string.Empty;
     }
 
@@ -246,6 +298,7 @@ namespace StudentRegistry.Application.DTOs
         public decimal SchoolPercentage { get; set; }
         public decimal AptitudeScore { get; set; }
         public decimal FinalPercentage { get; set; }
+        public decimal EquivalentTotal { get; set; }   // المجموع الاعتباري (المجموع المصري), out of 410
     }
 
     public class SaudiGradeResponseDto
