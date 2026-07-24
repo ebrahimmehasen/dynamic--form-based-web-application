@@ -10,6 +10,7 @@ namespace StudentRegistry.Application.DTOs
         public string NationalId { get; set; } = string.Empty;
         public string WishCollege { get; set; } = string.Empty;   // "الرغبة" — desired college, selection-only
         public string? WishProgram { get; set; }   // desired program, when applicable to the college
+        public int GraduationYear { get; set; }   // "سنة التخرج" — selection-only, 2022-2026
         public string Gender { get; set; } = string.Empty;   // ذكر / أنثى
         public string Phone { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
@@ -170,6 +171,7 @@ namespace StudentRegistry.Application.DTOs
         public string NationalId { get; set; } = string.Empty;
         public string WishCollege { get; set; } = string.Empty;
         public string? WishProgram { get; set; }
+        public int GraduationYear { get; set; }
         public string Gender { get; set; } = string.Empty;
         public string Phone { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;

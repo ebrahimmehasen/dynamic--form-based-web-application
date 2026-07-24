@@ -1513,6 +1513,7 @@ function validateForm() {
   // Personal Info & Address Validation
   const requiredFields = [
     { id: 'wish-college', name: 'الكلية' },
+    { id: 'graduation-year', name: 'سنة التخرج' },
     { id: 'student-gender', name: 'النوع' },
     { id: 'student-phone', name: 'رقم هاتف الطالب' },
     { id: 'student-email', name: 'ايميل الشخصي للطالب' },
@@ -1942,6 +1943,7 @@ function compilePayload() {
     studentNameEn: document.getElementById('student-name-en').value.trim(),
     wishCollege: document.getElementById('wish-college').value.trim(),
     wishProgram: document.getElementById('wish-program').value.trim(),
+    graduationYear: document.getElementById('graduation-year').value.trim(),
     gender: document.getElementById('student-gender').value.trim(),
     studentPhone: document.getElementById('student-phone').value.trim(),
     studentEmail: document.getElementById('student-email').value.trim(),
@@ -2307,6 +2309,7 @@ function sendData(payload, submitBtn, originalText) {
     nationalId: payload.nationalId,
     wishCollege: payload.wishCollege,
     wishProgram: payload.wishProgram,
+    graduationYear: parseInt(payload.graduationYear, 10),
     gender: payload.gender,
     phone: payload.studentPhone,
     email: payload.studentEmail,
@@ -2631,6 +2634,7 @@ function downloadReceiptFile(payload, format) {
     csvRows.push(`الرقم القومي,${payload.nationalId}`);
     csvRows.push(`الكلية (الرغبة),"${payload.wishCollege || ''}"`);
     csvRows.push(`البرنامج (الرغبة),"${payload.wishProgram || ''}"`);
+    csvRows.push(`سنة التخرج,"${payload.graduationYear || ''}"`);
     csvRows.push(`النوع,"${payload.gender || ''}"`);
     csvRows.push(`رقم هاتف الطالب,${payload.studentPhone || ''}`);
     csvRows.push(`ايميل الشخصي للطالب,${payload.studentEmail || ''}`);

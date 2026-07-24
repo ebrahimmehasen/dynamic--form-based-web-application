@@ -33,6 +33,9 @@ namespace StudentRegistry.Application.Validators
                 .Must((dto, program) => BeValidWishProgram(dto.WishCollege, program))
                 .WithMessage("الرجاء اختيار البرنامج المناسب للكلية المختارة.");
 
+            RuleFor(x => x.GraduationYear)
+                .InclusiveBetween(2022, 2026).WithMessage("الرجاء اختيار سنة تخرج صحيحة (بين 2022 و2026).");
+
             RuleFor(x => x.Gender)
                 .Must(g => g == "ذكر" || g == "أنثى")
                 .WithMessage("الرجاء اختيار النوع (ذكر أو أنثى).");

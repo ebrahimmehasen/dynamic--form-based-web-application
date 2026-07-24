@@ -34,6 +34,9 @@ namespace StudentRegistry.Data.Configurations
             builder.Property(s => s.WishProgram)
                 .HasMaxLength(100);
 
+            builder.Property(s => s.GraduationYear)
+                .IsRequired();
+
             builder.Property(s => s.Gender)
                 .IsRequired()
                 .HasMaxLength(10);

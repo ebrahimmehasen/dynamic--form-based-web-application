@@ -38,6 +38,7 @@ CREATE TABLE dbo.Students (
     NationalId NVARCHAR(20) NOT NULL,
     WishCollege NVARCHAR(50) NOT NULL,  -- "الرغبة" — desired college, selection-only
     WishProgram NVARCHAR(100) NULL,     -- desired program, when applicable to the college
+    GraduationYear INT NOT NULL,        -- "سنة التخرج" — selection-only, 2022-2026
     Gender NVARCHAR(10) NOT NULL,       -- ذكر / أنثى
     Phone NVARCHAR(20) NOT NULL,
     Email NVARCHAR(150) NOT NULL,
