@@ -15,6 +15,7 @@ function initFormHandlers() {
   setupOtherCalculatorListeners();
   setupEgyptianCalculatorListeners();
   setupAzharCalculatorListeners();
+  setupEmiratiCalculatorListeners();
   setupSubmissionHandler();
 }
 
@@ -1554,6 +1555,94 @@ function setupAzharCalculatorListeners() {
   // trigger in conditional.js), which wires up its own input listeners — nothing static to bind here.
 }
 
+// 3j. Emirati Calculator — single track today (no track-selection UI). Core subjects (5) are
+// always required; optional subjects (الكيمياء/العلوم الصحية/الأحياء) are counted — added to BOTH
+// the numerator and the denominator — only if the student fills them in (mirrors
+// StudentService.ProcessEmiratiCertificate exactly). المجموع الاعتباري = (Percentage / 100) × 410.
+function generateEmiratiGradesUI() {
+  const tbody = document.getElementById('emirati-subjects-body');
+  if (!tbody || !emiratiConfig) return;
+
+  const maxMark = emiratiConfig.max_mark_per_subject;
+  tbody.innerHTML = '';
+  let rowNum = 0;
+
+  (emiratiConfig.core_subjects || []).forEach(subjectName => {
+    rowNum += 1;
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td class="col-num">${rowNum}</td>
+      <td class="col-subject">${subjectName}</td>
+      <td class="col-grade">
+        <input type="number" min="0" max="${maxMark}" step="any" required placeholder="0-${maxMark}"
+               class="table-input emirati-mark-input" data-subject="${subjectName}">
+      </td>
+      <td class="col-weight">${maxMark}</td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  (emiratiConfig.optional_subjects || []).forEach(subjectName => {
+    rowNum += 1;
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td class="col-num">${rowNum}</td>
+      <td class="col-subject"><span class="optional-badge">اختياري</span> ${subjectName}</td>
+      <td class="col-grade">
+        <input type="number" min="0" max="${maxMark}" step="any" placeholder="اختياري"
+               class="table-input emirati-mark-input emirati-optional-input" data-subject="${subjectName}">
+      </td>
+      <td class="col-weight">${maxMark}</td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  tbody.querySelectorAll('.emirati-mark-input').forEach(input => {
+    input.addEventListener('input', recalculateEmirati);
+    input.addEventListener('change', recalculateEmirati);
+  });
+
+  recalculateEmirati();
+  if (typeof updateEmiratiMedicalWarning === 'function') {
+    updateEmiratiMedicalWarning();
+  }
+}
+
+// Only inputs with a non-empty value are counted — an empty optional field simply means "not on
+// my certificate", not zero. The denominator therefore varies (500-800) instead of being fixed.
+function recalculateEmirati() {
+  let finalTotal = 0;
+  let countedSubjects = 0;
+
+  document.querySelectorAll('.emirati-mark-input').forEach(input => {
+    if (input.value === '') return;
+    const val = parseFloat(input.value);
+    if (isNaN(val)) return;
+    finalTotal += val;
+    countedSubjects += 1;
+  });
+
+  const maxMark = (emiratiConfig && emiratiConfig.max_mark_per_subject) || 100;
+  const denominator = countedSubjects * maxMark;
+  const percentage = denominator > 0 ? (finalTotal / denominator) * 100 : 0;
+  const equivalentTotal = (percentage / 100) * 410;
+
+  const totalEl = document.getElementById('emirati-final-total');
+  const percentageEl = document.getElementById('emirati-percentage');
+  const equivalentEl = document.getElementById('emirati-equivalent-total');
+  if (totalEl) totalEl.textContent = finalTotal.toFixed(2) + ' / ' + denominator;
+  if (percentageEl) percentageEl.textContent = percentage.toFixed(2) + '%';
+  if (equivalentEl) equivalentEl.textContent = equivalentTotal.toFixed(2) + ' / 410';
+
+  updateProgressIndicator();
+}
+
+function setupEmiratiCalculatorListeners() {
+  // Subject rows are generated once by generateEmiratiGradesUI (called directly from the
+  // cert-select handler in conditional.js, since this cert has no track-selection step), which
+  // wires up its own input listeners — nothing static to bind here.
+}
+
 // 4. Form Submission and Validation
 function setupSubmissionHandler() {
   const mainForm = document.getElementById('student-reg-form');
@@ -1778,6 +1867,35 @@ function validateForm() {
         element: percentageInput
       };
     }
+    return { valid: true };
+  }
+
+  // Emirati has NO track selector at all either — validate its own subject table and return
+  // early, bypassing the generic track requirement below (mirrors "أخرى" above).
+  if (certSelect.value === 'emirati') {
+    const markInputs = document.querySelectorAll('.emirati-mark-input');
+    if (markInputs.length === 0) {
+      return {
+        valid: false,
+        message: 'الرجاء توليد جدول مواد الشهادة الإماراتية أولاً.',
+        element: certSelect
+      };
+    }
+
+    for (let i = 0; i < markInputs.length; i++) {
+      const isOptional = markInputs[i].classList.contains('emirati-optional-input');
+      if (isOptional && markInputs[i].value === '') continue;   // optional subjects may stay empty
+
+      const val = parseFloat(markInputs[i].value);
+      if (markInputs[i].value === '' || isNaN(val) || val < 0 || val > 100) {
+        return {
+          valid: false,
+          message: `الرجاء إدخال درجة صحيحة (بين 0 و100) لمادة "${markInputs[i].getAttribute('data-subject')}".`,
+          element: markInputs[i]
+        };
+      }
+    }
+
     return { valid: true };
   }
 
@@ -2330,6 +2448,38 @@ function compilePayload() {
     };
   }
 
+  if (certSelect.value === 'emirati') {
+    const subjects = [];
+    document.querySelectorAll('.emirati-mark-input').forEach(input => {
+      if (input.value === '') return;   // empty optional subject — not on this student's certificate
+      subjects.push({
+        subjectName: input.getAttribute('data-subject'),
+        mark: parseFloat(input.value) || 0
+      });
+    });
+
+    const finalTotal = parseFloat(document.getElementById('emirati-final-total').textContent) || 0;
+    const denominatorText = (document.getElementById('emirati-final-total').textContent || '').split('/')[1];
+    const denominator = parseFloat(denominatorText) || 0;
+    const percentage = parseFloat(document.getElementById('emirati-percentage').textContent) || 0;
+    const equivalentTotal = parseFloat(document.getElementById('emirati-equivalent-total').textContent) || 0;
+
+    return {
+      ...personalInfo,
+      nationalId: document.getElementById('national-id').value.trim(),
+      certification: certSelect.options[certSelect.selectedIndex].text,
+      track: emiratiConfig ? emiratiConfig.single_track_name : 'المسار العام',   // no track selector — fixed placeholder satisfies the shared Track column.
+      yearOfStudy: '',
+      photo: uploadedPhotoBase64,
+      emiratiData: { subjects: subjects },
+      finalTotal: finalTotal,
+      denominator: denominator,
+      percentage: percentage,
+      equivalentTotal: equivalentTotal,
+      submittedAt: new Date().toISOString()
+    };
+  }
+
   if (certSelect.value === 'other') {
     const certificateName = document.getElementById('other-certificate-name').value.trim();
     const percentage = Math.round((parseFloat(document.getElementById('other-percentage').value) || 0) * 100) / 100;
@@ -2698,6 +2848,10 @@ function sendData(payload, submitBtn, originalText) {
     apiPayload.azharData = {
       subjects: payload.azharData.subjects
     };
+  } else if (payload.emiratiData) {
+    apiPayload.emiratiData = {
+      subjects: payload.emiratiData.subjects
+    };
   } else {
     apiPayload.yearOfStudy = payload.yearOfStudy;
     apiPayload.standardGrades = payload.grades.map(g => ({
@@ -2888,6 +3042,17 @@ function showSuccessScreen(payload, mode, serverPath = '') {
       saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
     }
   } else if (payload.azharData) {
+    if (programRow) programRow.style.display = 'none';
+    if (yearRow) {
+      yearRow.style.display = 'flex';
+      if (yearLabel) yearLabel.textContent = 'المجموع الاعتباري (من 410):';
+      document.getElementById('receipt-year').textContent = (payload.equivalentTotal || 0).toFixed(2) + ' / 410';
+    }
+    if (saudiGpaRow && saudiGpaVal) {
+      saudiGpaRow.style.display = 'flex';
+      saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+    }
+  } else if (payload.emiratiData) {
     if (programRow) programRow.style.display = 'none';
     if (yearRow) {
       yearRow.style.display = 'flex';
@@ -3098,6 +3263,17 @@ function downloadReceiptFile(payload, format) {
       csvRows.push('');
       csvRows.push('المادة,الدرجة');
       az.subjects.forEach(s => {
+        csvRows.push(`"${s.subjectName}",${s.mark}`);
+      });
+    } else if (payload.emiratiData) {
+      const em = payload.emiratiData;
+      csvRows.push(`المجموع (من ${payload.denominator || 0}),${(payload.finalTotal || 0)}`);
+      csvRows.push(`النسبة المئوية,${(payload.percentage || 0)}%`);
+      csvRows.push(`المجموع الاعتباري (المجموع المصري),${(payload.equivalentTotal || 0)}/410`);
+      csvRows.push(`تاريخ الإرسال,${payload.submittedAt}`);
+      csvRows.push('');
+      csvRows.push('المادة,الدرجة');
+      em.subjects.forEach(s => {
         csvRows.push(`"${s.subjectName}",${s.mark}`);
       });
     } else {

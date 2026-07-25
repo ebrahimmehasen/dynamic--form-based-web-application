@@ -937,6 +937,49 @@
         <p class="section-desc">هذه النتيجة تقديرية ويجب تأكيدها رسمياً من مكتب تنسيق القبول بالجامعات والمعاهد المصرية.</p>
       </div>
 
+      <!-- Emirati Certificate Calculator Container: single track today (no track-selection UI —
+           handled entirely inside the certification select's handler, same convention as "أخرى"). -->
+      <div id="emirati-grades-container" style="display: none;">
+        <div id="emirati-medical-warning" class="alert alert-warning" style="display: none; margin-bottom: 1.25rem; line-height: 1.9;">
+          <strong>⚠️ تنبيه:</strong>
+          <p style="margin: 0.5rem 0 0;">عند اختيار أي رغبة من الرغبات الطبية، يجب إدخال الدرجات التفصيلية للمواد المضافة للمجموع (الموجودة في شهادتك) إن وُجدت، لأنها مطلب أساسي وإلزامي في التنسيق المصري للقبول بالكليات الطبية، ولن يتم النظر في رغبتك دون إدخالها.</p>
+        </div>
+
+        <div class="table-responsive">
+          <table class="grades-table">
+            <thead>
+              <tr>
+                <th class="col-num">#</th>
+                <th class="col-subject">اسم المادة</th>
+                <th class="col-grade">الدرجة</th>
+                <th class="col-weight">الدرجة العظمى</th>
+              </tr>
+            </thead>
+            <tbody id="emirati-subjects-body">
+              <!-- Dynamically populated: 5 core (required) + 3 optional subjects -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="result-box" style="margin-top: 1.5rem;">
+          <div class="result-row-flex">
+            <div class="result-flex-item">
+              <div class="result-title-label">مجموع الدرجات:</div>
+              <div class="result-value" id="emirati-final-total">0.00 / 0</div>
+            </div>
+            <div class="result-flex-item" style="border-right: 1px solid var(--border-color); padding-right: 1.5rem;">
+              <div class="result-title-label">النسبة المئوية:</div>
+              <div class="result-value" id="emirati-percentage">0.00%</div>
+            </div>
+            <div class="result-flex-item" style="border-right: 1px solid var(--border-color); padding-right: 1.5rem;">
+              <div class="result-title-label">المجموع الاعتباري (المجموع المصري):</div>
+              <div class="result-value" id="emirati-equivalent-total">0.00 / 410</div>
+            </div>
+          </div>
+        </div>
+        <p class="section-desc">هذه النتيجة تقديرية ويجب تأكيدها رسمياً من مكتب تنسيق القبول بالجامعات والمعاهد المصرية.</p>
+      </div>
+
       <!-- "أخرى" (Other) Calculator Container: free-text certificate name + percentage-in only,
            no track/subjects/year UI. -->
       <div id="other-grades-container" style="display: none;">

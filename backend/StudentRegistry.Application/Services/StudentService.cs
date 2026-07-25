@@ -105,6 +105,10 @@ namespace StudentRegistry.Application.Services
             {
                 ProcessAzharCertificate(createDto, student);
             }
+            else if (cert.Contains("الشهادة الإماراتية") || cert.Equals("emirati", StringComparison.OrdinalIgnoreCase))
+            {
+                ProcessEmiratiCertificate(createDto, student);
+            }
             else
             {
                 ProcessStandardCertificate(createDto, student);
@@ -654,6 +658,59 @@ namespace StudentRegistry.Application.Services
             {
                 Student = student,
                 Section = dto.Track,
+                FinalTotal = Math.Round(finalTotal, 2),
+                Denominator = denominator,
+                Percentage = percentage,
+                EquivalentTotal = CalculateEquivalentTotal(percentage)
+            };
+        }
+
+        // §Emirati — core subjects (5) are always required; optional subjects (Chemistry/Health
+        // Sciences/Biology) are counted — added to BOTH the numerator and the denominator — only if
+        // the student actually submits a mark for them. That variable-length denominator is the one
+        // difference from ProcessSingleYearFixedTotalCertificate (which assumes a fixed-length exact
+        // subject match), so Emirati gets its own small loop instead of reusing it. المجموع الاعتباري
+        // (المجموع المصري) uses the same shared CalculateEquivalentTotal helper as every other
+        // foreign certificate.
+        private void ProcessEmiratiCertificate(StudentCreateDto dto, Student student)
+        {
+            var em = dto.EmiratiData;
+            if (em?.Subjects == null || em.Subjects.Count == 0)
+                throw new ArgumentException("بيانات المواد والدرجات للشهادة الإماراتية مفقودة.");
+
+            decimal finalTotal = 0;
+            int countedSubjects = 0;
+
+            foreach (var subject in em.Subjects)
+            {
+                // Defence in depth: the validator already enforces the core+optional subject rules.
+                bool isCounted = EmiratiConstants.CoreSubjects.Contains(subject.SubjectName)
+                    || EmiratiConstants.OptionalSubjects.Contains(subject.SubjectName);
+                if (!isCounted)
+                    continue;
+
+                finalTotal += subject.Mark;
+                countedSubjects++;
+
+                student.StandardGrades.Add(new StandardStudentGrades
+                {
+                    Student = student,
+                    YearOfStudy = "12",
+                    SubjectName = subject.SubjectName,
+                    Grade = subject.Mark,
+                    MaxMark = SingleYearFixedTotalConstants.MaxMarkPerSubject,
+                    WeightedPercentage = Math.Round((subject.Mark / SingleYearFixedTotalConstants.MaxMarkPerSubject) * 100, 2),
+                    Achieved = subject.Mark,
+                    GradeLevel = 12
+                });
+            }
+
+            decimal denominator = countedSubjects * SingleYearFixedTotalConstants.MaxMarkPerSubject;
+            decimal percentage = denominator > 0 ? Math.Round((finalTotal / denominator) * 100, 2) : 0;
+
+            student.EmiratiTotals = new EmiratiStudentTotals
+            {
+                Student = student,
                 FinalTotal = Math.Round(finalTotal, 2),
                 Denominator = denominator,
                 Percentage = percentage,

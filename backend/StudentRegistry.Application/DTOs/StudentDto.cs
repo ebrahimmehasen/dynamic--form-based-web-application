@@ -72,6 +72,9 @@ namespace StudentRegistry.Application.DTOs
 
         // Azhar Thanaweya specific fields
         public AzharDataCreateDto? AzharData { get; set; }
+
+        // Emirati specific fields
+        public EmiratiDataCreateDto? EmiratiData { get; set; }
     }
 
     public class KuwaitiDataCreateDto
@@ -154,7 +157,15 @@ namespace StudentRegistry.Application.DTOs
         public List<SingleYearSubjectMarkCreateDto>? Subjects { get; set; }
     }
 
-    // Shared by Qatari, Omani, Yemeni and Bahraini (all single-year, fixed-100-per-subject certificates).
+    // Core subjects (5) are always required; Optional subjects (الكيمياء/العلوم الصحية/الأحياء) are
+    // counted only if the student includes a row for them — max mark is fixed server-side
+    // (§SingleYearFixedTotalConstants), never client-supplied.
+    public class EmiratiDataCreateDto
+    {
+        public List<SingleYearSubjectMarkCreateDto>? Subjects { get; set; }
+    }
+
+    // Shared by Qatari, Omani, Yemeni, Bahraini and Emirati (all single-year, fixed-100-per-subject certificates).
     public class SingleYearSubjectMarkCreateDto
     {
         public string SubjectName { get; set; } = string.Empty;
@@ -233,6 +244,8 @@ namespace StudentRegistry.Application.DTOs
         public List<SingleYearSubjectMarkResponseDto>? EgyptianGrades { get; set; }
         public AzharTotalsResponseDto? AzharTotals { get; set; }
         public List<SingleYearSubjectMarkResponseDto>? AzharGrades { get; set; }
+        public EmiratiTotalsResponseDto? EmiratiTotals { get; set; }
+        public List<SingleYearSubjectMarkResponseDto>? EmiratiGrades { get; set; }
     }
 
     public class KuwaitiTotalsResponseDto
@@ -329,7 +342,17 @@ namespace StudentRegistry.Application.DTOs
         public decimal EquivalentTotal { get; set; }   // المجموع الاعتباري (المجموع المصري), out of 410
     }
 
-    // Shared by Qatari, Omani, Yemeni and Bahraini grade lists.
+    // Denominator varies (500-800) depending on how many optional subjects were entered.
+    public class EmiratiTotalsResponseDto
+    {
+        public decimal FinalTotal { get; set; }
+        public decimal Denominator { get; set; }
+        public decimal Percentage { get; set; }
+        public decimal EquivalentTotal { get; set; }   // المجموع الاعتباري (المجموع المصري), out of 410
+        public string Disclaimer { get; set; } = string.Empty;
+    }
+
+    // Shared by Qatari, Omani, Yemeni, Bahraini and Emirati grade lists.
     public class SingleYearSubjectMarkResponseDto
     {
         public string SubjectName { get; set; } = string.Empty;

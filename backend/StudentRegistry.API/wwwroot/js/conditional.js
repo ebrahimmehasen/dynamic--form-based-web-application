@@ -7,6 +7,7 @@ let yemeniConfig = null;
 let bahrainiConfig = null;
 let egyptianConfig = null;
 let azharConfig = null;
+let emiratiConfig = null;
 
 // Fetch config from the ConfigController API (single source of truth)
 async function loadSubjectsConfig() {
@@ -116,6 +117,18 @@ async function loadSubjectsConfig() {
   } catch (error) {
     console.error('Could not load Azhar subjects configuration.', error);
     showAlert('form-alert', 'تعذر تحميل بيانات مواد الثانوية الأزهرية من الخادم. الرجاء تحديث الصفحة.', 'danger');
+  }
+
+  try {
+    const response = await fetch('/api/config/subjects-emirati');
+    if (response.ok) {
+      emiratiConfig = await response.json();
+    } else {
+      throw new Error('Failed to load /api/config/subjects-emirati: ' + response.status);
+    }
+  } catch (error) {
+    console.error('Could not load Emirati subjects configuration.', error);
+    showAlert('form-alert', 'تعذر تحميل بيانات مواد الشهادة الإماراتية من الخادم. الرجاء تحديث الصفحة.', 'danger');
   }
 }
 
@@ -327,7 +340,22 @@ function initWishSection() {
 
     refreshEgyptianTrackOptions();
     refreshAzharTrackOptions();
+    updateEmiratiMedicalWarning();
   });
+}
+
+// Emirati §4 — a static warning shown when the Wish college is one of the medical colleges.
+// Display-only: it never makes the optional subjects (الكيمياء/العلوم الصحية/الأحياء) required.
+const EMIRATI_MEDICAL_COLLEGES_FALLBACK = ['طب بشري', 'طب أسنان', 'صيدلة', 'تمريض'];
+
+function updateEmiratiMedicalWarning() {
+  const certSelect = document.getElementById('cert-select');
+  const warningEl = document.getElementById('emirati-medical-warning');
+  if (!certSelect || !warningEl || certSelect.value !== 'emirati') return;
+
+  const collegeVal = document.getElementById('wish-college').value;
+  const medicalColleges = (emiratiConfig && emiratiConfig.medical_colleges) || EMIRATI_MEDICAL_COLLEGES_FALLBACK;
+  warningEl.style.display = medicalColleges.includes(collegeVal) ? 'flex' : 'none';
 }
 
 // Azhar Thanaweya — the Wish section's college restricts which قسم options are offered (only for
@@ -440,7 +468,7 @@ function initConditionals() {
 
     // "أخرى" has no track selector at all — hide Section E entirely rather than just leaving it
     // deactivated (an inactive .form-section is still fully visible, just unhighlighted).
-    document.getElementById('section-track').style.display = (certKey === 'other') ? 'none' : 'block';
+    document.getElementById('section-track').style.display = (certKey === 'other' || certKey === 'emirati') ? 'none' : 'block';
 
     // Reset IG UI & standard table UI
     document.getElementById('non-ig-grades-container').style.display = 'block';
@@ -454,6 +482,7 @@ function initConditionals() {
     document.getElementById('other-grades-container').style.display = 'none';
     document.getElementById('egyptian-grades-container').style.display = 'none';
     document.getElementById('azhar-grades-container').style.display = 'none';
+    document.getElementById('emirati-grades-container').style.display = 'none';
     document.getElementById('section-year').style.display = 'block';
     document.getElementById('section-grades-title').textContent = 'جدول إدخال الدرجات';
     document.getElementById('section-grades-desc').textContent = 'أدخل الدرجة والنسبة الموزونة لكل مادة أدناه. سيتم احتساب الدرجة المتحصلة تلقائياً.';
@@ -535,13 +564,24 @@ function initConditionals() {
         document.getElementById('azhar-grades-container').style.display = 'block';
         document.getElementById('section-grades-title').textContent = '🧮 حاسبة الثانوية الأزهرية';
         document.getElementById('section-grades-desc').textContent = 'أدخل درجة كل مادة من مواد القسم المختار.';
+      } else if (certKey === 'emirati') {
+        // Emirati has a single track today (no track-selection UI) — core subjects (5) are
+        // required, optional subjects (الكيمياء/العلوم الصحية/الأحياء) are not.
+        document.getElementById('section-year').style.display = 'none';
+        document.getElementById('non-ig-grades-container').style.display = 'none';
+        document.getElementById('emirati-grades-container').style.display = 'block';
+        document.getElementById('section-grades-title').textContent = '🧮 حاسبة الشهادة الإماراتية';
+        document.getElementById('section-grades-desc').textContent = 'أدخل درجة كل مادة أساسية (إلزامية)، والمواد الاختيارية إن وُجدت في شهادتك.';
       }
 
-      if (certKey === 'other') {
+      if (certKey === 'other' || certKey === 'emirati') {
         // Skip the track step entirely — go straight to section-grades.
         activateSection('section-grades');
-        if (typeof recalculateOther === 'function') {
+        if (certKey === 'other' && typeof recalculateOther === 'function') {
           recalculateOther();
+        }
+        if (certKey === 'emirati' && typeof generateEmiratiGradesUI === 'function') {
+          generateEmiratiGradesUI();
         }
       } else {
         // Populate track options — Egyptian's and Azhar's options are restricted by the Wish

@@ -15,6 +15,7 @@ USE [StudentRegistryDb];
 GO
 
 -- 2. Drop existing tables if they exist (in reverse order of foreign keys)
+IF OBJECT_ID('dbo.EmiratiStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.EmiratiStudentTotals;
 IF OBJECT_ID('dbo.AzharStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.AzharStudentTotals;
 IF OBJECT_ID('dbo.EgyptianStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.EgyptianStudentTotals;
 IF OBJECT_ID('dbo.OtherStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.OtherStudentTotals;
@@ -294,6 +295,21 @@ CREATE TABLE dbo.AzharStudentTotals (
     EquivalentTotal DECIMAL(6,2) NOT NULL,
     CONSTRAINT PK_AzharStudentTotals PRIMARY KEY CLUSTERED (StudentId ASC),
     CONSTRAINT FK_AzharStudentTotals_Students_StudentId FOREIGN KEY (StudentId)
+        REFERENCES dbo.Students (Id) ON DELETE CASCADE
+);
+GO
+
+-- الشهادة الإماراتية: single track today. Core subjects (5) always required; optional subjects
+-- (الكيمياء/العلوم الصحية/الأحياء) counted only if the student submits a mark for them — the
+-- denominator therefore varies (500-800) rather than being fixed like every other single-year cert.
+CREATE TABLE dbo.EmiratiStudentTotals (
+    StudentId INT NOT NULL,
+    FinalTotal DECIMAL(6,2) NOT NULL,
+    Denominator DECIMAL(6,2) NOT NULL,
+    Percentage DECIMAL(5,2) NOT NULL,
+    EquivalentTotal DECIMAL(6,2) NOT NULL,
+    CONSTRAINT PK_EmiratiStudentTotals PRIMARY KEY CLUSTERED (StudentId ASC),
+    CONSTRAINT FK_EmiratiStudentTotals_Students_StudentId FOREIGN KEY (StudentId)
         REFERENCES dbo.Students (Id) ON DELETE CASCADE
 );
 GO

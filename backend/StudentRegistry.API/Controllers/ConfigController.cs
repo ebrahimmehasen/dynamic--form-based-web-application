@@ -30,6 +30,9 @@ namespace StudentRegistry.API.Controllers
                     { "palestinian", new { name = "شهادة فلسطينية (توجيهي)", tracks = new[] { PalestinianConstants.ScientificBranch, PalestinianConstants.LiteraryBranch } } },
                     { "egyptian", new { name = "الثانوية العامة المصرية", tracks = EgyptianConstants.Tracks } },
                     { "azhar", new { name = "الثانوية الأزهرية", tracks = AzharConstants.Sections } },
+                    // §Emirati — single track today; the array stays future-proof (a second track can
+                    // be added to EmiratiConstants.Tracks later without touching this line).
+                    { "emirati", new { name = "الشهادة الإماراتية", tracks = EmiratiConstants.Tracks } },
                     // §1.1 — must stay LAST in the list. Percentage-in only, free-text certificate
                     // name, no track selector at all (empty tracks array — the UI renders no track
                     // dropdown for this cert and never populates one).
@@ -235,6 +238,22 @@ namespace StudentRegistry.API.Controllers
             };
 
             return Ok(azharConfig);
+        }
+
+        [HttpGet("subjects-emirati")]
+        public IActionResult GetEmiratiSubjectsConfig()
+        {
+            var emiratiConfig = new
+            {
+                core_subjects = EmiratiConstants.CoreSubjects,
+                optional_subjects = EmiratiConstants.OptionalSubjects,
+                max_mark_per_subject = SingleYearFixedTotalConstants.MaxMarkPerSubject,
+                single_track_name = EmiratiConstants.SingleTrack,
+                medical_colleges = EmiratiConstants.MedicalWishColleges,
+                medical_wish_warning = EmiratiConstants.MedicalWishWarning
+            };
+
+            return Ok(emiratiConfig);
         }
     }
 }

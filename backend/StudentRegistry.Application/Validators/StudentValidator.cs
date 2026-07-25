@@ -149,7 +149,7 @@ namespace StudentRegistry.Application.Validators
                 });
             });
 
-            When(x => !IsSaudiCert(x.Certification) && !IsIgCert(x.Certification) && !IsKuwaitiCert(x.Certification) && !IsQatariCert(x.Certification) && !IsOmaniCert(x.Certification) && !IsYemeniCert(x.Certification) && !IsBahrainiCert(x.Certification) && !IsPalestinianCert(x.Certification) && !IsOtherCert(x.Certification) && !IsEgyptianCert(x.Certification) && !IsAzharCert(x.Certification), () =>
+            When(x => !IsSaudiCert(x.Certification) && !IsIgCert(x.Certification) && !IsKuwaitiCert(x.Certification) && !IsQatariCert(x.Certification) && !IsOmaniCert(x.Certification) && !IsYemeniCert(x.Certification) && !IsBahrainiCert(x.Certification) && !IsPalestinianCert(x.Certification) && !IsOtherCert(x.Certification) && !IsEgyptianCert(x.Certification) && !IsAzharCert(x.Certification) && !IsEmiratiCert(x.Certification), () =>
             {
                 RuleFor(x => x.YearOfStudy)
                     .NotEmpty().WithMessage("الرجاء اختيار السنة الدراسية.");
@@ -424,6 +424,41 @@ namespace StudentRegistry.Application.Validators
                         .WithMessage("الرجاء إدخال درجة صحيحة (بين 0 والدرجة العظمى المحددة) لكل مادة.");
                 });
             });
+
+            // §Emirati — single track today (no track-selection UI). Core subjects (5) are always
+            // required; optional subjects (الكيمياء/العلوم الصحية/الأحياء) may each be included at
+            // most once — they are never required, even for medical Wish colleges (§4, UI-only
+            // warning). The denominator is derived from however many subjects are actually
+            // submitted, so unlike Qatari/Omani/Yemeni/Bahraini this isn't a fixed-length exact match.
+            When(x => IsEmiratiCert(x.Certification), () =>
+            {
+                RuleFor(x => x.EmiratiData)
+                    .NotNull().WithMessage("بيانات الشهادة الإماراتية مطلوبة.");
+
+                When(x => x.EmiratiData != null, () =>
+                {
+                    RuleFor(x => x.EmiratiData!.Subjects)
+                        .Must(IsValidEmiratiSubjectSet)
+                        .WithMessage("قائمة المواد غير صحيحة: يجب إدخال كل المواد الأساسية الخمس، مع إمكانية إضافة أي من المواد الاختيارية (الكيمياء/العلوم الصحية/الأحياء) دون تكرار.");
+
+                    RuleForEach(x => x.EmiratiData!.Subjects).ChildRules(subject =>
+                        ValidateSingleYearSubjectRow(subject, excludedSubject: null));
+                });
+            });
+        }
+
+        // §Emirati — every core subject must be present exactly once; anything beyond that must be
+        // one of the optional subjects, at most once each (no duplicates, no unknown names).
+        private bool IsValidEmiratiSubjectSet(System.Collections.Generic.List<SingleYearSubjectMarkCreateDto>? subjects)
+        {
+            if (subjects == null) return false;
+            var names = subjects.Select(s => s.SubjectName).ToList();
+            if (names.Distinct().Count() != names.Count) return false;
+
+            if (!EmiratiConstants.CoreSubjects.All(names.Contains)) return false;
+
+            var extras = names.Except(EmiratiConstants.CoreSubjects);
+            return extras.All(EmiratiConstants.OptionalSubjects.Contains);
         }
 
         // §Egyptian — exact match against the track+system's required subject set (from
@@ -583,6 +618,12 @@ namespace StudentRegistry.Application.Validators
         {
             if (string.IsNullOrEmpty(cert)) return false;
             return cert.Contains("الثانوية الأزهرية") || cert.Equals("azhar", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool IsEmiratiCert(string cert)
+        {
+            if (string.IsNullOrEmpty(cert)) return false;
+            return cert.Contains("الشهادة الإماراتية") || cert.Equals("emirati", StringComparison.OrdinalIgnoreCase);
         }
 
         private bool WeightsSumToOneHundred(KuwaitiDataCreateDto? data)

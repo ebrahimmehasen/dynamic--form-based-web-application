@@ -26,6 +26,7 @@ namespace StudentRegistry.Data.DbContext
         public DbSet<OtherStudentTotals> OtherStudentTotals => Set<OtherStudentTotals>();
         public DbSet<EgyptianStudentTotals> EgyptianStudentTotals => Set<EgyptianStudentTotals>();
         public DbSet<AzharStudentTotals> AzharStudentTotals => Set<AzharStudentTotals>();
+        public DbSet<EmiratiStudentTotals> EmiratiStudentTotals => Set<EmiratiStudentTotals>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
