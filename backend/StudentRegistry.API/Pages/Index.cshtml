@@ -333,6 +333,26 @@
       </div>
       <p class="section-desc" id="section-grades-desc">أدخل الدرجة والنسبة الموزونة لكل مادة أدناه. سيتم احتساب الدرجة المتحصلة تلقائياً.</p>
 
+      <!-- General certification alert — shown for every certificate except "أخرى" and الشهادة
+           البحرينية (التي لها تنبيهها الخاص). Display-only, no effect on any calculation. -->
+      <div id="general-cert-alert" class="alert alert-warning" style="display: none; margin-bottom: 1.25rem; line-height: 1.9;">
+        <strong>⚠️ تنبيهات هامة قبل إدخال الدرجات:</strong>
+        <ul style="margin: 0.5rem 0 0; padding-inline-start: 1.25rem;">
+          <li>يجب أن يكون إدخال الدرجات مطابقًا تمامًا لما هو مدون بالشهادة الأصلية.</li>
+          <li>يتم حذف بعض المواد (مثل: المواد الثقافية، المواد الدينية، المواد الرياضية) من حساب المعادلة المصرية.</li>
+          <li>أي خطأ في إدخال البيانات الأساسية للطالب أو الدرجات، يُعتبر التقدم لاغيًا من قبل إدارة الجامعة.</li>
+        </ul>
+      </div>
+
+      <!-- "أخرى" certification alert — shown only when "أخرى" is selected. -->
+      <div id="other-cert-alert" class="alert alert-warning" style="display: none; margin-bottom: 1.25rem; line-height: 1.9;">
+        <strong>⚠️ تنبيهات هامة:</strong>
+        <ul style="margin: 0.5rem 0 0; padding-inline-start: 1.25rem;">
+          <li>يجب إحضار شهادة التحركات الخاصة بالطالب وبولي أمره خلال فترة دراسته.</li>
+          <li>يجب إحضار الأوراق اللازمة لإثبات الشهادة، وكذلك شهادة القدرات إذا كانت مطلوبة من إدارة الجامعة.</li>
+        </ul>
+      </div>
+
       <!-- Standard Grades Table (Non-IG) -->
       <div id="non-ig-grades-container">
         <div id="standard-table-wrapper">

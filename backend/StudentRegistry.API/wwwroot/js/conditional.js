@@ -476,6 +476,13 @@ function initConditionals() {
       }
     }
 
+    // Alerts are mutually exclusive: "أخرى" gets its own alert, الشهادة البحرينية keeps its own
+    // embedded alert (untouched), and every other certification gets the shared general alert.
+    document.getElementById('general-cert-alert').style.display =
+      (certKey && certKey !== 'other' && certKey !== 'bahraini') ? 'block' : 'none';
+    document.getElementById('other-cert-alert').style.display =
+      (certKey === 'other') ? 'block' : 'none';
+
     updateProgressIndicator();
   });
 
