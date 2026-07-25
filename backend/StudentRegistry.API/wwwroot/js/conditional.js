@@ -6,6 +6,7 @@ let omaniConfig = null;
 let yemeniConfig = null;
 let bahrainiConfig = null;
 let egyptianConfig = null;
+let azharConfig = null;
 
 // Fetch config from the ConfigController API (single source of truth)
 async function loadSubjectsConfig() {
@@ -103,6 +104,18 @@ async function loadSubjectsConfig() {
   } catch (error) {
     console.error('Could not load Egyptian subjects configuration.', error);
     showAlert('form-alert', 'تعذر تحميل بيانات مواد الثانوية العامة المصرية من الخادم. الرجاء تحديث الصفحة.', 'danger');
+  }
+
+  try {
+    const response = await fetch('/api/config/subjects-azhar');
+    if (response.ok) {
+      azharConfig = await response.json();
+    } else {
+      throw new Error('Failed to load /api/config/subjects-azhar: ' + response.status);
+    }
+  } catch (error) {
+    console.error('Could not load Azhar subjects configuration.', error);
+    showAlert('form-alert', 'تعذر تحميل بيانات مواد الثانوية الأزهرية من الخادم. الرجاء تحديث الصفحة.', 'danger');
   }
 }
 
@@ -313,7 +326,63 @@ function initWishSection() {
     }
 
     refreshEgyptianTrackOptions();
+    refreshAzharTrackOptions();
   });
+}
+
+// Azhar Thanaweya — the Wish section's college restricts which قسم options are offered (only for
+// this certification; mirrors backend AzharConstants.GetAllowedSectionsForCollege). قسم علمي
+// الأزهري covers both علوم ورياضة معًا، so every science-adjacent college maps to it.
+const AZHAR_SECTIONS_BY_COLLEGE = {
+  'طب بشري': ['علمي'],
+  'طب أسنان': ['علمي'],
+  'صيدلة': ['علمي'],
+  'تمريض': ['علمي'],
+  'هندسة': ['علمي'],
+  'حاسبات': ['علمي'],
+  'تجارة': ['علمي', 'أدبي']
+};
+
+function getAzharAllowedSections(collegeVal) {
+  return AZHAR_SECTIONS_BY_COLLEGE[collegeVal] || [];
+}
+
+// Rebuilds the shared Track select's options for the Azhar cert based on the currently selected
+// Wish college. If the previously chosen قسم is no longer allowed, resets it and forces the
+// student to choose again — a no-op for every other certification.
+function refreshAzharTrackOptions() {
+  const certSelect = document.getElementById('cert-select');
+  if (!certSelect || certSelect.value !== 'azhar') return;
+
+  const trackSelect = document.getElementById('track-select');
+  const trackLockedIndicator = document.getElementById('track-locked-msg');
+  const collegeVal = document.getElementById('wish-college').value;
+  const allowedSections = getAzharAllowedSections(collegeVal);
+  const previousValue = trackSelect.value;
+
+  trackSelect.innerHTML = '<option value="">-- اختر --</option>';
+  allowedSections.forEach(section => {
+    const option = document.createElement('option');
+    option.value = section;
+    option.textContent = section;
+    trackSelect.appendChild(option);
+  });
+
+  if (allowedSections.includes(previousValue)) {
+    trackSelect.value = previousValue;
+    return;
+  }
+
+  // Previously selected قسم is no longer valid for the new college — reset it.
+  trackSelect.value = '';
+  trackSelect.disabled = false;
+  if (trackLockedIndicator) trackLockedIndicator.style.display = 'none';
+  deactivateSection('section-year');
+  deactivateSection('section-grades');
+  if (typeof generateAzharGradesUI === 'function') {
+    generateAzharGradesUI('');
+  }
+  updateProgressIndicator();
 }
 
 // Initialise Conditional Handlers
@@ -380,6 +449,7 @@ function initConditionals() {
     document.getElementById('palestinian-grades-container').style.display = 'none';
     document.getElementById('other-grades-container').style.display = 'none';
     document.getElementById('egyptian-grades-container').style.display = 'none';
+    document.getElementById('azhar-grades-container').style.display = 'none';
     document.getElementById('section-year').style.display = 'block';
     document.getElementById('section-grades-title').textContent = 'جدول إدخال الدرجات';
     document.getElementById('section-grades-desc').textContent = 'أدخل الدرجة والنسبة الموزونة لكل مادة أدناه. سيتم احتساب الدرجة المتحصلة تلقائياً.';
@@ -453,6 +523,14 @@ function initConditionals() {
         document.getElementById('egyptian-grades-container').style.display = 'block';
         document.getElementById('section-grades-title').textContent = '🧮 حاسبة الثانوية العامة المصرية';
         document.getElementById('section-grades-desc').textContent = 'اختر نظام المواد، ثم أدخل درجة كل مادة.';
+      } else if (certKey === 'azhar') {
+        // Azhar Thanaweya — القسم (from the shared track-select) selects a fixed subject list
+        // directly — no secondary system select, unlike Egyptian.
+        document.getElementById('section-year').style.display = 'none';
+        document.getElementById('non-ig-grades-container').style.display = 'none';
+        document.getElementById('azhar-grades-container').style.display = 'block';
+        document.getElementById('section-grades-title').textContent = '🧮 حاسبة الثانوية الأزهرية';
+        document.getElementById('section-grades-desc').textContent = 'أدخل درجة كل مادة من مواد القسم المختار.';
       }
 
       if (certKey === 'other') {
@@ -462,10 +540,14 @@ function initConditionals() {
           recalculateOther();
         }
       } else {
-        // Populate track options — Egyptian's options are restricted by the Wish college (§5).
-        const tracks = certKey === 'egyptian'
-          ? getEgyptianAllowedTracks(document.getElementById('wish-college').value)
-          : appConfig.certifications[certKey].tracks;
+        // Populate track options — Egyptian's and Azhar's options are restricted by the Wish
+        // college (§5).
+        let tracks = appConfig.certifications[certKey].tracks;
+        if (certKey === 'egyptian') {
+          tracks = getEgyptianAllowedTracks(document.getElementById('wish-college').value);
+        } else if (certKey === 'azhar') {
+          tracks = getAzharAllowedSections(document.getElementById('wish-college').value);
+        }
         tracks.forEach(track => {
           const option = document.createElement('option');
           option.value = track;
@@ -544,6 +626,11 @@ function initConditionals() {
         activateSection('section-grades');
         if (typeof generateEgyptianTrackUI === 'function') {
           generateEgyptianTrackUI(trackVal);
+        }
+      } else if (certKey === 'azhar') {
+        activateSection('section-grades');
+        if (typeof generateAzharGradesUI === 'function') {
+          generateAzharGradesUI(trackVal);
         }
       } else {
         yearSelect.value = '';

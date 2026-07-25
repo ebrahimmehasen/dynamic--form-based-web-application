@@ -899,6 +899,44 @@
         </div>
       </div>
 
+      <!-- Azhar Thanaweya Calculator Container: القسم (from the shared track-select) selects a
+           fixed subject list directly — no secondary system select, unlike Egyptian. -->
+      <div id="azhar-grades-container" style="display: none;">
+        <div class="table-responsive">
+          <table class="grades-table">
+            <thead>
+              <tr>
+                <th class="col-num">#</th>
+                <th class="col-subject">اسم المادة</th>
+                <th class="col-grade">الدرجة</th>
+                <th class="col-weight">الدرجة العظمى</th>
+              </tr>
+            </thead>
+            <tbody id="azhar-subjects-body">
+              <!-- Dynamically populated based on القسم -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="result-box" style="margin-top: 1.5rem;">
+          <div class="result-row-flex">
+            <div class="result-flex-item">
+              <div class="result-title-label">مجموع الدرجات:</div>
+              <div class="result-value" id="azhar-final-total">0.00 / 0</div>
+            </div>
+            <div class="result-flex-item" style="border-right: 1px solid var(--border-color); padding-right: 1.5rem;">
+              <div class="result-title-label">النسبة المئوية:</div>
+              <div class="result-value" id="azhar-percentage">0.00%</div>
+            </div>
+            <div class="result-flex-item" style="border-right: 1px solid var(--border-color); padding-right: 1.5rem;">
+              <div class="result-title-label">المجموع الاعتباري (المجموع المصري):</div>
+              <div class="result-value" id="azhar-equivalent-total">0.00 / 410</div>
+            </div>
+          </div>
+        </div>
+        <p class="section-desc">هذه النتيجة تقديرية ويجب تأكيدها رسمياً من مكتب تنسيق القبول بالجامعات والمعاهد المصرية.</p>
+      </div>
+
       <!-- "أخرى" (Other) Calculator Container: free-text certificate name + percentage-in only,
            no track/subjects/year UI. -->
       <div id="other-grades-container" style="display: none;">

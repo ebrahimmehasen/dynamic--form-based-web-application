@@ -149,7 +149,7 @@ namespace StudentRegistry.Application.Validators
                 });
             });
 
-            When(x => !IsSaudiCert(x.Certification) && !IsIgCert(x.Certification) && !IsKuwaitiCert(x.Certification) && !IsQatariCert(x.Certification) && !IsOmaniCert(x.Certification) && !IsYemeniCert(x.Certification) && !IsBahrainiCert(x.Certification) && !IsPalestinianCert(x.Certification) && !IsOtherCert(x.Certification) && !IsEgyptianCert(x.Certification), () =>
+            When(x => !IsSaudiCert(x.Certification) && !IsIgCert(x.Certification) && !IsKuwaitiCert(x.Certification) && !IsQatariCert(x.Certification) && !IsOmaniCert(x.Certification) && !IsYemeniCert(x.Certification) && !IsBahrainiCert(x.Certification) && !IsPalestinianCert(x.Certification) && !IsOtherCert(x.Certification) && !IsEgyptianCert(x.Certification) && !IsAzharCert(x.Certification), () =>
             {
                 RuleFor(x => x.YearOfStudy)
                     .NotEmpty().WithMessage("الرجاء اختيار السنة الدراسية.");
@@ -394,6 +394,36 @@ namespace StudentRegistry.Application.Validators
                     });
                 });
             });
+
+            // §Azhar — قسم (علمي/أدبي) determines the exact fixed subject set and each subject's
+            // fixed max mark (§AzharConstants). المواد الشرعية are never modeled at all — there is
+            // no field for them to exclude. المجموع الاعتباري = Percentage × 4.1.
+            When(x => IsAzharCert(x.Certification), () =>
+            {
+                RuleFor(x => x.Track)
+                    .Must(t => AzharConstants.Sections.Contains(t))
+                    .WithMessage("الرجاء اختيار القسم (علمي أو أدبي).");
+
+                // §5 — the Wish section's college restricts which قسم values are valid here; the
+                // client-side dropdown restriction is never trusted on its own.
+                RuleFor(x => x.Track)
+                    .Must((dto, track) => AzharConstants.GetAllowedSectionsForCollege(dto.WishCollege).Contains(track))
+                    .WithMessage("القسم المختار غير متاح للكلية المحددة في قسم الرغبة.");
+
+                RuleFor(x => x.AzharData)
+                    .NotNull().WithMessage("بيانات الثانوية الأزهرية مفقودة.");
+
+                When(x => x.AzharData != null && AzharConstants.Sections.Contains(x.Track), () =>
+                {
+                    RuleFor(x => x.AzharData!.Subjects)
+                        .Must((dto, subjects) => MatchesExactAzharSubjectSet(subjects, AzharConstants.GetSubjectMaxMarks(dto.Track)))
+                        .WithMessage("قائمة المواد يجب أن تطابق تماماً المواد المطلوبة للقسم المختار، بدون نقص أو زيادة أو تكرار.");
+
+                    RuleFor(x => x.AzharData!.Subjects)
+                        .Must((dto, subjects) => AllAzharMarksWithinRange(dto.Track, subjects))
+                        .WithMessage("الرجاء إدخال درجة صحيحة (بين 0 والدرجة العظمى المحددة) لكل مادة.");
+                });
+            });
         }
 
         // §Egyptian — exact match against the track+system's required subject set (from
@@ -415,6 +445,33 @@ namespace StudentRegistry.Application.Validators
         {
             if (subjects == null) return false;
             var maxMarks = EgyptianConstants.GetSubjectMaxMarks(track, system);
+            foreach (var subject in subjects)
+            {
+                if (!maxMarks.TryGetValue(subject.SubjectName ?? string.Empty, out var max)) return false;
+                if (subject.Mark < 0 || subject.Mark > max) return false;
+            }
+            return true;
+        }
+
+        // §Azhar — exact match against the قسم's required subject set (from
+        // AzharConstants.GetSubjectMaxMarks), no missing/extra/duplicate subjects.
+        private bool MatchesExactAzharSubjectSet(
+            System.Collections.Generic.List<SingleYearSubjectMarkCreateDto>? subjects,
+            System.Collections.Generic.Dictionary<string, decimal> required)
+        {
+            if (subjects == null) return false;
+            var names = subjects.Select(s => s.SubjectName).ToList();
+            if (names.Count != required.Count) return false;
+            if (names.Distinct().Count() != names.Count) return false;
+            return required.Keys.All(names.Contains);
+        }
+
+        // §Azhar — each subject's mark must be within [0, its own fixed max mark], which varies by
+        // subject (60/40/30).
+        private bool AllAzharMarksWithinRange(string section, System.Collections.Generic.List<SingleYearSubjectMarkCreateDto>? subjects)
+        {
+            if (subjects == null) return false;
+            var maxMarks = AzharConstants.GetSubjectMaxMarks(section);
             foreach (var subject in subjects)
             {
                 if (!maxMarks.TryGetValue(subject.SubjectName ?? string.Empty, out var max)) return false;
@@ -520,6 +577,12 @@ namespace StudentRegistry.Application.Validators
         {
             if (string.IsNullOrEmpty(cert)) return false;
             return cert.Contains("الثانوية العامة المصرية") || cert.Equals("egyptian", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool IsAzharCert(string cert)
+        {
+            if (string.IsNullOrEmpty(cert)) return false;
+            return cert.Contains("الثانوية الأزهرية") || cert.Equals("azhar", StringComparison.OrdinalIgnoreCase);
         }
 
         private bool WeightsSumToOneHundred(KuwaitiDataCreateDto? data)

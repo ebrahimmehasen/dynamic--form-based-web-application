@@ -15,6 +15,7 @@ USE [StudentRegistryDb];
 GO
 
 -- 2. Drop existing tables if they exist (in reverse order of foreign keys)
+IF OBJECT_ID('dbo.AzharStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.AzharStudentTotals;
 IF OBJECT_ID('dbo.EgyptianStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.EgyptianStudentTotals;
 IF OBJECT_ID('dbo.OtherStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.OtherStudentTotals;
 IF OBJECT_ID('dbo.PalestinianStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.PalestinianStudentTotals;
@@ -277,6 +278,22 @@ CREATE TABLE dbo.EgyptianStudentTotals (
     Percentage DECIMAL(5,2) NOT NULL,
     CONSTRAINT PK_EgyptianStudentTotals PRIMARY KEY CLUSTERED (StudentId ASC),
     CONSTRAINT FK_EgyptianStudentTotals_Students_StudentId FOREIGN KEY (StudentId)
+        REFERENCES dbo.Students (Id) ON DELETE CASCADE
+);
+GO
+
+-- الثانوية الأزهرية: fixed subject list per قسم (علمي/أدبي), no subject-system variant (unlike
+-- Egyptian). المواد الشرعية are never modeled at all — nothing to exclude. المجموع الاعتباري
+-- (المجموع المصري) = Percentage × 4.1 = (Percentage / 100) × 410.
+CREATE TABLE dbo.AzharStudentTotals (
+    StudentId INT NOT NULL,
+    Section NVARCHAR(20) NOT NULL,
+    FinalTotal DECIMAL(6,2) NOT NULL,
+    Denominator DECIMAL(6,2) NOT NULL,
+    Percentage DECIMAL(5,2) NOT NULL,
+    EquivalentTotal DECIMAL(6,2) NOT NULL,
+    CONSTRAINT PK_AzharStudentTotals PRIMARY KEY CLUSTERED (StudentId ASC),
+    CONSTRAINT FK_AzharStudentTotals_Students_StudentId FOREIGN KEY (StudentId)
         REFERENCES dbo.Students (Id) ON DELETE CASCADE
 );
 GO

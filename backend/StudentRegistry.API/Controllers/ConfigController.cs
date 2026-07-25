@@ -29,6 +29,7 @@ namespace StudentRegistry.API.Controllers
                     // Track (علمي/أدبي) is recorded but never changes the calculation.
                     { "palestinian", new { name = "شهادة فلسطينية (توجيهي)", tracks = new[] { PalestinianConstants.ScientificBranch, PalestinianConstants.LiteraryBranch } } },
                     { "egyptian", new { name = "الثانوية العامة المصرية", tracks = EgyptianConstants.Tracks } },
+                    { "azhar", new { name = "الثانوية الأزهرية", tracks = AzharConstants.Sections } },
                     // §1.1 — must stay LAST in the list. Percentage-in only, free-text certificate
                     // name, no track selector at all (empty tracks array — the UI renders no track
                     // dropdown for this cert and never populates one).
@@ -211,6 +212,29 @@ namespace StudentRegistry.API.Controllers
             };
 
             return Ok(egyptianConfig);
+        }
+
+        [HttpGet("subjects-azhar")]
+        public IActionResult GetAzharSubjectsConfig()
+        {
+            var subjectsBySection = new Dictionary<string, object[]>();
+            var denominators = new Dictionary<string, decimal>();
+            foreach (var section in AzharConstants.Sections)
+            {
+                subjectsBySection[section] = AzharConstants.GetSubjectMaxMarks(section)
+                    .Select(kv => (object)new { name = kv.Key, maxMark = kv.Value })
+                    .ToArray();
+                denominators[section] = AzharConstants.GetDenominator(section);
+            }
+
+            var azharConfig = new
+            {
+                sections = AzharConstants.Sections,
+                subjects_by_section = subjectsBySection,
+                denominators = denominators
+            };
+
+            return Ok(azharConfig);
         }
     }
 }

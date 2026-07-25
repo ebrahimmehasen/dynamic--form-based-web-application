@@ -69,6 +69,9 @@ namespace StudentRegistry.Application.DTOs
 
         // Egyptian Thanaweya Amma specific fields
         public EgyptianDataCreateDto? EgyptianData { get; set; }
+
+        // Azhar Thanaweya specific fields
+        public AzharDataCreateDto? AzharData { get; set; }
     }
 
     public class KuwaitiDataCreateDto
@@ -141,6 +144,13 @@ namespace StudentRegistry.Application.DTOs
     public class EgyptianDataCreateDto
     {
         public string SubjectSystem { get; set; } = string.Empty;   // قديم / حديث
+        public List<SingleYearSubjectMarkCreateDto>? Subjects { get; set; }
+    }
+
+    // Section (قسم) is the parent DTO's Track — max marks are fixed server-side
+    // (§AzharConstants), never client-supplied.
+    public class AzharDataCreateDto
+    {
         public List<SingleYearSubjectMarkCreateDto>? Subjects { get; set; }
     }
 
@@ -221,6 +231,8 @@ namespace StudentRegistry.Application.DTOs
         public OtherTotalsResponseDto? OtherTotals { get; set; }
         public EgyptianTotalsResponseDto? EgyptianTotals { get; set; }
         public List<SingleYearSubjectMarkResponseDto>? EgyptianGrades { get; set; }
+        public AzharTotalsResponseDto? AzharTotals { get; set; }
+        public List<SingleYearSubjectMarkResponseDto>? AzharGrades { get; set; }
     }
 
     public class KuwaitiTotalsResponseDto
@@ -306,6 +318,15 @@ namespace StudentRegistry.Application.DTOs
         public decimal FinalTotal { get; set; }
         public decimal Denominator { get; set; }
         public decimal Percentage { get; set; }
+    }
+
+    public class AzharTotalsResponseDto
+    {
+        public string Section { get; set; } = string.Empty;
+        public decimal FinalTotal { get; set; }
+        public decimal Denominator { get; set; }
+        public decimal Percentage { get; set; }
+        public decimal EquivalentTotal { get; set; }   // المجموع الاعتباري (المجموع المصري), out of 410
     }
 
     // Shared by Qatari, Omani, Yemeni and Bahraini grade lists.

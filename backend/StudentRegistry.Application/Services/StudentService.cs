@@ -101,6 +101,10 @@ namespace StudentRegistry.Application.Services
             {
                 ProcessEgyptianCertificate(createDto, student);
             }
+            else if (cert.Contains("الثانوية الأزهرية") || cert.Equals("azhar", StringComparison.OrdinalIgnoreCase))
+            {
+                ProcessAzharCertificate(createDto, student);
+            }
             else
             {
                 ProcessStandardCertificate(createDto, student);
@@ -599,6 +603,61 @@ namespace StudentRegistry.Application.Services
                 FinalTotal = Math.Round(finalTotal, 2),
                 Denominator = denominator,
                 Percentage = percentage
+            };
+        }
+
+        // §Azhar — fixed subject list per قسم (no subject-system variant, unlike Egyptian). المواد
+        // الشرعية are never modeled at all, so there is nothing to exclude here. المجموع الاعتباري
+        // (المجموع المصري) uses the same shared CalculateEquivalentTotal helper as every other
+        // foreign certificate (Percentage × 4.1 = (Percentage / 100) × 410).
+        private void ProcessAzharCertificate(StudentCreateDto dto, Student student)
+        {
+            var az = dto.AzharData;
+            if (az == null)
+                throw new ArgumentException("بيانات الثانوية الأزهرية مفقودة.");
+
+            if (!AzharConstants.GetAllowedSectionsForCollege(dto.WishCollege).Contains(dto.Track))
+                throw new ArgumentException("القسم المختار غير متاح للكلية المحددة في قسم الرغبة.");
+
+            var maxMarks = AzharConstants.GetSubjectMaxMarks(dto.Track);
+
+            if (az.Subjects == null || az.Subjects.Count == 0)
+                throw new ArgumentException("بيانات المواد والدرجات للثانوية الأزهرية مفقودة.");
+
+            decimal finalTotal = 0;
+            foreach (var subject in az.Subjects)
+            {
+                // Defence in depth: the validator already enforces an exact match against the
+                // قسم's required subject set and each mark's own max-mark range.
+                if (!maxMarks.TryGetValue(subject.SubjectName, out var maxMark))
+                    continue;
+
+                finalTotal += subject.Mark;
+
+                student.StandardGrades.Add(new StandardStudentGrades
+                {
+                    Student = student,
+                    YearOfStudy = "12",
+                    SubjectName = subject.SubjectName,
+                    Grade = subject.Mark,
+                    MaxMark = maxMark,
+                    WeightedPercentage = Math.Round((subject.Mark / maxMark) * 100, 2),
+                    Achieved = subject.Mark,
+                    GradeLevel = 12
+                });
+            }
+
+            decimal denominator = AzharConstants.GetDenominator(dto.Track);
+            decimal percentage = denominator > 0 ? Math.Round((finalTotal / denominator) * 100, 2) : 0;
+
+            student.AzharTotals = new AzharStudentTotals
+            {
+                Student = student,
+                Section = dto.Track,
+                FinalTotal = Math.Round(finalTotal, 2),
+                Denominator = denominator,
+                Percentage = percentage,
+                EquivalentTotal = CalculateEquivalentTotal(percentage)
             };
         }
 
