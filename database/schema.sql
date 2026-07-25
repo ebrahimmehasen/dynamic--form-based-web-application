@@ -317,7 +317,9 @@ GO
 
 -- الدبلومة الأمريكية: NO equivalent-total conversion — admission depends on BasePercentage (from
 -- the best 8 subjects, out of 40) + SatI + SatII together, per the college selected in "الرغبة".
--- SatII/SatIISubject1/SatIISubject2 are NULL for colleges that don't require it (تجارة).
+-- SAT II is shown for the medical group (اختياري دائمًا) and the engineering group (إلزامي إلا إذا
+-- StudiedAdvancedMath) — never for تجارة (SatII/SatIISubject1/SatIISubject2 stay NULL there, and
+-- also NULL whenever it was applicable-but-optional and simply left empty).
 -- SatIBelowMinimum/SatIIBelowMinimum are informational flags only (1050/1100 thresholds) — never
 -- enforced as a rejection.
 CREATE TABLE dbo.AmericanDiplomaStudentTotals (
@@ -328,6 +330,7 @@ CREATE TABLE dbo.AmericanDiplomaStudentTotals (
     SatII INT NULL,
     SatIISubject1 NVARCHAR(50) NULL,
     SatIISubject2 NVARCHAR(50) NULL,
+    StudiedAdvancedMath BIT NOT NULL,
     SatIBelowMinimum BIT NOT NULL,
     SatIIBelowMinimum BIT NOT NULL,
     CONSTRAINT PK_AmericanDiplomaStudentTotals PRIMARY KEY CLUSTERED (StudentId ASC),

@@ -355,7 +355,56 @@ function initWishSection() {
     refreshAzharTrackOptions();
     updateEmiratiMedicalWarning();
     refreshAmericanDiplomaSatIIFields();
+    refreshWishGate();
   });
+
+  programSelect.addEventListener('change', refreshWishGate);
+
+  refreshWishGate();
+}
+
+// The rest of the form (سنة التخرج، نوع الشهادة، وكل ما بعدهما) stays hidden until "الرغبة" is
+// fully chosen — الكلية دائمًا، والبرنامج أيضًا إن كانت الكلية تتطلب واحدًا. If the student changes
+// الرغبة after already picking a certification (invalidating a college-dependent choice like
+// Egyptian's Track or the Emirati medical warning), the certification selection is reset and
+// everything downstream collapses with it — mirrors the existing certSelect reset behaviour.
+function isWishSelectionComplete() {
+  const collegeSelect = document.getElementById('wish-college');
+  if (!collegeSelect || !collegeSelect.value) return false;
+
+  const programGroup = document.getElementById('wish-program-group');
+  const programSelect = document.getElementById('wish-program');
+  if (!programGroup || programGroup.style.display === 'none') return true;
+
+  return !!(programSelect && programSelect.value);
+}
+
+function refreshWishGate() {
+  const complete = isWishSelectionComplete();
+  const gradYearSection = document.getElementById('section-graduation-year');
+  const certSection = document.getElementById('section-cert');
+  const incompleteMsg = document.getElementById('wish-incomplete-msg');
+  const certSelect = document.getElementById('cert-select');
+  const graduationYearSelect = document.getElementById('graduation-year');
+
+  if (complete) {
+    if (gradYearSection) gradYearSection.style.display = 'block';
+    if (certSection) certSection.style.display = 'block';
+    if (incompleteMsg) incompleteMsg.style.display = 'none';
+  } else {
+    if (gradYearSection) gradYearSection.style.display = 'none';
+    if (certSection) certSection.style.display = 'none';
+    if (incompleteMsg) incompleteMsg.style.display = 'flex';
+
+    if (graduationYearSelect) graduationYearSelect.value = '';
+
+    if (certSelect && certSelect.value) {
+      certSelect.value = '';
+      certSelect.dispatchEvent(new Event('change'));
+    }
+  }
+
+  if (typeof updateProgressIndicator === 'function') updateProgressIndicator();
 }
 
 // Emirati §4 — a static warning shown when the Wish college is one of the medical colleges.
@@ -372,27 +421,38 @@ function updateEmiratiMedicalWarning() {
   warningEl.style.display = medicalColleges.includes(collegeVal) ? 'flex' : 'none';
 }
 
-// American Diploma §4/§5 — SAT II (and its two subject dropdowns) is shown only for colleges in
-// sat_ii_required_colleges (طب بشري/طب أسنان/صيدلة/تمريض/هندسة/حاسبات) — never for تجارة. The first
-// SAT II subject is a fixed value determined by the college group (الأحياء for medical, الرياضيات
-// for engineering/computers); the second is a dropdown restricted to that same group's options.
+// American Diploma §4/§5 (per the college-group addendum) — SAT II is shown for every college in
+// sat_ii_applicable_colleges (طب بشري/طب أسنان/صيدلة/تمريض/هندسة/حاسبات) — never for تجارة — driven
+// entirely by the existing "الرغبة" college field, no separate selector. Whether it's MANDATORY
+// there differs by group: medical is always optional; engineering is mandatory unless the student
+// checks "studied Math/Adv. Math". The first SAT II subject is fixed by group (الأحياء for
+// medical, الرياضيات for engineering/computers); the second is a dropdown restricted to that same
+// group's options. Everything here re-runs on every college change so a stale subject/required
+// state from a previous selection never lingers.
 function refreshAmericanDiplomaSatIIFields() {
   const certSelect = document.getElementById('cert-select');
   if (!certSelect || certSelect.value !== 'americanDiploma' || !americanDiplomaConfig) return;
 
   const collegeVal = document.getElementById('wish-college').value;
-  const requiresSatII = americanDiplomaConfig.sat_ii_required_colleges.includes(collegeVal);
+  const isApplicable = americanDiplomaConfig.sat_ii_applicable_colleges.includes(collegeVal);
 
   const sat2Group = document.getElementById('american-diploma-sat2-group');
   const sat2SubjectsGroup = document.getElementById('american-diploma-sat2-subjects-group');
+  const advancedMathGroup = document.getElementById('american-diploma-advanced-math-group');
+  const advancedMathCheckbox = document.getElementById('american-diploma-advanced-math-checkbox');
   const sat2 = document.getElementById('american-diploma-sat2');
+  const sat2Label = document.getElementById('american-diploma-sat2-label');
+  const sat2RequirementHint = document.getElementById('american-diploma-sat2-requirement-hint');
   const subject1Select = document.getElementById('american-diploma-sat2-subject1');
   const subject2Select = document.getElementById('american-diploma-sat2-subject2');
 
-  if (!requiresSatII) {
+  if (!isApplicable) {
     sat2Group.style.display = 'none';
     sat2SubjectsGroup.style.display = 'none';
+    advancedMathGroup.style.display = 'none';
     sat2.value = '';
+    sat2.required = false;
+    advancedMathCheckbox.checked = false;
     subject1Select.innerHTML = '<option value="">-- اختر --</option>';
     subject2Select.innerHTML = '<option value="">-- اختر --</option>';
     subject2Select.value = '';
@@ -409,6 +469,7 @@ function refreshAmericanDiplomaSatIIFields() {
     ? americanDiplomaConfig.medical_second_subject_options
     : americanDiplomaConfig.engineering_second_subject_options;
 
+  // Re-lock the first subject unconditionally — never leave a stale value from a previous college.
   subject1Select.innerHTML = `<option value="${fixedSubject}" selected>${fixedSubject}</option>`;
   subject1Select.value = fixedSubject;
 
@@ -420,25 +481,48 @@ function refreshAmericanDiplomaSatIIFields() {
     option.textContent = opt;
     subject2Select.appendChild(option);
   });
+  // If the previously picked second subject isn't valid for the new group, clear it and make the
+  // student re-pick from the new list.
   subject2Select.value = secondOptions.includes(previousSecond) ? previousSecond : '';
+
+  if (isMedical) {
+    advancedMathGroup.style.display = 'none';
+    advancedMathCheckbox.checked = false;
+    sat2.required = false;
+    if (sat2Label) sat2Label.innerHTML = 'درجة SAT II <span style="color:var(--text-muted); font-weight:400;">(اختياري)</span>';
+    if (sat2RequirementHint) sat2RequirementHint.textContent = 'SAT II اختياري لكليات المجموعة الطبية، لكن يُفضل إدخالها إن وُجدت لتحسين فرص القبول.';
+  } else {
+    advancedMathGroup.style.display = 'block';
+    const mandatory = !advancedMathCheckbox.checked;
+    sat2.required = mandatory;
+    if (sat2Label) sat2Label.innerHTML = mandatory
+      ? 'درجة SAT II <span class="required">*</span>'
+      : 'درجة SAT II <span style="color:var(--text-muted); font-weight:400;">(اختياري)</span>';
+    if (sat2RequirementHint) sat2RequirementHint.textContent = mandatory
+      ? 'SAT II إلزامي لمجموعة كليات الهندسة والحاسبات، إلا إذا أكدت أنك درست الرياضيات المتقدمة.'
+      : 'بما أنك أكدت دراسة الرياضيات المتقدمة، أصبحت SAT II اختيارية لهذه الكلية.';
+  }
 
   updateAmericanDiplomaWarnings();
 }
 
 // §6 — non-blocking admission-minimum warnings (1050 SAT I / 1100 SAT II). Never prevents
-// calculation or submission — purely informational, shown live as the student types.
+// calculation or submission — purely informational, shown live as the student types. Text reflects
+// the currently selected "الرغبة" college's group (طبية/هندسية), never generic group-agnostic text.
 function updateAmericanDiplomaWarnings() {
   if (!americanDiplomaConfig) return;
 
   const collegeVal = document.getElementById('wish-college').value;
-  const requiresSatII = americanDiplomaConfig.sat_ii_required_colleges.includes(collegeVal);
+  const isMedical = americanDiplomaConfig.medical_colleges.includes(collegeVal);
+  const isEngineering = americanDiplomaConfig.engineering_colleges.includes(collegeVal);
+  const groupSuffix = isMedical ? ' لكليات المجموعة الطبية' : (isEngineering ? ' لمجموعة كليات الهندسة والحاسبات' : '');
 
   const sat1 = document.getElementById('american-diploma-sat1');
   const sat1Warning = document.getElementById('american-diploma-sat1-warning');
   if (sat1 && sat1Warning) {
     const sat1Val = parseFloat(sat1.value);
     if (sat1.value !== '' && !isNaN(sat1Val) && sat1Val < americanDiplomaConfig.sat_i_minimum_threshold) {
-      sat1Warning.textContent = `تنبيه: درجة SAT I أقل من الحد الأدنى المطلوب (${americanDiplomaConfig.sat_i_minimum_threshold}) للقبول. يمكنك المتابعة، لكن يرجى مراجعة شروط القبول بالكلية.`;
+      sat1Warning.textContent = `تنبيه: درجة SAT I أقل من الحد الأدنى المطلوب (${americanDiplomaConfig.sat_i_minimum_threshold})${groupSuffix}. يمكنك المتابعة، لكن يرجى مراجعة شروط القبول بالكلية.`;
       sat1Warning.style.display = 'block';
     } else {
       sat1Warning.style.display = 'none';
@@ -448,9 +532,10 @@ function updateAmericanDiplomaWarnings() {
   const sat2 = document.getElementById('american-diploma-sat2');
   const sat2Warning = document.getElementById('american-diploma-sat2-warning');
   if (sat2 && sat2Warning) {
+    const isApplicable = americanDiplomaConfig.sat_ii_applicable_colleges.includes(collegeVal);
     const sat2Val = parseFloat(sat2.value);
-    if (requiresSatII && sat2.value !== '' && !isNaN(sat2Val) && sat2Val < americanDiplomaConfig.sat_ii_minimum_threshold) {
-      sat2Warning.textContent = `تنبيه: درجة SAT II أقل من الحد الأدنى المطلوب (${americanDiplomaConfig.sat_ii_minimum_threshold}) للقبول. يمكنك المتابعة، لكن يرجى مراجعة شروط القبول بالكلية.`;
+    if (isApplicable && sat2.value !== '' && !isNaN(sat2Val) && sat2Val < americanDiplomaConfig.sat_ii_minimum_threshold) {
+      sat2Warning.textContent = `تنبيه: درجة SAT II أقل من الحد الأدنى المطلوب (${americanDiplomaConfig.sat_ii_minimum_threshold})${groupSuffix}. يمكنك المتابعة، لكن يرجى مراجعة شروط القبول بالكلية.`;
       sat2Warning.style.display = 'block';
     } else {
       sat2Warning.style.display = 'none';

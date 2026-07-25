@@ -7,8 +7,8 @@ namespace StudentRegistry.Application.Constants
     // single equivalent-total number. It depends on three separate criteria together: the GPA-based
     // base percentage (out of 40), SAT I, and (for most colleges) SAT II — so this certificate has
     // no EquivalentTotal/410 conversion at all. SAT II's requirement, fixed first subject, and
-    // second-subject options are all driven by the Wish section's college (§WishConstants),
-    // mirroring the Egyptian/Azhar Track-by-college pattern.
+    // second-subject options are all driven by the Wish section's college (§WishConstants) — never
+    // a separate/duplicate selector.
     // Referenced by ConfigController (API), StudentCreateDtoValidator, and StudentService.
     public static class AmericanDiplomaConstants
     {
@@ -31,8 +31,9 @@ namespace StudentRegistry.Application.Constants
         public const string PhysicsSubject = "الفيزياء";
         public const string ChemistrySubject = "الكيمياء";
 
-        // §5 — مجموعتا الكليات اللتان تتطلبان SAT II، وكل واحدة لها مادة أولى ثابتة + خيارات للمادة
-        // الثانية. تجارة (الكلية السابعة في WishConstants.Colleges) ليس لها SAT II إطلاقًا.
+        // مجموعتا الكليات اللتان تُظهران SAT II على الإطلاق — كل واحدة لها مادة أولى ثابتة + خيارات
+        // للمادة الثانية. تجارة (الكلية السابعة في WishConstants.Colleges) ليس لها SAT II إطلاقًا
+        // (يظل القسم مخفيًا تمامًا لها، كما كان).
         public static readonly string[] MedicalColleges =
         {
             WishConstants.HumanMedicine, WishConstants.Dentistry, WishConstants.Pharmacy, WishConstants.Nursing
@@ -43,7 +44,9 @@ namespace StudentRegistry.Application.Constants
             WishConstants.Engineering, WishConstants.Computers
         };
 
-        public static readonly string[] SatIIRequiredColleges =
+        // كل الكليات الست اللي SAT II ظاهر لها (سواء إلزامي أو اختياري حسب الحالة) — وليس معناها
+        // "إلزامي" بعد الآن؛ استخدم IsSatIIMandatory لتحديد الإلزامية الفعلية.
+        public static readonly string[] SatIIApplicableColleges =
             MedicalColleges.Concat(EngineeringColleges).ToArray();
 
         public static readonly string[] MedicalSatIISecondSubjectOptions =
@@ -56,7 +59,17 @@ namespace StudentRegistry.Application.Constants
             PhysicsSubject, ChemistrySubject, BiologySubject
         };
 
-        public static bool RequiresSatII(string college) => SatIIRequiredColleges.Contains(college);
+        public static bool IsSatIIApplicable(string college) => SatIIApplicableColleges.Contains(college);
+
+        // المجموعة الطبية: SAT II اختياري دائمًا (لكن يظل ظاهرًا وقابلاً للتعبئة).
+        // مجموعة الهندسة/الحاسبات: SAT II إلزامي، إلا إذا أكد الطالب أنه درس الرياضيات المتقدمة.
+        // أي كلية أخرى (مثل تجارة): SAT II غير مطبق أصلاً (مخفي بالكامل).
+        public static bool IsSatIIMandatory(string college, bool studiedAdvancedMath)
+        {
+            if (MedicalColleges.Contains(college)) return false;
+            if (EngineeringColleges.Contains(college)) return !studiedAdvancedMath;
+            return false;
+        }
 
         public static string GetSatIIFixedFirstSubject(string college)
         {

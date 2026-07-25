@@ -168,17 +168,22 @@ namespace StudentRegistry.Application.DTOs
         public List<SingleYearSubjectMarkCreateDto>? Subjects { get; set; }
     }
 
-    // §American Diploma — no fixed subject names (the student's own best 8, whichever subjects
-    // those are); each is fixed at 100 max, just like the single-year-fixed-total family. SatI is
-    // always required; SatII (+ its two subjects) is required only for colleges where
-    // AmericanDiplomaConstants.RequiresSatII(WishCollege) is true — never for تجارة.
+    // §American Diploma — the student types in their own best 8 subject names (no fixed list);
+    // each is fixed at 100 max, just like the single-year-fixed-total family. SatI is always
+    // required. SatII is shown for every college where AmericanDiplomaConstants.
+    // IsSatIIApplicable(WishCollege) is true (never for تجارة); whether it's mandatory there depends
+    // on AmericanDiplomaConstants.IsSatIIMandatory(WishCollege, StudiedAdvancedMath) — the medical
+    // group is always optional, the engineering group is mandatory unless StudiedAdvancedMath is
+    // true. Whenever SatII IS provided (mandatory or optionally filled in), its two subjects are
+    // still required and validated.
     public class AmericanDiplomaDataCreateDto
     {
-        public List<decimal>? BestEightScores { get; set; }
+        public List<SingleYearSubjectMarkCreateDto>? Subjects { get; set; }
         public int SatI { get; set; }
         public int? SatII { get; set; }
         public string? SatIISubject1 { get; set; }
         public string? SatIISubject2 { get; set; }
+        public bool StudiedAdvancedMath { get; set; }   // only meaningful for the engineering group
     }
 
     // Shared by Qatari, Omani, Yemeni, Bahraini and Emirati (all single-year, fixed-100-per-subject certificates).
@@ -380,6 +385,7 @@ namespace StudentRegistry.Application.DTOs
         public int? SatII { get; set; }
         public string? SatIISubject1 { get; set; }
         public string? SatIISubject2 { get; set; }
+        public bool StudiedAdvancedMath { get; set; }
         public bool SatIBelowMinimum { get; set; }
         public bool SatIIBelowMinimum { get; set; }
         public string AdmissionNote { get; set; } = string.Empty;

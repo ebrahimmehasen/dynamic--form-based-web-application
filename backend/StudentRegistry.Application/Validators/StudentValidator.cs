@@ -448,8 +448,11 @@ namespace StudentRegistry.Application.Validators
 
             // §American Diploma — no track selector at all (mirrors "أخرى"/Emirati). Structural
             // validation only: exactly 8 best-subject scores (0-100 each), SAT I always required
-            // (400-1600), SAT II (+ its two subjects) required only for colleges where
-            // AmericanDiplomaConstants.RequiresSatII(WishCollege) is true. The 1050/1100 admission
+            // (400-1600). SAT II is shown for every college where AmericanDiplomaConstants.
+            // IsSatIIApplicable(WishCollege) is true (never for تجارة) — but whether it's MANDATORY
+            // there depends on IsSatIIMandatory (medical group: always optional; engineering group:
+            // mandatory unless StudiedAdvancedMath). Whenever SAT II IS provided (mandatory or
+            // optionally filled in), its two subjects are still validated. The 1050/1100 admission
             // minimums from §6 are NEVER enforced here — they are a UI-only, non-blocking warning.
             When(x => IsAmericanDiplomaCert(x.Certification), () =>
             {
@@ -458,42 +461,66 @@ namespace StudentRegistry.Application.Validators
 
                 When(x => x.AmericanDiplomaData != null, () =>
                 {
-                    RuleFor(x => x.AmericanDiplomaData!.BestEightScores)
-                        .Must(scores => scores != null && scores.Count == AmericanDiplomaConstants.BestSubjectsCount)
-                        .WithMessage($"يجب إدخال درجات أفضل {AmericanDiplomaConstants.BestSubjectsCount} مواد بالضبط.");
+                    RuleFor(x => x.AmericanDiplomaData!.Subjects)
+                        .Must(subjects => subjects != null && subjects.Count == AmericanDiplomaConstants.BestSubjectsCount)
+                        .WithMessage($"يجب إدخال أفضل {AmericanDiplomaConstants.BestSubjectsCount} مواد بالضبط.");
 
-                    RuleForEach(x => x.AmericanDiplomaData!.BestEightScores)
-                        .InclusiveBetween(0, AmericanDiplomaConstants.MaxMarkPerSubject)
-                        .WithMessage("درجة كل مادة يجب أن تكون بين 0 و100.");
+                    RuleForEach(x => x.AmericanDiplomaData!.Subjects).ChildRules(subject =>
+                    {
+                        subject.RuleFor(s => s.SubjectName)
+                            .NotEmpty().WithMessage("اسم المادة مطلوب.")
+                            .MaximumLength(100).WithMessage("يجب ألا يزيد اسم المادة عن 100 حرف.")
+                            .Must(NotContainHtml).WithMessage("اسم المادة غير صالح ولا يمكن أن يحتوي على رموز أو وسوم HTML.");
+
+                        subject.RuleFor(s => s.Mark)
+                            .InclusiveBetween(0, AmericanDiplomaConstants.MaxMarkPerSubject)
+                            .WithMessage("درجة كل مادة يجب أن تكون بين 0 و100.");
+                    });
 
                     RuleFor(x => x.AmericanDiplomaData!.SatI)
                         .InclusiveBetween(AmericanDiplomaConstants.SatMin, AmericanDiplomaConstants.SatMax)
                         .WithMessage($"درجة SAT I يجب أن تكون بين {AmericanDiplomaConstants.SatMin} و{AmericanDiplomaConstants.SatMax}.");
 
                     // §5/§6 — the Wish section's college determines whether SAT II applies at all,
-                    // and (when it does) which two subjects are valid; the client-side gating is
-                    // never trusted on its own.
-                    When(x => AmericanDiplomaConstants.RequiresSatII(x.WishCollege), () =>
+                    // whether it's mandatory, and (whenever provided) which two subjects are valid;
+                    // the client-side gating is never trusted on its own.
+                    When(x => AmericanDiplomaConstants.IsSatIIApplicable(x.WishCollege), () =>
                     {
-                        RuleFor(x => x.AmericanDiplomaData!.SatII)
-                            .NotNull().WithMessage("درجة SAT II مطلوبة للكلية المختارة.");
+                        When(x => AmericanDiplomaConstants.IsSatIIMandatory(x.WishCollege, x.AmericanDiplomaData!.StudiedAdvancedMath), () =>
+                        {
+                            RuleFor(x => x.AmericanDiplomaData!.SatII)
+                                .NotNull().WithMessage("درجة SAT II مطلوبة للكلية المختارة (إلا إذا أكدت أنك درست الرياضيات المتقدمة).");
+                        });
 
-                        RuleFor(x => x.AmericanDiplomaData!.SatII!.Value)
-                            .InclusiveBetween(AmericanDiplomaConstants.SatMin, AmericanDiplomaConstants.SatMax)
-                            .WithMessage($"درجة SAT II يجب أن تكون بين {AmericanDiplomaConstants.SatMin} و{AmericanDiplomaConstants.SatMax}.")
-                            .When(x => x.AmericanDiplomaData!.SatII.HasValue);
+                        // Whenever SAT II IS provided — mandatory or optionally filled in — its
+                        // range and both subjects are validated the same way.
+                        When(x => x.AmericanDiplomaData!.SatII.HasValue, () =>
+                        {
+                            RuleFor(x => x.AmericanDiplomaData!.SatII!.Value)
+                                .InclusiveBetween(AmericanDiplomaConstants.SatMin, AmericanDiplomaConstants.SatMax)
+                                .WithMessage($"درجة SAT II يجب أن تكون بين {AmericanDiplomaConstants.SatMin} و{AmericanDiplomaConstants.SatMax}.");
 
-                        RuleFor(x => x.AmericanDiplomaData!.SatIISubject1)
-                            .Must((dto, s1) => s1 == AmericanDiplomaConstants.GetSatIIFixedFirstSubject(dto.WishCollege))
-                            .WithMessage("مادة SAT II الأولى غير صحيحة لهذه الكلية.");
+                            RuleFor(x => x.AmericanDiplomaData!.SatIISubject1)
+                                .Must((dto, s1) => s1 == AmericanDiplomaConstants.GetSatIIFixedFirstSubject(dto.WishCollege))
+                                .WithMessage("مادة SAT II الأولى غير صحيحة لهذه الكلية.");
 
-                        RuleFor(x => x.AmericanDiplomaData!.SatIISubject2)
-                            .Must((dto, s2) => s2 != null && AmericanDiplomaConstants.GetSatIISecondSubjectOptions(dto.WishCollege).Contains(s2))
-                            .WithMessage("الرجاء اختيار مادة SAT II الثانية من القائمة المتاحة لهذه الكلية.");
+                            RuleFor(x => x.AmericanDiplomaData!.SatIISubject2)
+                                .Must((dto, s2) => s2 != null && AmericanDiplomaConstants.GetSatIISecondSubjectOptions(dto.WishCollege).Contains(s2))
+                                .WithMessage("الرجاء اختيار مادة SAT II الثانية من القائمة المتاحة لهذه الكلية.");
+                        });
+
+                        // Optional-and-skipped: subjects must stay empty (defense in depth).
+                        When(x => !x.AmericanDiplomaData!.SatII.HasValue, () =>
+                        {
+                            RuleFor(x => x.AmericanDiplomaData!.SatIISubject1)
+                                .Must(v => v == null).WithMessage("لا يمكن اختيار مادة SAT II الأولى بدون إدخال درجة SAT II.");
+                            RuleFor(x => x.AmericanDiplomaData!.SatIISubject2)
+                                .Must(v => v == null).WithMessage("لا يمكن اختيار مادة SAT II الثانية بدون إدخال درجة SAT II.");
+                        });
                     });
 
-                    // Colleges that don't require SAT II (تجارة) must not submit it — defense in depth.
-                    When(x => !AmericanDiplomaConstants.RequiresSatII(x.WishCollege), () =>
+                    // Colleges where SAT II doesn't apply at all (تجارة) must not submit it — defense in depth.
+                    When(x => !AmericanDiplomaConstants.IsSatIIApplicable(x.WishCollege), () =>
                     {
                         RuleFor(x => x.AmericanDiplomaData!.SatII)
                             .Must(v => v == null)

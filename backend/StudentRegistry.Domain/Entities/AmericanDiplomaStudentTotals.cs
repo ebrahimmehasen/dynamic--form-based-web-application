@@ -8,9 +8,10 @@ namespace StudentRegistry.Domain.Entities
         public decimal BasePercentage { get; set; }     // متوسط × 40 ÷ 100، من 40
 
         public int SatI { get; set; }
-        public int? SatII { get; set; }                  // null إذا كانت الكلية لا تتطلب SAT II
+        public int? SatII { get; set; }                  // null إذا لم تكن مطبقة أو كانت اختيارية ولم تُدخل
         public string? SatIISubject1 { get; set; }
         public string? SatIISubject2 { get; set; }
+        public bool StudiedAdvancedMath { get; set; }     // ذو معنى فقط لمجموعة الهندسة/الحاسبات
 
         // تنبيهات استرشادية فقط — لا تمنع الحساب أو الحفظ.
         public bool SatIBelowMinimum { get; set; }

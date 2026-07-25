@@ -724,27 +724,27 @@ namespace StudentRegistry.Application.Services
 
         // §American Diploma — no EquivalentTotal at all (unlike every certificate above): admission
         // depends on BasePercentage + SatI + SatII together, not one combined number (§8). The
-        // student's 8 best subjects have no fixed names, so they're stored as "المادة N" rows.
+        // student types in their own best 8 subject names (no fixed list) — stored as-entered.
         // The 1050/1100 admission minimums (§6) are recorded as informational flags only — never
         // enforced as a rejection here (that already happened, correctly, nowhere: the validator
         // never blocks on them either).
         private void ProcessAmericanDiplomaCertificate(StudentCreateDto dto, Student student)
         {
             var am = dto.AmericanDiplomaData;
-            if (am?.BestEightScores == null || am.BestEightScores.Count != AmericanDiplomaConstants.BestSubjectsCount)
-                throw new ArgumentException("يجب إدخال درجات أفضل 8 مواد.");
+            if (am?.Subjects == null || am.Subjects.Count != AmericanDiplomaConstants.BestSubjectsCount)
+                throw new ArgumentException($"يجب إدخال أفضل {AmericanDiplomaConstants.BestSubjectsCount} مواد.");
 
             decimal sum = 0;
-            for (int i = 0; i < am.BestEightScores.Count; i++)
+            foreach (var subject in am.Subjects)
             {
-                decimal score = am.BestEightScores[i];
+                decimal score = subject.Mark;
                 sum += score;
 
                 student.StandardGrades.Add(new StandardStudentGrades
                 {
                     Student = student,
                     YearOfStudy = "12",
-                    SubjectName = $"المادة {i + 1}",
+                    SubjectName = subject.SubjectName,
                     Grade = score,
                     MaxMark = AmericanDiplomaConstants.MaxMarkPerSubject,
                     WeightedPercentage = Math.Round((score / AmericanDiplomaConstants.MaxMarkPerSubject) * 100, 2),
@@ -756,7 +756,12 @@ namespace StudentRegistry.Application.Services
             decimal average = sum / AmericanDiplomaConstants.BestSubjectsCount;
             decimal basePercentage = Math.Round(average * AmericanDiplomaConstants.BasePercentageWeight / 100m, 2);
 
-            bool requiresSatII = AmericanDiplomaConstants.RequiresSatII(dto.WishCollege);
+            // SAT II is only ever persisted when it was both applicable to this college AND
+            // actually provided — mandatory (engineering, no checkbox) or optionally filled in
+            // (medical, or engineering with the checkbox). The validator already enforced that
+            // subjects only accompany an actual SAT II value.
+            bool satIIApplicable = AmericanDiplomaConstants.IsSatIIApplicable(dto.WishCollege);
+            bool satIIProvided = satIIApplicable && am.SatII.HasValue;
 
             student.AmericanDiplomaTotals = new AmericanDiplomaStudentTotals
             {
@@ -764,11 +769,12 @@ namespace StudentRegistry.Application.Services
                 AverageScore = Math.Round(average, 2),
                 BasePercentage = basePercentage,
                 SatI = am.SatI,
-                SatII = requiresSatII ? am.SatII : null,
-                SatIISubject1 = requiresSatII ? am.SatIISubject1 : null,
-                SatIISubject2 = requiresSatII ? am.SatIISubject2 : null,
+                SatII = satIIProvided ? am.SatII : null,
+                SatIISubject1 = satIIProvided ? am.SatIISubject1 : null,
+                SatIISubject2 = satIIProvided ? am.SatIISubject2 : null,
+                StudiedAdvancedMath = am.StudiedAdvancedMath,
                 SatIBelowMinimum = am.SatI < AmericanDiplomaConstants.SatIMinimumThreshold,
-                SatIIBelowMinimum = requiresSatII && am.SatII.HasValue && am.SatII.Value < AmericanDiplomaConstants.SatIIMinimumThreshold
+                SatIIBelowMinimum = satIIProvided && am.SatII!.Value < AmericanDiplomaConstants.SatIIMinimumThreshold
             };
         }
 

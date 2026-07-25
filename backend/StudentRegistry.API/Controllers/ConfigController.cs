@@ -271,7 +271,7 @@ namespace StudentRegistry.API.Controllers
                 sat_max = AmericanDiplomaConstants.SatMax,
                 sat_i_minimum_threshold = AmericanDiplomaConstants.SatIMinimumThreshold,
                 sat_ii_minimum_threshold = AmericanDiplomaConstants.SatIIMinimumThreshold,
-                sat_ii_required_colleges = AmericanDiplomaConstants.SatIIRequiredColleges,
+                sat_ii_applicable_colleges = AmericanDiplomaConstants.SatIIApplicableColleges,
                 medical_colleges = AmericanDiplomaConstants.MedicalColleges,
                 engineering_colleges = AmericanDiplomaConstants.EngineeringColleges,
                 biology_subject = AmericanDiplomaConstants.BiologySubject,

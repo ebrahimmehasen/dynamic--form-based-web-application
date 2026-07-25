@@ -252,10 +252,13 @@
           </select>
         </div>
       </div>
+      <div class="locked-indicator" id="wish-incomplete-msg" style="display: flex;">
+        <span>🔒</span> يجب اختيار الكلية (والبرنامج إن وُجد) أولاً لفتح باقي خطوات الاستمارة.
+      </div>
     </section>
 
     <!-- Section D: Graduation Year -->
-    <section id="section-graduation-year" class="form-section active">
+    <section id="section-graduation-year" class="form-section" style="display: none;">
       <div class="section-header">
         <span class="section-number">د</span>
         <h2 class="section-title">سنة التخرج</h2>
@@ -275,7 +278,7 @@
     </section>
 
     <!-- Section E: Certification Type -->
-    <section id="section-cert" class="form-section active">
+    <section id="section-cert" class="form-section" style="display: none;">
       <div class="section-header">
         <span class="section-number">هـ</span>
         <h2 class="section-title">نوع الشهادة</h2>
@@ -642,7 +645,6 @@
             </div>
           </div>
         </div>
-        <p class="section-desc" style="margin-top: 1rem;">هذه النتيجة تقديرية ويجب تأكيدها رسمياً من مكتب تنسيق القبول بالجامعات والمعاهد المصرية.</p>
       </div>
 
       <!-- Qatari Certificate Calculator Container -->
@@ -684,7 +686,6 @@
               </div>
             </div>
           </div>
-          <p class="section-desc">هذه النتيجة تقديرية ويجب تأكيدها رسمياً من مكتب تنسيق القبول بالجامعات والمعاهد المصرية.</p>
         </div>
       </div>
 
@@ -723,7 +724,6 @@
               </div>
             </div>
           </div>
-          <p class="section-desc">هذه النتيجة تقديرية ويجب تأكيدها رسمياً من مكتب تنسيق القبول بالجامعات والمعاهد المصرية.</p>
         </div>
       </div>
 
@@ -762,7 +762,6 @@
               </div>
             </div>
           </div>
-          <p class="section-desc">هذه النتيجة تقديرية ويجب تأكيدها رسمياً من مكتب تنسيق القبول بالجامعات والمعاهد المصرية.</p>
         </div>
       </div>
 
@@ -934,7 +933,6 @@
             </div>
           </div>
         </div>
-        <p class="section-desc">هذه النتيجة تقديرية ويجب تأكيدها رسمياً من مكتب تنسيق القبول بالجامعات والمعاهد المصرية.</p>
       </div>
 
       <!-- Emirati Certificate Calculator Container: single track today (no track-selection UI —
@@ -977,7 +975,6 @@
             </div>
           </div>
         </div>
-        <p class="section-desc">هذه النتيجة تقديرية ويجب تأكيدها رسمياً من مكتب تنسيق القبول بالجامعات والمعاهد المصرية.</p>
       </div>
 
       <!-- American Diploma Calculator Container: no track selector at all (mirrors "أخرى"/Emirati).
@@ -1024,11 +1021,19 @@
               <div class="field-warning" id="american-diploma-sat1-warning"></div>
             </div>
             <div class="form-group" id="american-diploma-sat2-group" style="display: none;">
-              <label for="american-diploma-sat2">درجة SAT II <span class="required">*</span></label>
+              <label for="american-diploma-sat2" id="american-diploma-sat2-label">درجة SAT II <span class="required">*</span></label>
               <input type="number" id="american-diploma-sat2" class="form-control" min="400" max="1600" step="1" placeholder="400-1600">
               <div class="field-hint">تاريخ اختبار SAT II يجب ألا يتعدى تاريخ الحصول على الدبلومة الأمريكية.</div>
+              <div class="field-hint" id="american-diploma-sat2-requirement-hint"></div>
               <div class="field-warning" id="american-diploma-sat2-warning"></div>
             </div>
+          </div>
+          <div class="form-group" id="american-diploma-advanced-math-group" style="display: none;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 500;">
+              <input type="checkbox" id="american-diploma-advanced-math-checkbox" style="width: auto;">
+              <span>درست الرياضيات المتقدمة (Math / Adv. Math)؟</span>
+            </label>
+            <div class="field-hint">إذا أكدت ذلك، تصبح درجة SAT II اختيارية لهذه الكلية بدلاً من إلزامية.</div>
           </div>
           <div class="form-grid-2" id="american-diploma-sat2-subjects-group" style="display: none;">
             <div class="form-group">
@@ -1050,7 +1055,6 @@
           <strong>ℹ️ ملاحظة هامة حول القبول:</strong>
           <p style="margin: 0.5rem 0 0;">القبول النهائي بالكلية يعتمد على استيفاء الشروط الثلاثة معًا: المعدل الدراسي (أفضل 8 مواد) + درجة SAT I + درجة SAT II (حسب الكلية المختارة) — وليس على رقم نهائي واحد كما هو الحال في باقي الشهادات.</p>
         </div>
-        <p class="section-desc">هذه النتيجة تقديرية ويجب تأكيدها رسمياً من مكتب تنسيق القبول بالجامعات والمعاهد المصرية.</p>
       </div>
 
       <!-- "أخرى" (Other) Calculator Container: free-text certificate name + percentage-in only,
@@ -1073,7 +1077,6 @@
             </div>
           </div>
         </div>
-        <p class="section-desc">هذه النتيجة تقديرية ويجب تأكيدها رسمياً من مكتب تنسيق القبول بالجامعات والمعاهد المصرية.</p>
       </div>
     </section>
 
