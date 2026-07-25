@@ -438,6 +438,10 @@ function initConditionals() {
     deactivateSection('section-year');
     deactivateSection('section-grades');
 
+    // "أخرى" has no track selector at all — hide Section E entirely rather than just leaving it
+    // deactivated (an inactive .form-section is still fully visible, just unhighlighted).
+    document.getElementById('section-track').style.display = (certKey === 'other') ? 'none' : 'block';
+
     // Reset IG UI & standard table UI
     document.getElementById('non-ig-grades-container').style.display = 'block';
     document.getElementById('ig-grades-container').style.display = 'none';
