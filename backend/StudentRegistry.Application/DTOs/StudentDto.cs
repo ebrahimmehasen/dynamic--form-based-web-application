@@ -75,6 +75,9 @@ namespace StudentRegistry.Application.DTOs
 
         // Emirati specific fields
         public EmiratiDataCreateDto? EmiratiData { get; set; }
+
+        // American Diploma specific fields
+        public AmericanDiplomaDataCreateDto? AmericanDiplomaData { get; set; }
     }
 
     public class KuwaitiDataCreateDto
@@ -165,6 +168,19 @@ namespace StudentRegistry.Application.DTOs
         public List<SingleYearSubjectMarkCreateDto>? Subjects { get; set; }
     }
 
+    // §American Diploma — no fixed subject names (the student's own best 8, whichever subjects
+    // those are); each is fixed at 100 max, just like the single-year-fixed-total family. SatI is
+    // always required; SatII (+ its two subjects) is required only for colleges where
+    // AmericanDiplomaConstants.RequiresSatII(WishCollege) is true — never for تجارة.
+    public class AmericanDiplomaDataCreateDto
+    {
+        public List<decimal>? BestEightScores { get; set; }
+        public int SatI { get; set; }
+        public int? SatII { get; set; }
+        public string? SatIISubject1 { get; set; }
+        public string? SatIISubject2 { get; set; }
+    }
+
     // Shared by Qatari, Omani, Yemeni, Bahraini and Emirati (all single-year, fixed-100-per-subject certificates).
     public class SingleYearSubjectMarkCreateDto
     {
@@ -246,6 +262,8 @@ namespace StudentRegistry.Application.DTOs
         public List<SingleYearSubjectMarkResponseDto>? AzharGrades { get; set; }
         public EmiratiTotalsResponseDto? EmiratiTotals { get; set; }
         public List<SingleYearSubjectMarkResponseDto>? EmiratiGrades { get; set; }
+        public AmericanDiplomaTotalsResponseDto? AmericanDiplomaTotals { get; set; }
+        public List<SingleYearSubjectMarkResponseDto>? AmericanDiplomaGrades { get; set; }
     }
 
     public class KuwaitiTotalsResponseDto
@@ -349,6 +367,22 @@ namespace StudentRegistry.Application.DTOs
         public decimal Denominator { get; set; }
         public decimal Percentage { get; set; }
         public decimal EquivalentTotal { get; set; }   // المجموع الاعتباري (المجموع المصري), out of 410
+        public string Disclaimer { get; set; } = string.Empty;
+    }
+
+    // No EquivalentTotal — admission depends on BasePercentage + SatI + SatII together, never a
+    // single combined number (unlike every other certificate in this system).
+    public class AmericanDiplomaTotalsResponseDto
+    {
+        public decimal AverageScore { get; set; }
+        public decimal BasePercentage { get; set; }   // out of 40
+        public int SatI { get; set; }
+        public int? SatII { get; set; }
+        public string? SatIISubject1 { get; set; }
+        public string? SatIISubject2 { get; set; }
+        public bool SatIBelowMinimum { get; set; }
+        public bool SatIIBelowMinimum { get; set; }
+        public string AdmissionNote { get; set; } = string.Empty;
         public string Disclaimer { get; set; } = string.Empty;
     }
 

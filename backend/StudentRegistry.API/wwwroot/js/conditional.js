@@ -8,6 +8,7 @@ let bahrainiConfig = null;
 let egyptianConfig = null;
 let azharConfig = null;
 let emiratiConfig = null;
+let americanDiplomaConfig = null;
 
 // Fetch config from the ConfigController API (single source of truth)
 async function loadSubjectsConfig() {
@@ -129,6 +130,18 @@ async function loadSubjectsConfig() {
   } catch (error) {
     console.error('Could not load Emirati subjects configuration.', error);
     showAlert('form-alert', 'تعذر تحميل بيانات مواد الشهادة الإماراتية من الخادم. الرجاء تحديث الصفحة.', 'danger');
+  }
+
+  try {
+    const response = await fetch('/api/config/subjects-american-diploma');
+    if (response.ok) {
+      americanDiplomaConfig = await response.json();
+    } else {
+      throw new Error('Failed to load /api/config/subjects-american-diploma: ' + response.status);
+    }
+  } catch (error) {
+    console.error('Could not load American Diploma configuration.', error);
+    showAlert('form-alert', 'تعذر تحميل بيانات الدبلومة الأمريكية من الخادم. الرجاء تحديث الصفحة.', 'danger');
   }
 }
 
@@ -341,6 +354,7 @@ function initWishSection() {
     refreshEgyptianTrackOptions();
     refreshAzharTrackOptions();
     updateEmiratiMedicalWarning();
+    refreshAmericanDiplomaSatIIFields();
   });
 }
 
@@ -356,6 +370,92 @@ function updateEmiratiMedicalWarning() {
   const collegeVal = document.getElementById('wish-college').value;
   const medicalColleges = (emiratiConfig && emiratiConfig.medical_colleges) || EMIRATI_MEDICAL_COLLEGES_FALLBACK;
   warningEl.style.display = medicalColleges.includes(collegeVal) ? 'flex' : 'none';
+}
+
+// American Diploma §4/§5 — SAT II (and its two subject dropdowns) is shown only for colleges in
+// sat_ii_required_colleges (طب بشري/طب أسنان/صيدلة/تمريض/هندسة/حاسبات) — never for تجارة. The first
+// SAT II subject is a fixed value determined by the college group (الأحياء for medical, الرياضيات
+// for engineering/computers); the second is a dropdown restricted to that same group's options.
+function refreshAmericanDiplomaSatIIFields() {
+  const certSelect = document.getElementById('cert-select');
+  if (!certSelect || certSelect.value !== 'americanDiploma' || !americanDiplomaConfig) return;
+
+  const collegeVal = document.getElementById('wish-college').value;
+  const requiresSatII = americanDiplomaConfig.sat_ii_required_colleges.includes(collegeVal);
+
+  const sat2Group = document.getElementById('american-diploma-sat2-group');
+  const sat2SubjectsGroup = document.getElementById('american-diploma-sat2-subjects-group');
+  const sat2 = document.getElementById('american-diploma-sat2');
+  const subject1Select = document.getElementById('american-diploma-sat2-subject1');
+  const subject2Select = document.getElementById('american-diploma-sat2-subject2');
+
+  if (!requiresSatII) {
+    sat2Group.style.display = 'none';
+    sat2SubjectsGroup.style.display = 'none';
+    sat2.value = '';
+    subject1Select.innerHTML = '<option value="">-- اختر --</option>';
+    subject2Select.innerHTML = '<option value="">-- اختر --</option>';
+    subject2Select.value = '';
+    updateAmericanDiplomaWarnings();
+    return;
+  }
+
+  sat2Group.style.display = 'block';
+  sat2SubjectsGroup.style.display = 'block';
+
+  const isMedical = americanDiplomaConfig.medical_colleges.includes(collegeVal);
+  const fixedSubject = isMedical ? americanDiplomaConfig.biology_subject : americanDiplomaConfig.math_subject;
+  const secondOptions = isMedical
+    ? americanDiplomaConfig.medical_second_subject_options
+    : americanDiplomaConfig.engineering_second_subject_options;
+
+  subject1Select.innerHTML = `<option value="${fixedSubject}" selected>${fixedSubject}</option>`;
+  subject1Select.value = fixedSubject;
+
+  const previousSecond = subject2Select.value;
+  subject2Select.innerHTML = '<option value="">-- اختر --</option>';
+  secondOptions.forEach(opt => {
+    const option = document.createElement('option');
+    option.value = opt;
+    option.textContent = opt;
+    subject2Select.appendChild(option);
+  });
+  subject2Select.value = secondOptions.includes(previousSecond) ? previousSecond : '';
+
+  updateAmericanDiplomaWarnings();
+}
+
+// §6 — non-blocking admission-minimum warnings (1050 SAT I / 1100 SAT II). Never prevents
+// calculation or submission — purely informational, shown live as the student types.
+function updateAmericanDiplomaWarnings() {
+  if (!americanDiplomaConfig) return;
+
+  const collegeVal = document.getElementById('wish-college').value;
+  const requiresSatII = americanDiplomaConfig.sat_ii_required_colleges.includes(collegeVal);
+
+  const sat1 = document.getElementById('american-diploma-sat1');
+  const sat1Warning = document.getElementById('american-diploma-sat1-warning');
+  if (sat1 && sat1Warning) {
+    const sat1Val = parseFloat(sat1.value);
+    if (sat1.value !== '' && !isNaN(sat1Val) && sat1Val < americanDiplomaConfig.sat_i_minimum_threshold) {
+      sat1Warning.textContent = `تنبيه: درجة SAT I أقل من الحد الأدنى المطلوب (${americanDiplomaConfig.sat_i_minimum_threshold}) للقبول. يمكنك المتابعة، لكن يرجى مراجعة شروط القبول بالكلية.`;
+      sat1Warning.style.display = 'block';
+    } else {
+      sat1Warning.style.display = 'none';
+    }
+  }
+
+  const sat2 = document.getElementById('american-diploma-sat2');
+  const sat2Warning = document.getElementById('american-diploma-sat2-warning');
+  if (sat2 && sat2Warning) {
+    const sat2Val = parseFloat(sat2.value);
+    if (requiresSatII && sat2.value !== '' && !isNaN(sat2Val) && sat2Val < americanDiplomaConfig.sat_ii_minimum_threshold) {
+      sat2Warning.textContent = `تنبيه: درجة SAT II أقل من الحد الأدنى المطلوب (${americanDiplomaConfig.sat_ii_minimum_threshold}) للقبول. يمكنك المتابعة، لكن يرجى مراجعة شروط القبول بالكلية.`;
+      sat2Warning.style.display = 'block';
+    } else {
+      sat2Warning.style.display = 'none';
+    }
+  }
 }
 
 // Azhar Thanaweya — the Wish section's college restricts which قسم options are offered (only for
@@ -468,7 +568,7 @@ function initConditionals() {
 
     // "أخرى" has no track selector at all — hide Section E entirely rather than just leaving it
     // deactivated (an inactive .form-section is still fully visible, just unhighlighted).
-    document.getElementById('section-track').style.display = (certKey === 'other' || certKey === 'emirati') ? 'none' : 'block';
+    document.getElementById('section-track').style.display = (certKey === 'other' || certKey === 'emirati' || certKey === 'americanDiploma') ? 'none' : 'block';
 
     // Reset IG UI & standard table UI
     document.getElementById('non-ig-grades-container').style.display = 'block';
@@ -483,6 +583,7 @@ function initConditionals() {
     document.getElementById('egyptian-grades-container').style.display = 'none';
     document.getElementById('azhar-grades-container').style.display = 'none';
     document.getElementById('emirati-grades-container').style.display = 'none';
+    document.getElementById('american-diploma-grades-container').style.display = 'none';
     document.getElementById('section-year').style.display = 'block';
     document.getElementById('section-grades-title').textContent = 'جدول إدخال الدرجات';
     document.getElementById('section-grades-desc').textContent = 'أدخل الدرجة والنسبة الموزونة لكل مادة أدناه. سيتم احتساب الدرجة المتحصلة تلقائياً.';
@@ -572,9 +673,17 @@ function initConditionals() {
         document.getElementById('emirati-grades-container').style.display = 'block';
         document.getElementById('section-grades-title').textContent = '🧮 حاسبة الشهادة الإماراتية';
         document.getElementById('section-grades-desc').textContent = 'أدخل درجة كل مادة أساسية (إلزامية)، والمواد الاختيارية إن وُجدت في شهادتك.';
+      } else if (certKey === 'americanDiploma') {
+        // American Diploma has no track selector at all — admission depends on GPA + SAT I +
+        // SAT II together (§8), never a single track/percentage.
+        document.getElementById('section-year').style.display = 'none';
+        document.getElementById('non-ig-grades-container').style.display = 'none';
+        document.getElementById('american-diploma-grades-container').style.display = 'block';
+        document.getElementById('section-grades-title').textContent = '🧮 حاسبة الدبلومة الأمريكية';
+        document.getElementById('section-grades-desc').textContent = 'أدخل درجات أفضل 8 مواد ودرجة SAT I، ودرجة SAT II إن كانت مطلوبة للكلية المختارة في قسم الرغبة.';
       }
 
-      if (certKey === 'other' || certKey === 'emirati') {
+      if (certKey === 'other' || certKey === 'emirati' || certKey === 'americanDiploma') {
         // Skip the track step entirely — go straight to section-grades.
         activateSection('section-grades');
         if (certKey === 'other' && typeof recalculateOther === 'function') {
@@ -582,6 +691,9 @@ function initConditionals() {
         }
         if (certKey === 'emirati' && typeof generateEmiratiGradesUI === 'function') {
           generateEmiratiGradesUI();
+        }
+        if (certKey === 'americanDiploma' && typeof generateAmericanDiplomaGradesUI === 'function') {
+          generateAmericanDiplomaGradesUI();
         }
       } else {
         // Populate track options — Egyptian's and Azhar's options are restricted by the Wish

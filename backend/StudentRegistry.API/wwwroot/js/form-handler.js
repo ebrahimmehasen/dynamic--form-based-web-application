@@ -16,6 +16,7 @@ function initFormHandlers() {
   setupEgyptianCalculatorListeners();
   setupAzharCalculatorListeners();
   setupEmiratiCalculatorListeners();
+  setupAmericanDiplomaCalculatorListeners();
   setupSubmissionHandler();
 }
 
@@ -1643,6 +1644,82 @@ function setupEmiratiCalculatorListeners() {
   // wires up its own input listeners — nothing static to bind here.
 }
 
+// 3k. American Diploma Calculator — no track selector at all (mirrors "أخرى"/Emirati). Renders 8
+// "best subject" rows (no fixed names), computes the GPA-based BasePercentage (§2), and wires SAT
+// I/II inputs to the live, non-blocking admission-minimum warnings (§6, defined in conditional.js
+// since they're driven by the same Wish-college config as refreshAmericanDiplomaSatIIFields).
+function generateAmericanDiplomaGradesUI() {
+  const tbody = document.getElementById('american-diploma-subjects-body');
+  if (!tbody || !americanDiplomaConfig) return;
+
+  const maxMark = americanDiplomaConfig.max_mark_per_subject;
+  tbody.innerHTML = '';
+
+  for (let i = 1; i <= americanDiplomaConfig.best_subjects_count; i++) {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td class="col-num">${i}</td>
+      <td class="col-subject">المادة ${i}</td>
+      <td class="col-grade">
+        <input type="number" min="0" max="${maxMark}" step="any" required placeholder="0-${maxMark}"
+               class="table-input american-diploma-mark-input" data-subject="المادة ${i}">
+      </td>
+      <td class="col-weight">${maxMark}</td>
+    `;
+    tbody.appendChild(row);
+  }
+
+  tbody.querySelectorAll('.american-diploma-mark-input').forEach(input => {
+    input.addEventListener('input', recalculateAmericanDiploma);
+    input.addEventListener('change', recalculateAmericanDiploma);
+  });
+
+  recalculateAmericanDiploma();
+  if (typeof refreshAmericanDiplomaSatIIFields === 'function') {
+    refreshAmericanDiplomaSatIIFields();
+  }
+}
+
+// §2 — المعدل = مجموع أفضل 8 مواد ÷ 8؛ النسبة الأساسية = المعدل × 40 ÷ 100 (من 40، وليس من 100 —
+// مطابق تمامًا لصيغة الباك اند في ProcessAmericanDiplomaCertificate).
+function recalculateAmericanDiploma() {
+  const inputs = document.querySelectorAll('.american-diploma-mark-input');
+  let sum = 0;
+  inputs.forEach(input => {
+    sum += parseFloat(input.value) || 0;
+  });
+
+  const count = (americanDiplomaConfig && americanDiplomaConfig.best_subjects_count) || inputs.length || 1;
+  const average = sum / count;
+  const weight = (americanDiplomaConfig && americanDiplomaConfig.base_percentage_weight) || 40;
+  const basePercentage = (average * weight) / 100;
+
+  const averageEl = document.getElementById('american-diploma-average');
+  const baseEl = document.getElementById('american-diploma-base-percentage');
+  if (averageEl) averageEl.textContent = average.toFixed(2);
+  if (baseEl) baseEl.textContent = basePercentage.toFixed(2) + ' / ' + weight;
+
+  updateProgressIndicator();
+}
+
+function setupAmericanDiplomaCalculatorListeners() {
+  const sat1 = document.getElementById('american-diploma-sat1');
+  const sat2 = document.getElementById('american-diploma-sat2');
+  if (sat1) {
+    sat1.addEventListener('input', () => {
+      if (typeof updateAmericanDiplomaWarnings === 'function') updateAmericanDiplomaWarnings();
+    });
+  }
+  if (sat2) {
+    sat2.addEventListener('input', () => {
+      if (typeof updateAmericanDiplomaWarnings === 'function') updateAmericanDiplomaWarnings();
+    });
+  }
+  // Subject rows are generated once by generateAmericanDiplomaGradesUI (called directly from the
+  // cert-select handler in conditional.js, since this cert has no track-selection step), which
+  // wires up its own input listeners.
+}
+
 // 4. Form Submission and Validation
 function setupSubmissionHandler() {
   const mainForm = document.getElementById('student-reg-form');
@@ -1892,6 +1969,66 @@ function validateForm() {
           valid: false,
           message: `الرجاء إدخال درجة صحيحة (بين 0 و100) لمادة "${markInputs[i].getAttribute('data-subject')}".`,
           element: markInputs[i]
+        };
+      }
+    }
+
+    return { valid: true };
+  }
+
+  // American Diploma has NO track selector at all either — validate its own fields and return
+  // early, bypassing the generic track requirement below (mirrors "أخرى"/Emirati above). Note:
+  // the 1050/1100 admission minimums are NEVER checked here — they're a non-blocking warning only.
+  if (certSelect.value === 'americanDiploma') {
+    const markInputs = document.querySelectorAll('.american-diploma-mark-input');
+    if (markInputs.length === 0) {
+      return {
+        valid: false,
+        message: 'الرجاء توليد جدول المواد أولاً.',
+        element: certSelect
+      };
+    }
+
+    for (let i = 0; i < markInputs.length; i++) {
+      const val = parseFloat(markInputs[i].value);
+      if (markInputs[i].value === '' || isNaN(val) || val < 0 || val > 100) {
+        return {
+          valid: false,
+          message: `الرجاء إدخال درجة صحيحة (بين 0 و100) لـ "${markInputs[i].getAttribute('data-subject')}".`,
+          element: markInputs[i]
+        };
+      }
+    }
+
+    const sat1Input = document.getElementById('american-diploma-sat1');
+    const sat1Val = parseFloat(sat1Input.value);
+    if (sat1Input.value === '' || isNaN(sat1Val) || sat1Val < 400 || sat1Val > 1600) {
+      return {
+        valid: false,
+        message: 'الرجاء إدخال درجة SAT I صحيحة (بين 400 و1600).',
+        element: sat1Input
+      };
+    }
+
+    const collegeVal = document.getElementById('wish-college').value;
+    const requiresSatII = americanDiplomaConfig && americanDiplomaConfig.sat_ii_required_colleges.includes(collegeVal);
+    if (requiresSatII) {
+      const sat2Input = document.getElementById('american-diploma-sat2');
+      const sat2Val = parseFloat(sat2Input.value);
+      if (sat2Input.value === '' || isNaN(sat2Val) || sat2Val < 400 || sat2Val > 1600) {
+        return {
+          valid: false,
+          message: 'الرجاء إدخال درجة SAT II صحيحة (بين 400 و1600) للكلية المختارة.',
+          element: sat2Input
+        };
+      }
+
+      const subject2Select = document.getElementById('american-diploma-sat2-subject2');
+      if (!subject2Select.value) {
+        return {
+          valid: false,
+          message: 'الرجاء اختيار مادة SAT II الثانية.',
+          element: subject2Select
         };
       }
     }
@@ -2480,6 +2617,44 @@ function compilePayload() {
     };
   }
 
+  if (certSelect.value === 'americanDiploma') {
+    const bestEightScores = [];
+    document.querySelectorAll('.american-diploma-mark-input').forEach(input => {
+      bestEightScores.push(parseFloat(input.value) || 0);
+    });
+
+    const collegeVal = document.getElementById('wish-college').value;
+    const requiresSatII = americanDiplomaConfig && americanDiplomaConfig.sat_ii_required_colleges.includes(collegeVal);
+    const satI = parseInt(document.getElementById('american-diploma-sat1').value, 10) || 0;
+    const satII = requiresSatII ? (parseInt(document.getElementById('american-diploma-sat2').value, 10) || 0) : null;
+    const satIISubject1 = requiresSatII ? document.getElementById('american-diploma-sat2-subject1').value : null;
+    const satIISubject2 = requiresSatII ? document.getElementById('american-diploma-sat2-subject2').value : null;
+
+    const averageScore = parseFloat(document.getElementById('american-diploma-average').textContent) || 0;
+    const basePercentage = parseFloat(document.getElementById('american-diploma-base-percentage').textContent) || 0;
+
+    return {
+      ...personalInfo,
+      nationalId: document.getElementById('national-id').value.trim(),
+      certification: certSelect.options[certSelect.selectedIndex].text,
+      track: 'الدبلومة الأمريكية',   // no track selector — fixed placeholder satisfies the shared Track column.
+      yearOfStudy: '',
+      photo: uploadedPhotoBase64,
+      americanDiplomaData: {
+        bestEightScores: bestEightScores,
+        satI: satI,
+        satII: satII,
+        satIISubject1: satIISubject1,
+        satIISubject2: satIISubject2
+      },
+      averageScore: averageScore,
+      basePercentage: basePercentage,
+      satIBelowMinimum: americanDiplomaConfig ? satI < americanDiplomaConfig.sat_i_minimum_threshold : false,
+      satIIBelowMinimum: !!(requiresSatII && americanDiplomaConfig && satII !== null && satII < americanDiplomaConfig.sat_ii_minimum_threshold),
+      submittedAt: new Date().toISOString()
+    };
+  }
+
   if (certSelect.value === 'other') {
     const certificateName = document.getElementById('other-certificate-name').value.trim();
     const percentage = Math.round((parseFloat(document.getElementById('other-percentage').value) || 0) * 100) / 100;
@@ -2852,6 +3027,14 @@ function sendData(payload, submitBtn, originalText) {
     apiPayload.emiratiData = {
       subjects: payload.emiratiData.subjects
     };
+  } else if (payload.americanDiplomaData) {
+    apiPayload.americanDiplomaData = {
+      bestEightScores: payload.americanDiplomaData.bestEightScores,
+      satI: payload.americanDiplomaData.satI,
+      satII: payload.americanDiplomaData.satII,
+      satIISubject1: payload.americanDiplomaData.satIISubject1,
+      satIISubject2: payload.americanDiplomaData.satIISubject2
+    };
   } else {
     apiPayload.yearOfStudy = payload.yearOfStudy;
     apiPayload.standardGrades = payload.grades.map(g => ({
@@ -3062,6 +3245,26 @@ function showSuccessScreen(payload, mode, serverPath = '') {
     if (saudiGpaRow && saudiGpaVal) {
       saudiGpaRow.style.display = 'flex';
       saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+    }
+  } else if (payload.americanDiplomaData) {
+    // No single equivalent total for this certificate (§8) — show the 3 admission criteria instead.
+    const am = payload.americanDiplomaData;
+    if (programRow) {
+      programRow.style.display = 'flex';
+      const programLabel = document.getElementById('receipt-program-label');
+      if (programLabel) programLabel.textContent = 'SAT I / SAT II:';
+      document.getElementById('receipt-program').textContent = am.satII !== null && am.satII !== undefined
+        ? `${am.satI} / ${am.satII}`
+        : `${am.satI} (SAT II غير مطلوب)`;
+    }
+    if (yearRow) {
+      yearRow.style.display = 'flex';
+      if (yearLabel) yearLabel.textContent = 'النسبة الأساسية (من 40):';
+      document.getElementById('receipt-year').textContent = (payload.basePercentage || 0).toFixed(2) + ' / 40';
+    }
+    if (saudiGpaRow && saudiGpaVal) {
+      saudiGpaRow.style.display = 'flex';
+      saudiGpaVal.textContent = 'المعدل: ' + (payload.averageScore || 0).toFixed(2) + ' / 100';
     }
   } else {
     if (programRow) programRow.style.display = 'none';
@@ -3275,6 +3478,22 @@ function downloadReceiptFile(payload, format) {
       csvRows.push('المادة,الدرجة');
       em.subjects.forEach(s => {
         csvRows.push(`"${s.subjectName}",${s.mark}`);
+      });
+    } else if (payload.americanDiplomaData) {
+      const am = payload.americanDiplomaData;
+      csvRows.push(`المعدل (من 100),${(payload.averageScore || 0)}`);
+      csvRows.push(`النسبة الأساسية (من 40),${(payload.basePercentage || 0)}`);
+      csvRows.push(`SAT I,${am.satI}`);
+      if (am.satII !== null && am.satII !== undefined) {
+        csvRows.push(`SAT II,${am.satII}`);
+        csvRows.push(`مادة SAT II الأولى,"${am.satIISubject1 || ''}"`);
+        csvRows.push(`مادة SAT II الثانية,"${am.satIISubject2 || ''}"`);
+      }
+      csvRows.push(`تاريخ الإرسال,${payload.submittedAt}`);
+      csvRows.push('');
+      csvRows.push('المادة,الدرجة');
+      am.bestEightScores.forEach((score, i) => {
+        csvRows.push(`"المادة ${i + 1}",${score}`);
       });
     } else {
       csvRows.push(`المسار الأكاديمي,"${payload.track}"`);

@@ -109,6 +109,10 @@ namespace StudentRegistry.Application.Services
             {
                 ProcessEmiratiCertificate(createDto, student);
             }
+            else if (cert.Contains("الدبلومة الأمريكية") || cert.Equals("americanDiploma", StringComparison.OrdinalIgnoreCase))
+            {
+                ProcessAmericanDiplomaCertificate(createDto, student);
+            }
             else
             {
                 ProcessStandardCertificate(createDto, student);
@@ -715,6 +719,56 @@ namespace StudentRegistry.Application.Services
                 Denominator = denominator,
                 Percentage = percentage,
                 EquivalentTotal = CalculateEquivalentTotal(percentage)
+            };
+        }
+
+        // §American Diploma — no EquivalentTotal at all (unlike every certificate above): admission
+        // depends on BasePercentage + SatI + SatII together, not one combined number (§8). The
+        // student's 8 best subjects have no fixed names, so they're stored as "المادة N" rows.
+        // The 1050/1100 admission minimums (§6) are recorded as informational flags only — never
+        // enforced as a rejection here (that already happened, correctly, nowhere: the validator
+        // never blocks on them either).
+        private void ProcessAmericanDiplomaCertificate(StudentCreateDto dto, Student student)
+        {
+            var am = dto.AmericanDiplomaData;
+            if (am?.BestEightScores == null || am.BestEightScores.Count != AmericanDiplomaConstants.BestSubjectsCount)
+                throw new ArgumentException("يجب إدخال درجات أفضل 8 مواد.");
+
+            decimal sum = 0;
+            for (int i = 0; i < am.BestEightScores.Count; i++)
+            {
+                decimal score = am.BestEightScores[i];
+                sum += score;
+
+                student.StandardGrades.Add(new StandardStudentGrades
+                {
+                    Student = student,
+                    YearOfStudy = "12",
+                    SubjectName = $"المادة {i + 1}",
+                    Grade = score,
+                    MaxMark = AmericanDiplomaConstants.MaxMarkPerSubject,
+                    WeightedPercentage = Math.Round((score / AmericanDiplomaConstants.MaxMarkPerSubject) * 100, 2),
+                    Achieved = score,
+                    GradeLevel = 12
+                });
+            }
+
+            decimal average = sum / AmericanDiplomaConstants.BestSubjectsCount;
+            decimal basePercentage = Math.Round(average * AmericanDiplomaConstants.BasePercentageWeight / 100m, 2);
+
+            bool requiresSatII = AmericanDiplomaConstants.RequiresSatII(dto.WishCollege);
+
+            student.AmericanDiplomaTotals = new AmericanDiplomaStudentTotals
+            {
+                Student = student,
+                AverageScore = Math.Round(average, 2),
+                BasePercentage = basePercentage,
+                SatI = am.SatI,
+                SatII = requiresSatII ? am.SatII : null,
+                SatIISubject1 = requiresSatII ? am.SatIISubject1 : null,
+                SatIISubject2 = requiresSatII ? am.SatIISubject2 : null,
+                SatIBelowMinimum = am.SatI < AmericanDiplomaConstants.SatIMinimumThreshold,
+                SatIIBelowMinimum = requiresSatII && am.SatII.HasValue && am.SatII.Value < AmericanDiplomaConstants.SatIIMinimumThreshold
             };
         }
 

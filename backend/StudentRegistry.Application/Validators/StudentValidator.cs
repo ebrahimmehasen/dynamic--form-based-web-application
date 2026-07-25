@@ -149,7 +149,7 @@ namespace StudentRegistry.Application.Validators
                 });
             });
 
-            When(x => !IsSaudiCert(x.Certification) && !IsIgCert(x.Certification) && !IsKuwaitiCert(x.Certification) && !IsQatariCert(x.Certification) && !IsOmaniCert(x.Certification) && !IsYemeniCert(x.Certification) && !IsBahrainiCert(x.Certification) && !IsPalestinianCert(x.Certification) && !IsOtherCert(x.Certification) && !IsEgyptianCert(x.Certification) && !IsAzharCert(x.Certification) && !IsEmiratiCert(x.Certification), () =>
+            When(x => !IsSaudiCert(x.Certification) && !IsIgCert(x.Certification) && !IsKuwaitiCert(x.Certification) && !IsQatariCert(x.Certification) && !IsOmaniCert(x.Certification) && !IsYemeniCert(x.Certification) && !IsBahrainiCert(x.Certification) && !IsPalestinianCert(x.Certification) && !IsOtherCert(x.Certification) && !IsEgyptianCert(x.Certification) && !IsAzharCert(x.Certification) && !IsEmiratiCert(x.Certification) && !IsAmericanDiplomaCert(x.Certification), () =>
             {
                 RuleFor(x => x.YearOfStudy)
                     .NotEmpty().WithMessage("الرجاء اختيار السنة الدراسية.");
@@ -445,6 +445,62 @@ namespace StudentRegistry.Application.Validators
                         ValidateSingleYearSubjectRow(subject, excludedSubject: null));
                 });
             });
+
+            // §American Diploma — no track selector at all (mirrors "أخرى"/Emirati). Structural
+            // validation only: exactly 8 best-subject scores (0-100 each), SAT I always required
+            // (400-1600), SAT II (+ its two subjects) required only for colleges where
+            // AmericanDiplomaConstants.RequiresSatII(WishCollege) is true. The 1050/1100 admission
+            // minimums from §6 are NEVER enforced here — they are a UI-only, non-blocking warning.
+            When(x => IsAmericanDiplomaCert(x.Certification), () =>
+            {
+                RuleFor(x => x.AmericanDiplomaData)
+                    .NotNull().WithMessage("بيانات الدبلومة الأمريكية مطلوبة.");
+
+                When(x => x.AmericanDiplomaData != null, () =>
+                {
+                    RuleFor(x => x.AmericanDiplomaData!.BestEightScores)
+                        .Must(scores => scores != null && scores.Count == AmericanDiplomaConstants.BestSubjectsCount)
+                        .WithMessage($"يجب إدخال درجات أفضل {AmericanDiplomaConstants.BestSubjectsCount} مواد بالضبط.");
+
+                    RuleForEach(x => x.AmericanDiplomaData!.BestEightScores)
+                        .InclusiveBetween(0, AmericanDiplomaConstants.MaxMarkPerSubject)
+                        .WithMessage("درجة كل مادة يجب أن تكون بين 0 و100.");
+
+                    RuleFor(x => x.AmericanDiplomaData!.SatI)
+                        .InclusiveBetween(AmericanDiplomaConstants.SatMin, AmericanDiplomaConstants.SatMax)
+                        .WithMessage($"درجة SAT I يجب أن تكون بين {AmericanDiplomaConstants.SatMin} و{AmericanDiplomaConstants.SatMax}.");
+
+                    // §5/§6 — the Wish section's college determines whether SAT II applies at all,
+                    // and (when it does) which two subjects are valid; the client-side gating is
+                    // never trusted on its own.
+                    When(x => AmericanDiplomaConstants.RequiresSatII(x.WishCollege), () =>
+                    {
+                        RuleFor(x => x.AmericanDiplomaData!.SatII)
+                            .NotNull().WithMessage("درجة SAT II مطلوبة للكلية المختارة.");
+
+                        RuleFor(x => x.AmericanDiplomaData!.SatII!.Value)
+                            .InclusiveBetween(AmericanDiplomaConstants.SatMin, AmericanDiplomaConstants.SatMax)
+                            .WithMessage($"درجة SAT II يجب أن تكون بين {AmericanDiplomaConstants.SatMin} و{AmericanDiplomaConstants.SatMax}.")
+                            .When(x => x.AmericanDiplomaData!.SatII.HasValue);
+
+                        RuleFor(x => x.AmericanDiplomaData!.SatIISubject1)
+                            .Must((dto, s1) => s1 == AmericanDiplomaConstants.GetSatIIFixedFirstSubject(dto.WishCollege))
+                            .WithMessage("مادة SAT II الأولى غير صحيحة لهذه الكلية.");
+
+                        RuleFor(x => x.AmericanDiplomaData!.SatIISubject2)
+                            .Must((dto, s2) => s2 != null && AmericanDiplomaConstants.GetSatIISecondSubjectOptions(dto.WishCollege).Contains(s2))
+                            .WithMessage("الرجاء اختيار مادة SAT II الثانية من القائمة المتاحة لهذه الكلية.");
+                    });
+
+                    // Colleges that don't require SAT II (تجارة) must not submit it — defense in depth.
+                    When(x => !AmericanDiplomaConstants.RequiresSatII(x.WishCollege), () =>
+                    {
+                        RuleFor(x => x.AmericanDiplomaData!.SatII)
+                            .Must(v => v == null)
+                            .WithMessage("درجة SAT II غير مطلوبة للكلية المختارة.");
+                    });
+                });
+            });
         }
 
         // §Emirati — every core subject must be present exactly once; anything beyond that must be
@@ -624,6 +680,12 @@ namespace StudentRegistry.Application.Validators
         {
             if (string.IsNullOrEmpty(cert)) return false;
             return cert.Contains("الشهادة الإماراتية") || cert.Equals("emirati", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool IsAmericanDiplomaCert(string cert)
+        {
+            if (string.IsNullOrEmpty(cert)) return false;
+            return cert.Contains("الدبلومة الأمريكية") || cert.Equals("americanDiploma", StringComparison.OrdinalIgnoreCase);
         }
 
         private bool WeightsSumToOneHundred(KuwaitiDataCreateDto? data)

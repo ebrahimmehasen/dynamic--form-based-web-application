@@ -503,6 +503,22 @@ body {
   margin-right: 0.4rem;
 }
 
+.field-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.35rem;
+  line-height: 1.6;
+}
+
+.field-warning {
+  display: none;
+  font-size: 0.8rem;
+  color: var(--accent-color);
+  font-weight: 600;
+  margin-top: 0.35rem;
+  line-height: 1.6;
+}
+
 .grades-group-header td {
   background-color: var(--primary-light) !important;
   color: var(--primary-color);

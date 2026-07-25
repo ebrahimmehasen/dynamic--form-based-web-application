@@ -15,6 +15,7 @@ USE [StudentRegistryDb];
 GO
 
 -- 2. Drop existing tables if they exist (in reverse order of foreign keys)
+IF OBJECT_ID('dbo.AmericanDiplomaStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.AmericanDiplomaStudentTotals;
 IF OBJECT_ID('dbo.EmiratiStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.EmiratiStudentTotals;
 IF OBJECT_ID('dbo.AzharStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.AzharStudentTotals;
 IF OBJECT_ID('dbo.EgyptianStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.EgyptianStudentTotals;
@@ -310,6 +311,27 @@ CREATE TABLE dbo.EmiratiStudentTotals (
     EquivalentTotal DECIMAL(6,2) NOT NULL,
     CONSTRAINT PK_EmiratiStudentTotals PRIMARY KEY CLUSTERED (StudentId ASC),
     CONSTRAINT FK_EmiratiStudentTotals_Students_StudentId FOREIGN KEY (StudentId)
+        REFERENCES dbo.Students (Id) ON DELETE CASCADE
+);
+GO
+
+-- الدبلومة الأمريكية: NO equivalent-total conversion — admission depends on BasePercentage (from
+-- the best 8 subjects, out of 40) + SatI + SatII together, per the college selected in "الرغبة".
+-- SatII/SatIISubject1/SatIISubject2 are NULL for colleges that don't require it (تجارة).
+-- SatIBelowMinimum/SatIIBelowMinimum are informational flags only (1050/1100 thresholds) — never
+-- enforced as a rejection.
+CREATE TABLE dbo.AmericanDiplomaStudentTotals (
+    StudentId INT NOT NULL,
+    AverageScore DECIMAL(5,2) NOT NULL,
+    BasePercentage DECIMAL(5,2) NOT NULL,
+    SatI INT NOT NULL,
+    SatII INT NULL,
+    SatIISubject1 NVARCHAR(50) NULL,
+    SatIISubject2 NVARCHAR(50) NULL,
+    SatIBelowMinimum BIT NOT NULL,
+    SatIIBelowMinimum BIT NOT NULL,
+    CONSTRAINT PK_AmericanDiplomaStudentTotals PRIMARY KEY CLUSTERED (StudentId ASC),
+    CONSTRAINT FK_AmericanDiplomaStudentTotals_Students_StudentId FOREIGN KEY (StudentId)
         REFERENCES dbo.Students (Id) ON DELETE CASCADE
 );
 GO
