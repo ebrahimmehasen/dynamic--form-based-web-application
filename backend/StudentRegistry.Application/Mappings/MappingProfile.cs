@@ -25,7 +25,13 @@ namespace StudentRegistry.Application.Mappings
                 .ForMember(dest => dest.QatariTotals, opt => opt.MapFrom(src => src.QatariTotals))
                 .ForMember(dest => dest.OmaniTotals, opt => opt.MapFrom(src => src.OmaniTotals))
                 .ForMember(dest => dest.YemeniTotals, opt => opt.MapFrom(src => src.YemeniTotals))
-                .ForMember(dest => dest.BahrainiTotals, opt => opt.MapFrom(src => src.BahrainiTotals));
+                .ForMember(dest => dest.BahrainiTotals, opt => opt.MapFrom(src => src.BahrainiTotals))
+                .ForMember(dest => dest.PalestinianTotals, opt => opt.MapFrom(src => src.PalestinianTotals))
+                .ForMember(dest => dest.OtherTotals, opt => opt.MapFrom(src => src.OtherTotals))
+                .ForMember(dest => dest.EgyptianTotals, opt => opt.MapFrom(src => src.EgyptianTotals))
+                .ForMember(dest => dest.EgyptianGrades, opt => opt.MapFrom(src => src.EgyptianTotals != null ? src.StandardGrades.Where(g => g.GradeLevel != null) : Enumerable.Empty<StandardStudentGrades>()))
+                .ForMember(dest => dest.AzharTotals, opt => opt.MapFrom(src => src.AzharTotals))
+                .ForMember(dest => dest.AzharGrades, opt => opt.MapFrom(src => src.AzharTotals != null ? src.StandardGrades.Where(g => g.GradeLevel != null) : Enumerable.Empty<StandardStudentGrades>()));
 
             CreateMap<SaudiStudentTotals, SaudiTotalsResponseDto>();
             CreateMap<SaudiStudentGrades, SaudiGradeResponseDto>();
@@ -58,6 +64,16 @@ namespace StudentRegistry.Application.Mappings
             CreateMap<BahrainiStudentTotals, BahrainiTotalsResponseDto>()
                 .ForMember(dest => dest.Disclaimer, opt => opt.MapFrom(_ => BahrainiConstants.Disclaimer));
 
+            CreateMap<PalestinianStudentTotals, PalestinianTotalsResponseDto>()
+                .ForMember(dest => dest.Disclaimer, opt => opt.MapFrom(_ => PalestinianConstants.Disclaimer));
+
+            CreateMap<OtherStudentTotals, OtherTotalsResponseDto>()
+                .ForMember(dest => dest.Disclaimer, opt => opt.MapFrom(_ => KuwaitiConstants.Disclaimer));
+
+            CreateMap<EgyptianStudentTotals, EgyptianTotalsResponseDto>();
+
+            CreateMap<AzharStudentTotals, AzharTotalsResponseDto>();
+
             CreateMap<StandardStudentGrades, SingleYearSubjectMarkResponseDto>()
                 .ForMember(dest => dest.Mark, opt => opt.MapFrom(src => src.Grade));
 
@@ -73,7 +89,11 @@ namespace StudentRegistry.Application.Mappings
                 .ForMember(dest => dest.QatariTotals, opt => opt.Ignore())
                 .ForMember(dest => dest.OmaniTotals, opt => opt.Ignore())
                 .ForMember(dest => dest.YemeniTotals, opt => opt.Ignore())
-                .ForMember(dest => dest.BahrainiTotals, opt => opt.Ignore());
+                .ForMember(dest => dest.BahrainiTotals, opt => opt.Ignore())
+                .ForMember(dest => dest.PalestinianTotals, opt => opt.Ignore())
+                .ForMember(dest => dest.OtherTotals, opt => opt.Ignore())
+                .ForMember(dest => dest.EgyptianTotals, opt => opt.Ignore())
+                .ForMember(dest => dest.AzharTotals, opt => opt.Ignore());
 
             // Coefficient is server-computed and validated (Weighted / Achieved) in StudentService,
             // not mapped directly from client input.

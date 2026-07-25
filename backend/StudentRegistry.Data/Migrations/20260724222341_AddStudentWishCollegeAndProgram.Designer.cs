@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using StudentRegistry.Data.DbContext;
 
@@ -11,9 +12,11 @@ using StudentRegistry.Data.DbContext;
 namespace StudentRegistry.Data.Migrations
 {
     [DbContext(typeof(StudentRegistryDbContext))]
-    partial class StudentRegistryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260724222341_AddStudentWishCollegeAndProgram")]
+    partial class AddStudentWishCollegeAndProgram
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,37 +24,6 @@ namespace StudentRegistry.Data.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("StudentRegistry.Domain.Entities.AzharStudentTotals", b =>
-                {
-                    b.Property<int>("StudentId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("Denominator")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("decimal(6,2)");
-
-                    b.Property<decimal>("EquivalentTotal")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("decimal(6,2)");
-
-                    b.Property<decimal>("FinalTotal")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("decimal(6,2)");
-
-                    b.Property<decimal>("Percentage")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
-
-                    b.Property<string>("Section")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.HasKey("StudentId");
-
-                    b.ToTable("AzharStudentTotals", "dbo");
-                });
 
             modelBuilder.Entity("StudentRegistry.Domain.Entities.BahrainiStudentTotals", b =>
                 {
@@ -82,38 +54,6 @@ namespace StudentRegistry.Data.Migrations
                     b.HasKey("StudentId");
 
                     b.ToTable("BahrainiStudentTotals", "dbo");
-                });
-
-            modelBuilder.Entity("StudentRegistry.Domain.Entities.EgyptianStudentTotals", b =>
-                {
-                    b.Property<int>("StudentId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("Denominator")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("decimal(6,2)");
-
-                    b.Property<decimal>("FinalTotal")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("decimal(6,2)");
-
-                    b.Property<decimal>("Percentage")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
-
-                    b.Property<string>("SubjectSystem")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("Track")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.HasKey("StudentId");
-
-                    b.ToTable("EgyptianStudentTotals", "dbo");
                 });
 
             modelBuilder.Entity("StudentRegistry.Domain.Entities.IgStudentGradeCounts", b =>
@@ -493,9 +433,6 @@ namespace StudentRegistry.Data.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
-                    b.Property<int>("GraduationYear")
-                        .HasColumnType("int");
-
                     b.Property<string>("GuardianName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -595,33 +532,11 @@ namespace StudentRegistry.Data.Migrations
                     b.ToTable("YemeniStudentTotals", "dbo");
                 });
 
-            modelBuilder.Entity("StudentRegistry.Domain.Entities.AzharStudentTotals", b =>
-                {
-                    b.HasOne("StudentRegistry.Domain.Entities.Student", "Student")
-                        .WithOne("AzharTotals")
-                        .HasForeignKey("StudentRegistry.Domain.Entities.AzharStudentTotals", "StudentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Student");
-                });
-
             modelBuilder.Entity("StudentRegistry.Domain.Entities.BahrainiStudentTotals", b =>
                 {
                     b.HasOne("StudentRegistry.Domain.Entities.Student", "Student")
                         .WithOne("BahrainiTotals")
                         .HasForeignKey("StudentRegistry.Domain.Entities.BahrainiStudentTotals", "StudentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Student");
-                });
-
-            modelBuilder.Entity("StudentRegistry.Domain.Entities.EgyptianStudentTotals", b =>
-                {
-                    b.HasOne("StudentRegistry.Domain.Entities.Student", "Student")
-                        .WithOne("EgyptianTotals")
-                        .HasForeignKey("StudentRegistry.Domain.Entities.EgyptianStudentTotals", "StudentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -751,11 +666,7 @@ namespace StudentRegistry.Data.Migrations
 
             modelBuilder.Entity("StudentRegistry.Domain.Entities.Student", b =>
                 {
-                    b.Navigation("AzharTotals");
-
                     b.Navigation("BahrainiTotals");
-
-                    b.Navigation("EgyptianTotals");
 
                     b.Navigation("IgGradeCounts");
 

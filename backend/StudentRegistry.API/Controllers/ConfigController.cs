@@ -24,7 +24,16 @@ namespace StudentRegistry.API.Controllers
                     // §1.6 — Omani has one track only; the dropdown offers a single fixed value.
                     { "omani", new { name = "شهادة عمانية", tracks = new[] { OmaniConstants.SingleTrack } } },
                     // §1.1 — Yemeni has one track only; the dropdown offers a single fixed value.
-                    { "yemeni", new { name = "شهادة يمنية", tracks = new[] { YemeniConstants.SingleTrack } } }
+                    { "yemeni", new { name = "شهادة يمنية", tracks = new[] { YemeniConstants.SingleTrack } } },
+                    // §1.1 — percentage-in only: no subjects, no subjects-palestinian config endpoint.
+                    // Track (علمي/أدبي) is recorded but never changes the calculation.
+                    { "palestinian", new { name = "شهادة فلسطينية (توجيهي)", tracks = new[] { PalestinianConstants.ScientificBranch, PalestinianConstants.LiteraryBranch } } },
+                    { "egyptian", new { name = "الثانوية العامة المصرية", tracks = EgyptianConstants.Tracks } },
+                    { "azhar", new { name = "الثانوية الأزهرية", tracks = AzharConstants.Sections } },
+                    // §1.1 — must stay LAST in the list. Percentage-in only, free-text certificate
+                    // name, no track selector at all (empty tracks array — the UI renders no track
+                    // dropdown for this cert and never populates one).
+                    { "other", new { name = "أخرى", tracks = System.Array.Empty<string>() } }
                 },
                 subjects = new Dictionary<string, string[]>
                 {
@@ -168,6 +177,64 @@ namespace StudentRegistry.API.Controllers
             };
 
             return Ok(bahrainiConfig);
+        }
+
+        [HttpGet("subjects-egyptian")]
+        public IActionResult GetEgyptianSubjectsConfig()
+        {
+            // Nested by track then system so the client can look up the exact subject set (each
+            // with its fixed max mark) for whatever combination the student picks. §3/§4.
+            var subjectsByTrackAndSystem = new Dictionary<string, Dictionary<string, object[]>>();
+            foreach (var track in EgyptianConstants.Tracks)
+            {
+                var perSystem = new Dictionary<string, object[]>();
+                foreach (var system in EgyptianConstants.Systems)
+                {
+                    perSystem[system] = EgyptianConstants.GetSubjectMaxMarks(track, system)
+                        .Select(kv => (object)new { name = kv.Key, maxMark = kv.Value })
+                        .ToArray();
+                }
+                subjectsByTrackAndSystem[track] = perSystem;
+            }
+
+            var egyptianConfig = new
+            {
+                tracks = EgyptianConstants.Tracks,
+                systems = EgyptianConstants.Systems,
+                subjects_by_track_and_system = subjectsByTrackAndSystem,
+                denominators = new
+                {
+                    new_system = EgyptianConstants.NewSystemDenominator,
+                    old_system = EgyptianConstants.OldSystemDenominator
+                },
+                new_system_name = EgyptianConstants.NewSystem,
+                old_system_name = EgyptianConstants.OldSystem
+            };
+
+            return Ok(egyptianConfig);
+        }
+
+        [HttpGet("subjects-azhar")]
+        public IActionResult GetAzharSubjectsConfig()
+        {
+            var subjectsBySection = new Dictionary<string, object[]>();
+            var denominators = new Dictionary<string, decimal>();
+            foreach (var section in AzharConstants.Sections)
+            {
+                subjectsBySection[section] = AzharConstants.GetSubjectMaxMarks(section)
+                    .Select(kv => (object)new { name = kv.Key, maxMark = kv.Value })
+                    .ToArray();
+                denominators[section] = AzharConstants.GetDenominator(section);
+            }
+
+            var azharConfig = new
+            {
+                sections = AzharConstants.Sections,
+                subjects_by_section = subjectsBySection,
+                denominators = denominators
+            };
+
+            return Ok(azharConfig);
         }
     }
 }

@@ -29,6 +29,10 @@ namespace StudentRegistry.Repository.Implementations
                 .Include(s => s.OmaniTotals)
                 .Include(s => s.YemeniTotals)
                 .Include(s => s.BahrainiTotals)
+                .Include(s => s.PalestinianTotals)
+                .Include(s => s.OtherTotals)
+                .Include(s => s.EgyptianTotals)
+                .Include(s => s.AzharTotals)
                 .FirstOrDefaultAsync(s => s.Id == id);
         }
 
@@ -45,6 +49,10 @@ namespace StudentRegistry.Repository.Implementations
                 .Include(s => s.OmaniTotals)
                 .Include(s => s.YemeniTotals)
                 .Include(s => s.BahrainiTotals)
+                .Include(s => s.PalestinianTotals)
+                .Include(s => s.OtherTotals)
+                .Include(s => s.EgyptianTotals)
+                .Include(s => s.AzharTotals)
                 .FirstOrDefaultAsync(s => s.NationalId == nationalId);
         }
 

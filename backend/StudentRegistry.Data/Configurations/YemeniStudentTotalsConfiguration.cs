@@ -14,6 +14,7 @@ namespace StudentRegistry.Data.Configurations
 
             builder.Property(t => t.FinalTotal).HasPrecision(6, 2);
             builder.Property(t => t.Percentage).HasPrecision(5, 2);
+            builder.Property(t => t.EquivalentTotal).HasPrecision(6, 2);
 
             builder.HasOne(t => t.Student)
                 .WithOne(s => s.YemeniTotals)

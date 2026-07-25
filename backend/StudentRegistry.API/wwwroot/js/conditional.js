@@ -5,6 +5,8 @@ let qatariConfig = null;
 let omaniConfig = null;
 let yemeniConfig = null;
 let bahrainiConfig = null;
+let egyptianConfig = null;
+let azharConfig = null;
 
 // Fetch config from the ConfigController API (single source of truth)
 async function loadSubjectsConfig() {
@@ -90,6 +92,30 @@ async function loadSubjectsConfig() {
   } catch (error) {
     console.error('Could not load Bahraini subjects configuration.', error);
     showAlert('form-alert', 'تعذر تحميل بيانات مواد الشهادة البحرينية من الخادم. الرجاء تحديث الصفحة.', 'danger');
+  }
+
+  try {
+    const response = await fetch('/api/config/subjects-egyptian');
+    if (response.ok) {
+      egyptianConfig = await response.json();
+    } else {
+      throw new Error('Failed to load /api/config/subjects-egyptian: ' + response.status);
+    }
+  } catch (error) {
+    console.error('Could not load Egyptian subjects configuration.', error);
+    showAlert('form-alert', 'تعذر تحميل بيانات مواد الثانوية العامة المصرية من الخادم. الرجاء تحديث الصفحة.', 'danger');
+  }
+
+  try {
+    const response = await fetch('/api/config/subjects-azhar');
+    if (response.ok) {
+      azharConfig = await response.json();
+    } else {
+      throw new Error('Failed to load /api/config/subjects-azhar: ' + response.status);
+    }
+  } catch (error) {
+    console.error('Could not load Azhar subjects configuration.', error);
+    showAlert('form-alert', 'تعذر تحميل بيانات مواد الثانوية الأزهرية من الخادم. الرجاء تحديث الصفحة.', 'danger');
   }
 }
 
@@ -201,12 +227,172 @@ function getActiveSubjects(certKey, yearVal) {
   }
 }
 
+// "الرغبة" (Wish) section — desired college + program. Selection-only, never used in any
+// equivalence calculation. Mirrors backend WishConstants.
+const WISH_PROGRAMS_BY_COLLEGE = {
+  'هندسة': ['تشييد', 'ميكاترونكس'],
+  'حاسبات': ['نظم معلومات طيران', 'معلوماتية طبية', 'ذكاء اصطناعي'],
+  'تجارة': ['إدارة أعمال', 'محاسبة']
+};
+const WISH_NO_PROGRAM_COLLEGES = ['طب بشري', 'طب أسنان', 'تمريض'];
+const WISH_PHARMACY_COLLEGE = 'صيدلة';
+const WISH_PHARMACY_PROGRAM = 'إكلينيكية';
+
+// Egyptian Thanaweya Amma — the Wish section's college restricts which Track options are offered
+// (only for this certification; mirrors backend EgyptianConstants.GetAllowedTracksForCollege).
+const EGYPTIAN_TRACKS_BY_COLLEGE = {
+  'طب بشري': ['علمي علوم'],
+  'طب أسنان': ['علمي علوم'],
+  'صيدلة': ['علمي علوم'],
+  'تمريض': ['علمي علوم'],
+  'حاسبات': ['علمي علوم', 'علمي رياضة'],
+  'هندسة': ['علمي رياضة'],
+  'تجارة': ['علمي علوم', 'علمي رياضة', 'أدبي']
+};
+
+function getEgyptianAllowedTracks(collegeVal) {
+  return EGYPTIAN_TRACKS_BY_COLLEGE[collegeVal] || [];
+}
+
+// Rebuilds the shared Track select's options for the Egyptian cert based on the currently selected
+// Wish college. If the previously chosen track is no longer allowed, resets it and forces the
+// student to choose again from the new allowed set (§5/§6) — a no-op for every other certification.
+function refreshEgyptianTrackOptions() {
+  const certSelect = document.getElementById('cert-select');
+  if (!certSelect || certSelect.value !== 'egyptian') return;
+
+  const trackSelect = document.getElementById('track-select');
+  const trackLockedIndicator = document.getElementById('track-locked-msg');
+  const collegeVal = document.getElementById('wish-college').value;
+  const allowedTracks = getEgyptianAllowedTracks(collegeVal);
+  const previousValue = trackSelect.value;
+
+  trackSelect.innerHTML = '<option value="">-- اختر --</option>';
+  allowedTracks.forEach(track => {
+    const option = document.createElement('option');
+    option.value = track;
+    option.textContent = track;
+    trackSelect.appendChild(option);
+  });
+
+  if (allowedTracks.includes(previousValue)) {
+    trackSelect.value = previousValue;
+    return;
+  }
+
+  // Previously selected track (if any) is no longer valid for the new college — reset it.
+  trackSelect.value = '';
+  trackSelect.disabled = false;
+  if (trackLockedIndicator) trackLockedIndicator.style.display = 'none';
+  deactivateSection('section-year');
+  deactivateSection('section-grades');
+  if (typeof generateEgyptianTrackUI === 'function') {
+    generateEgyptianTrackUI('');
+  }
+  updateProgressIndicator();
+}
+
+// Rebuild Section C (Wish) program dropdown based on the selected college.
+function initWishSection() {
+  const collegeSelect = document.getElementById('wish-college');
+  const programSelect = document.getElementById('wish-program');
+  const programGroup = document.getElementById('wish-program-group');
+
+  collegeSelect.addEventListener('change', function () {
+    const college = this.value;
+
+    programSelect.innerHTML = '<option value="">-- اختر --</option>';
+    programGroup.style.display = 'block';
+    programSelect.disabled = true;
+    programSelect.value = '';
+
+    if (WISH_PROGRAMS_BY_COLLEGE[college]) {
+      WISH_PROGRAMS_BY_COLLEGE[college].forEach(program => {
+        const option = document.createElement('option');
+        option.value = program;
+        option.textContent = program;
+        programSelect.appendChild(option);
+      });
+      programSelect.disabled = false;
+    } else if (college === WISH_PHARMACY_COLLEGE) {
+      const option = document.createElement('option');
+      option.value = WISH_PHARMACY_PROGRAM;
+      option.textContent = WISH_PHARMACY_PROGRAM;
+      programSelect.appendChild(option);
+      programSelect.value = WISH_PHARMACY_PROGRAM;
+      programSelect.disabled = true;
+    } else if (WISH_NO_PROGRAM_COLLEGES.includes(college)) {
+      programGroup.style.display = 'none';
+    }
+
+    refreshEgyptianTrackOptions();
+    refreshAzharTrackOptions();
+  });
+}
+
+// Azhar Thanaweya — the Wish section's college restricts which قسم options are offered (only for
+// this certification; mirrors backend AzharConstants.GetAllowedSectionsForCollege). قسم علمي
+// الأزهري covers both علوم ورياضة معًا، so every science-adjacent college maps to it.
+const AZHAR_SECTIONS_BY_COLLEGE = {
+  'طب بشري': ['علمي'],
+  'طب أسنان': ['علمي'],
+  'صيدلة': ['علمي'],
+  'تمريض': ['علمي'],
+  'هندسة': ['علمي'],
+  'حاسبات': ['علمي'],
+  'تجارة': ['علمي', 'أدبي']
+};
+
+function getAzharAllowedSections(collegeVal) {
+  return AZHAR_SECTIONS_BY_COLLEGE[collegeVal] || [];
+}
+
+// Rebuilds the shared Track select's options for the Azhar cert based on the currently selected
+// Wish college. If the previously chosen قسم is no longer allowed, resets it and forces the
+// student to choose again — a no-op for every other certification.
+function refreshAzharTrackOptions() {
+  const certSelect = document.getElementById('cert-select');
+  if (!certSelect || certSelect.value !== 'azhar') return;
+
+  const trackSelect = document.getElementById('track-select');
+  const trackLockedIndicator = document.getElementById('track-locked-msg');
+  const collegeVal = document.getElementById('wish-college').value;
+  const allowedSections = getAzharAllowedSections(collegeVal);
+  const previousValue = trackSelect.value;
+
+  trackSelect.innerHTML = '<option value="">-- اختر --</option>';
+  allowedSections.forEach(section => {
+    const option = document.createElement('option');
+    option.value = section;
+    option.textContent = section;
+    trackSelect.appendChild(option);
+  });
+
+  if (allowedSections.includes(previousValue)) {
+    trackSelect.value = previousValue;
+    return;
+  }
+
+  // Previously selected قسم is no longer valid for the new college — reset it.
+  trackSelect.value = '';
+  trackSelect.disabled = false;
+  if (trackLockedIndicator) trackLockedIndicator.style.display = 'none';
+  deactivateSection('section-year');
+  deactivateSection('section-grades');
+  if (typeof generateAzharGradesUI === 'function') {
+    generateAzharGradesUI('');
+  }
+  updateProgressIndicator();
+}
+
 // Initialise Conditional Handlers
 function initConditionals() {
   const certSelect = document.getElementById('cert-select');
   const trackSelect = document.getElementById('track-select');
   const yearSelect = document.getElementById('year-select');
   const trackLockedIndicator = document.getElementById('track-locked-msg');
+
+  initWishSection();
 
   // Load configuration
   loadSubjectsConfig().then(() => {
@@ -237,11 +423,24 @@ function initConditionals() {
 
     adjustYearSelect(certKey);
     yearSelect.value = '';
+    yearSelect.disabled = !certKey;
+
+    // Reset Egyptian's nested system-select + subjects table whenever the certification changes.
+    const egyptianSystemSelect = document.getElementById('egyptian-system-select');
+    const egyptianSystemGroup = document.getElementById('egyptian-system-group');
+    const egyptianSubjectsBlock = document.getElementById('egyptian-subjects-block');
+    if (egyptianSystemSelect) egyptianSystemSelect.value = '';
+    if (egyptianSystemGroup) egyptianSystemGroup.style.display = 'none';
+    if (egyptianSubjectsBlock) egyptianSubjectsBlock.style.display = 'none';
 
     // Hide following sections
     deactivateSection('section-track');
     deactivateSection('section-year');
     deactivateSection('section-grades');
+
+    // "أخرى" has no track selector at all — hide Section E entirely rather than just leaving it
+    // deactivated (an inactive .form-section is still fully visible, just unhighlighted).
+    document.getElementById('section-track').style.display = (certKey === 'other') ? 'none' : 'block';
 
     // Reset IG UI & standard table UI
     document.getElementById('non-ig-grades-container').style.display = 'block';
@@ -251,6 +450,10 @@ function initConditionals() {
     document.getElementById('omani-grades-container').style.display = 'none';
     document.getElementById('yemeni-grades-container').style.display = 'none';
     document.getElementById('bahraini-grades-container').style.display = 'none';
+    document.getElementById('palestinian-grades-container').style.display = 'none';
+    document.getElementById('other-grades-container').style.display = 'none';
+    document.getElementById('egyptian-grades-container').style.display = 'none';
+    document.getElementById('azhar-grades-container').style.display = 'none';
     document.getElementById('section-year').style.display = 'block';
     document.getElementById('section-grades-title').textContent = 'جدول إدخال الدرجات';
     document.getElementById('section-grades-desc').textContent = 'أدخل الدرجة والنسبة الموزونة لكل مادة أدناه. سيتم احتساب الدرجة المتحصلة تلقائياً.';
@@ -301,18 +504,70 @@ function initConditionals() {
         document.getElementById('bahraini-grades-container').style.display = 'block';
         document.getElementById('section-grades-title').textContent = '🧮 حاسبة الشهادة البحرينية';
         document.getElementById('section-grades-desc').textContent = 'أدخل درجة كل مادة من مواد المسار المختار (آخر سنتين دراسيتين فقط). المسار المهني/الفني غير مدعوم حالياً.';
+      } else if (certKey === 'palestinian') {
+        // Palestinian Tawjihi is percentage-in only — no subjects, no grades grid, no year-select.
+        document.getElementById('section-year').style.display = 'none';
+        document.getElementById('non-ig-grades-container').style.display = 'none';
+        document.getElementById('palestinian-grades-container').style.display = 'block';
+        document.getElementById('section-grades-title').textContent = '🧮 حاسبة الشهادة الفلسطينية (توجيهي)';
+        document.getElementById('section-grades-desc').textContent = 'أدخل النسبة المئوية النهائية كما هي مدونة بشهادة التوجيهي.';
+      } else if (certKey === 'other') {
+        // "أخرى" has NO track selector at all — percentage-in only, free-text certificate name.
+        document.getElementById('section-year').style.display = 'none';
+        document.getElementById('non-ig-grades-container').style.display = 'none';
+        document.getElementById('other-grades-container').style.display = 'block';
+        document.getElementById('section-grades-title').textContent = '🧮 حاسبة شهادة أخرى';
+        document.getElementById('section-grades-desc').textContent = 'أدخل اسم الشهادة والنسبة المئوية النهائية.';
+      } else if (certKey === 'egyptian') {
+        // Egyptian Thanaweya Amma — track selects the subject set; a nested "نظام المواد"
+        // select (rendered inside the container itself, mirroring Kuwaiti's years-count) then
+        // selects قديم/حديث, which fixes each subject's max mark and the overall denominator.
+        document.getElementById('section-year').style.display = 'none';
+        document.getElementById('non-ig-grades-container').style.display = 'none';
+        document.getElementById('egyptian-grades-container').style.display = 'block';
+        document.getElementById('section-grades-title').textContent = '🧮 حاسبة الثانوية العامة المصرية';
+        document.getElementById('section-grades-desc').textContent = 'اختر نظام المواد، ثم أدخل درجة كل مادة.';
+      } else if (certKey === 'azhar') {
+        // Azhar Thanaweya — القسم (from the shared track-select) selects a fixed subject list
+        // directly — no secondary system select, unlike Egyptian.
+        document.getElementById('section-year').style.display = 'none';
+        document.getElementById('non-ig-grades-container').style.display = 'none';
+        document.getElementById('azhar-grades-container').style.display = 'block';
+        document.getElementById('section-grades-title').textContent = '🧮 حاسبة الثانوية الأزهرية';
+        document.getElementById('section-grades-desc').textContent = 'أدخل درجة كل مادة من مواد القسم المختار.';
       }
 
-      // Populate track options
-      const tracks = appConfig.certifications[certKey].tracks;
-      tracks.forEach(track => {
-        const option = document.createElement('option');
-        option.value = track;
-        option.textContent = track;
-        trackSelect.appendChild(option);
-      });
-      activateSection('section-track');
+      if (certKey === 'other') {
+        // Skip the track step entirely — go straight to section-grades.
+        activateSection('section-grades');
+        if (typeof recalculateOther === 'function') {
+          recalculateOther();
+        }
+      } else {
+        // Populate track options — Egyptian's and Azhar's options are restricted by the Wish
+        // college (§5).
+        let tracks = appConfig.certifications[certKey].tracks;
+        if (certKey === 'egyptian') {
+          tracks = getEgyptianAllowedTracks(document.getElementById('wish-college').value);
+        } else if (certKey === 'azhar') {
+          tracks = getAzharAllowedSections(document.getElementById('wish-college').value);
+        }
+        tracks.forEach(track => {
+          const option = document.createElement('option');
+          option.value = track;
+          option.textContent = track;
+          trackSelect.appendChild(option);
+        });
+        activateSection('section-track');
+      }
     }
+
+    // Alerts are mutually exclusive: "أخرى" gets its own alert, الشهادة البحرينية keeps its own
+    // embedded alert (untouched), and every other certification gets the shared general alert.
+    document.getElementById('general-cert-alert').style.display =
+      (certKey && certKey !== 'other' && certKey !== 'bahraini') ? 'block' : 'none';
+    document.getElementById('other-cert-alert').style.display =
+      (certKey === 'other') ? 'block' : 'none';
 
     updateProgressIndicator();
   });
@@ -365,6 +620,21 @@ function initConditionals() {
         activateSection('section-grades');
         if (typeof generateBahrainiGradesUI === 'function') {
           generateBahrainiGradesUI(trackVal);
+        }
+      } else if (certKey === 'palestinian') {
+        activateSection('section-grades');
+        if (typeof recalculatePalestinian === 'function') {
+          recalculatePalestinian();
+        }
+      } else if (certKey === 'egyptian') {
+        activateSection('section-grades');
+        if (typeof generateEgyptianTrackUI === 'function') {
+          generateEgyptianTrackUI(trackVal);
+        }
+      } else if (certKey === 'azhar') {
+        activateSection('section-grades');
+        if (typeof generateAzharGradesUI === 'function') {
+          generateAzharGradesUI(trackVal);
         }
       } else {
         yearSelect.value = '';

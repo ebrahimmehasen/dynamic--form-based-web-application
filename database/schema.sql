@@ -15,6 +15,10 @@ USE [StudentRegistryDb];
 GO
 
 -- 2. Drop existing tables if they exist (in reverse order of foreign keys)
+IF OBJECT_ID('dbo.AzharStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.AzharStudentTotals;
+IF OBJECT_ID('dbo.EgyptianStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.EgyptianStudentTotals;
+IF OBJECT_ID('dbo.OtherStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.OtherStudentTotals;
+IF OBJECT_ID('dbo.PalestinianStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.PalestinianStudentTotals;
 IF OBJECT_ID('dbo.BahrainiStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.BahrainiStudentTotals;
 IF OBJECT_ID('dbo.YemeniStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.YemeniStudentTotals;
 IF OBJECT_ID('dbo.OmaniStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.OmaniStudentTotals;
@@ -34,9 +38,15 @@ CREATE TABLE dbo.Students (
     StudentName NVARCHAR(100) NOT NULL,
     StudentNameEn NVARCHAR(100) NOT NULL,
     NationalId NVARCHAR(20) NOT NULL,
+    WishCollege NVARCHAR(50) NOT NULL,  -- "الرغبة" — desired college, selection-only
+    WishProgram NVARCHAR(100) NULL,     -- desired program, when applicable to the college
+    GraduationYear INT NOT NULL,        -- "سنة التخرج" — selection-only, 2022-2026
+    Gender NVARCHAR(10) NOT NULL,       -- ذكر / أنثى
     Phone NVARCHAR(20) NOT NULL,
     Email NVARCHAR(150) NOT NULL,
     GuardianName NVARCHAR(100) NOT NULL,
+    GuardianNationalId NVARCHAR(20) NOT NULL,
+    GuardianOccupation NVARCHAR(100) NOT NULL,
     GuardianPhone NVARCHAR(20) NOT NULL,
     GuardianRelation NVARCHAR(100) NOT NULL,
     AddressGov NVARCHAR(100) NOT NULL,
@@ -68,6 +78,7 @@ CREATE TABLE dbo.SaudiStudentTotals (
     SchoolPercentage DECIMAL(18,2) NOT NULL,
     AptitudeScore DECIMAL(18,2) NOT NULL,
     FinalPercentage DECIMAL(18,2) NOT NULL,
+    EquivalentTotal DECIMAL(18,2) NOT NULL,  -- المجموع الاعتباري (المجموع المصري) = (FinalPercentage/100)*410
     CONSTRAINT PK_SaudiStudentTotals PRIMARY KEY CLUSTERED (StudentId ASC),
     CONSTRAINT FK_SaudiStudentTotals_Students_StudentId FOREIGN KEY (StudentId) 
         REFERENCES dbo.Students (Id) ON DELETE CASCADE
@@ -176,6 +187,7 @@ CREATE TABLE dbo.QatariStudentTotals (
     StudentId INT NOT NULL,
     FinalTotal DECIMAL(6,2) NOT NULL,       -- out of 700
     Percentage DECIMAL(5,2) NOT NULL,
+    EquivalentTotal DECIMAL(6,2) NOT NULL,  -- المجموع الاعتباري (المجموع المصري) = (Percentage/100)*410
     CONSTRAINT PK_QatariStudentTotals PRIMARY KEY CLUSTERED (StudentId ASC),
     CONSTRAINT FK_QatariStudentTotals_Students_StudentId FOREIGN KEY (StudentId)
         REFERENCES dbo.Students (Id) ON DELETE CASCADE
@@ -189,6 +201,7 @@ CREATE TABLE dbo.OmaniStudentTotals (
     StudentId INT NOT NULL,
     FinalTotal DECIMAL(6,2) NOT NULL,       -- out of 700
     Percentage DECIMAL(5,2) NOT NULL,
+    EquivalentTotal DECIMAL(6,2) NOT NULL,  -- المجموع الاعتباري (المجموع المصري) = (Percentage/100)*410
     CONSTRAINT PK_OmaniStudentTotals PRIMARY KEY CLUSTERED (StudentId ASC),
     CONSTRAINT FK_OmaniStudentTotals_Students_StudentId FOREIGN KEY (StudentId)
         REFERENCES dbo.Students (Id) ON DELETE CASCADE
@@ -202,6 +215,7 @@ CREATE TABLE dbo.YemeniStudentTotals (
     StudentId INT NOT NULL,
     FinalTotal DECIMAL(6,2) NOT NULL,       -- out of 600
     Percentage DECIMAL(5,2) NOT NULL,
+    EquivalentTotal DECIMAL(6,2) NOT NULL,  -- المجموع الاعتباري (المجموع المصري) = (Percentage/100)*410
     CONSTRAINT PK_YemeniStudentTotals PRIMARY KEY CLUSTERED (StudentId ASC),
     CONSTRAINT FK_YemeniStudentTotals_Students_StudentId FOREIGN KEY (StudentId)
         REFERENCES dbo.Students (Id) ON DELETE CASCADE
@@ -220,6 +234,66 @@ CREATE TABLE dbo.BahrainiStudentTotals (
     EquivalentTotal DECIMAL(6,2) NOT NULL,  -- out of 410
     CONSTRAINT PK_BahrainiStudentTotals PRIMARY KEY CLUSTERED (StudentId ASC),
     CONSTRAINT FK_BahrainiStudentTotals_Students_StudentId FOREIGN KEY (StudentId)
+        REFERENCES dbo.Students (Id) ON DELETE CASCADE
+);
+GO
+
+-- Palestinian Tawjihi: percentage-in only, no subjects/max marks/denominator — the student types
+-- their final percentage directly and the site converts it. Branch (علمي/أدبي) is recorded only,
+-- never forks the calculation.
+CREATE TABLE dbo.PalestinianStudentTotals (
+    StudentId INT NOT NULL,
+    Percentage DECIMAL(5,2) NOT NULL,
+    EquivalentTotal DECIMAL(7,2) NOT NULL,  -- المجموع الاعتباري (المجموع المصري) = (Percentage/100)*410
+    Branch NVARCHAR(50) NOT NULL,
+    CONSTRAINT PK_PalestinianStudentTotals PRIMARY KEY CLUSTERED (StudentId ASC),
+    CONSTRAINT FK_PalestinianStudentTotals_Students_StudentId FOREIGN KEY (StudentId)
+        REFERENCES dbo.Students (Id) ON DELETE CASCADE
+);
+GO
+
+-- "أخرى" (Other): percentage-in only, free-text certificate name, no subjects/track/denominator.
+-- No equivalent-total conversion for this certificate — percentage only, by explicit product
+-- decision (unlike every other percentage-in certificate in this system).
+CREATE TABLE dbo.OtherStudentTotals (
+    StudentId INT NOT NULL,
+    CertificateName NVARCHAR(200) NOT NULL,
+    Percentage DECIMAL(5,2) NOT NULL,
+    CONSTRAINT PK_OtherStudentTotals PRIMARY KEY CLUSTERED (StudentId ASC),
+    CONSTRAINT FK_OtherStudentTotals_Students_StudentId FOREIGN KEY (StudentId)
+        REFERENCES dbo.Students (Id) ON DELETE CASCADE
+);
+GO
+
+-- الثانوية العامة المصرية: this IS the target Egyptian certificate itself, so there is no
+-- equivalent-total conversion. Track + SubjectSystem (قديم/حديث) together determine the exact
+-- subject set and each subject's fixed max mark (see EgyptianConstants). Denominator is fixed by
+-- subject system alone (320 حديث / 410 قديم), never derived from the visible fields' own max marks.
+CREATE TABLE dbo.EgyptianStudentTotals (
+    StudentId INT NOT NULL,
+    Track NVARCHAR(50) NOT NULL,
+    SubjectSystem NVARCHAR(20) NOT NULL,
+    FinalTotal DECIMAL(6,2) NOT NULL,
+    Denominator DECIMAL(6,2) NOT NULL,
+    Percentage DECIMAL(5,2) NOT NULL,
+    CONSTRAINT PK_EgyptianStudentTotals PRIMARY KEY CLUSTERED (StudentId ASC),
+    CONSTRAINT FK_EgyptianStudentTotals_Students_StudentId FOREIGN KEY (StudentId)
+        REFERENCES dbo.Students (Id) ON DELETE CASCADE
+);
+GO
+
+-- الثانوية الأزهرية: fixed subject list per قسم (علمي/أدبي), no subject-system variant (unlike
+-- Egyptian). المواد الشرعية are never modeled at all — nothing to exclude. المجموع الاعتباري
+-- (المجموع المصري) = Percentage × 4.1 = (Percentage / 100) × 410.
+CREATE TABLE dbo.AzharStudentTotals (
+    StudentId INT NOT NULL,
+    Section NVARCHAR(20) NOT NULL,
+    FinalTotal DECIMAL(6,2) NOT NULL,
+    Denominator DECIMAL(6,2) NOT NULL,
+    Percentage DECIMAL(5,2) NOT NULL,
+    EquivalentTotal DECIMAL(6,2) NOT NULL,
+    CONSTRAINT PK_AzharStudentTotals PRIMARY KEY CLUSTERED (StudentId ASC),
+    CONSTRAINT FK_AzharStudentTotals_Students_StudentId FOREIGN KEY (StudentId)
         REFERENCES dbo.Students (Id) ON DELETE CASCADE
 );
 GO

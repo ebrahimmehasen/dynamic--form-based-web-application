@@ -31,6 +31,9 @@ namespace StudentRegistry.Data.Configurations
             builder.Property(t => t.FinalPercentage)
                 .HasPrecision(18, 2);
 
+            builder.Property(t => t.EquivalentTotal)
+                .HasPrecision(18, 2);
+
             builder.HasOne(t => t.Student)
                 .WithOne(s => s.SaudiTotals)
                 .HasForeignKey<SaudiStudentTotals>(t => t.StudentId)

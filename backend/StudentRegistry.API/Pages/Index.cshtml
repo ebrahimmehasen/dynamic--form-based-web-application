@@ -77,6 +77,14 @@
             <input type="text" id="national-id" class="form-control" placeholder="أدخل الرقم القومي المكون من 14 رقم" required maxlength="14">
           </div>
           <div class="form-group">
+            <label for="student-gender">النوع <span class="required">*</span></label>
+            <select id="student-gender" class="form-control" required>
+              <option value="">-- اختر --</option>
+              <option value="ذكر">ذكر</option>
+              <option value="أنثى">أنثى</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label for="student-phone">رقم هاتف الطالب <span class="required">*</span></label>
             <input type="tel" id="student-phone" class="form-control" placeholder="مثال: 01xxxxxxxxx" required>
           </div>
@@ -97,6 +105,14 @@
           <div class="form-group">
             <label for="guardian-name">اسم ولي الأمر <span class="required">*</span></label>
             <input type="text" id="guardian-name" class="form-control" placeholder="أدخل الاسم بالكامل" required maxlength="100">
+          </div>
+          <div class="form-group">
+            <label for="guardian-national-id">الرقم القومي لولي الأمر <span class="required">*</span></label>
+            <input type="text" id="guardian-national-id" class="form-control" placeholder="أدخل الرقم القومي المكون من 14 رقم" required maxlength="14">
+          </div>
+          <div class="form-group">
+            <label for="guardian-occupation">وظيفة ولي الأمر <span class="required">*</span></label>
+            <input type="text" id="guardian-occupation" class="form-control" placeholder="أدخل الوظيفة" required maxlength="100">
           </div>
           <div class="form-group">
             <label for="guardian-relation">صلة القرابة <span class="required">*</span></label>
@@ -208,11 +224,61 @@
 
     </section>
 
-    <!-- Section C: Certification Type -->
-    <section id="section-cert" class="form-section active">
+    <!-- Section C: Wish (Desired College & Program) -->
+    <section id="section-wish" class="form-section active">
       <div class="section-header">
         <span class="section-number">ج</span>
-        <h2 class="section-title">نوع الشهادة المعادلة</h2>
+        <h2 class="section-title">الرغبة</h2>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label for="wish-college">الكلية <span class="required">*</span></label>
+          <select id="wish-college" class="form-control" required>
+            <option value="">-- اختر --</option>
+            <option value="طب بشري">طب بشري</option>
+            <option value="طب أسنان">طب أسنان</option>
+            <option value="صيدلة">صيدلة</option>
+            <option value="تمريض">تمريض</option>
+            <option value="هندسة">هندسة</option>
+            <option value="حاسبات">حاسبات</option>
+            <option value="تجارة">تجارة</option>
+          </select>
+        </div>
+        <div class="form-group" id="wish-program-group">
+          <label for="wish-program">البرنامج <span class="required">*</span></label>
+          <select id="wish-program" class="form-control" required disabled>
+            <option value="">-- اختر --</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section D: Graduation Year -->
+    <section id="section-graduation-year" class="form-section active">
+      <div class="section-header">
+        <span class="section-number">د</span>
+        <h2 class="section-title">سنة التخرج</h2>
+      </div>
+
+      <div class="form-group">
+        <label for="graduation-year">سنة التخرج <span class="required">*</span></label>
+        <select id="graduation-year" class="form-control" required>
+          <option value="">-- اختر --</option>
+          <option value="2022">2022</option>
+          <option value="2023">2023</option>
+          <option value="2024">2024</option>
+          <option value="2025">2025</option>
+          <option value="2026">2026</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Section E: Certification Type -->
+    <section id="section-cert" class="form-section active">
+      <div class="section-header">
+        <span class="section-number">هـ</span>
+        <h2 class="section-title">نوع الشهادة</h2>
       </div>
 
       <div class="form-group">
@@ -223,10 +289,10 @@
       </div>
     </section>
 
-    <!-- Section D: Academic Track (Dynamic) -->
+    <!-- Section F: Academic Track (Dynamic) -->
     <section id="section-track" class="form-section">
       <div class="section-header">
-        <span class="section-number">د</span>
+        <span class="section-number">و</span>
         <h2 class="section-title">المسار الأكاديمي</h2>
       </div>
 
@@ -241,16 +307,16 @@
       </div>
     </section>
 
-    <!-- Section E: Years of Study -->
+    <!-- Section G: Years of Study -->
     <section id="section-year" class="form-section">
       <div class="section-header">
-        <span class="section-number">هـ</span>
+        <span class="section-number">ز</span>
         <h2 class="section-title">السنة الدراسية</h2>
       </div>
 
       <div class="form-group">
         <label for="year-select">كم عدد سنوات الدراسة التي قضيتها؟ <span class="required">*</span></label>
-        <select id="year-select" class="form-control" required>
+        <select id="year-select" class="form-control" required disabled>
           <option value="">-- اختر --</option>
           <option value="أولى ثانوي">أولى ثانوي</option>
           <option value="تانية ثانوي">تانية ثانوي</option>
@@ -259,13 +325,33 @@
       </div>
     </section>
 
-    <!-- Section F: Grades Entry Table & IG Calculator -->
+    <!-- Section H: Grades Entry Table & IG Calculator -->
     <section id="section-grades" class="form-section">
       <div class="section-header">
-        <span class="section-number">و</span>
+        <span class="section-number">ح</span>
         <h2 class="section-title" id="section-grades-title">جدول إدخال الدرجات</h2>
       </div>
       <p class="section-desc" id="section-grades-desc">أدخل الدرجة والنسبة الموزونة لكل مادة أدناه. سيتم احتساب الدرجة المتحصلة تلقائياً.</p>
+
+      <!-- General certification alert — shown for every certificate except "أخرى" and الشهادة
+           البحرينية (التي لها تنبيهها الخاص). Display-only, no effect on any calculation. -->
+      <div id="general-cert-alert" class="alert alert-warning" style="display: none; margin-bottom: 1.25rem; line-height: 1.9;">
+        <strong>⚠️ تنبيهات هامة قبل إدخال الدرجات:</strong>
+        <ul style="margin: 0.5rem 0 0; padding-inline-start: 1.25rem;">
+          <li>يجب أن يكون إدخال الدرجات مطابقًا تمامًا لما هو مدون بالشهادة الأصلية.</li>
+          <li>يتم حذف بعض المواد (مثل: المواد الثقافية، المواد الدينية، المواد الرياضية) من حساب المعادلة المصرية.</li>
+          <li>أي خطأ في إدخال البيانات الأساسية للطالب أو الدرجات، يُعتبر التقدم لاغيًا من قبل إدارة الجامعة.</li>
+        </ul>
+      </div>
+
+      <!-- "أخرى" certification alert — shown only when "أخرى" is selected. -->
+      <div id="other-cert-alert" class="alert alert-warning" style="display: none; margin-bottom: 1.25rem; line-height: 1.9;">
+        <strong>⚠️ تنبيهات هامة:</strong>
+        <ul style="margin: 0.5rem 0 0; padding-inline-start: 1.25rem;">
+          <li>يجب إحضار شهادة التحركات الخاصة بالطالب وبولي أمره خلال فترة دراسته.</li>
+          <li>يجب إحضار الأوراق اللازمة لإثبات الشهادة، وكذلك شهادة القدرات إذا كانت مطلوبة من إدارة الجامعة.</li>
+        </ul>
+      </div>
 
       <!-- Standard Grades Table (Non-IG) -->
       <div id="non-ig-grades-container">
@@ -323,6 +409,10 @@
             <div class="result-flex-item">
               <div class="result-title-label">الدرجة الموزونة النهائية:</div>
               <div class="result-value" id="saudi-final-gpa">— (أدخل درجة القدرات)</div>
+            </div>
+            <div class="result-flex-item" style="border-right: 1px solid var(--primary-border); padding-right: 1rem;">
+              <div class="result-title-label">المجموع الاعتباري (المجموع المصري):</div>
+              <div class="result-value" id="saudi-equivalent-total">— (أدخل درجة القدرات)</div>
             </div>
           </div>
         </div>
@@ -500,7 +590,7 @@
                 <div class="result-value" id="ig-percentage-val">0.00%</div>
               </div>
               <div class="result-flex-item" style="border-right: 1px solid var(--border-color); padding-right: 1.5rem;">
-                <div class="result-title-label">المجموع الحكومي المعادل:</div>
+                <div class="result-title-label">المجموع الاعتباري (المجموع المصري):</div>
                 <div class="result-value" id="ig-gov-val">0.0 / 410</div>
               </div>
             </div>
@@ -547,7 +637,7 @@
               <div class="result-value" id="kuwaiti-final-percentage">0.00%</div>
             </div>
             <div class="result-flex-item" style="border-right: 1px solid var(--border-color); padding-right: 1.5rem;">
-              <div class="result-title-label">النسبة المعادلة (المجموع المعادل):</div>
+              <div class="result-title-label">المجموع الاعتباري (المجموع المصري):</div>
               <div class="result-value" id="kuwaiti-equivalent-total">0.00 / 410</div>
             </div>
           </div>
@@ -588,6 +678,10 @@
                 <div class="result-title-label">النسبة المئوية:</div>
                 <div class="result-value" id="qatari-percentage">0.00%</div>
               </div>
+              <div class="result-flex-item" style="border-right: 1px solid var(--border-color); padding-right: 1.5rem;">
+                <div class="result-title-label">المجموع الاعتباري (المجموع المصري):</div>
+                <div class="result-value" id="qatari-equivalent-total">0.00 / 410</div>
+              </div>
             </div>
           </div>
           <p class="section-desc">هذه النتيجة تقديرية ويجب تأكيدها رسمياً من مكتب تنسيق القبول بالجامعات والمعاهد المصرية.</p>
@@ -623,6 +717,10 @@
                 <div class="result-title-label">النسبة المئوية:</div>
                 <div class="result-value" id="omani-percentage">0.00%</div>
               </div>
+              <div class="result-flex-item" style="border-right: 1px solid var(--border-color); padding-right: 1.5rem;">
+                <div class="result-title-label">المجموع الاعتباري (المجموع المصري):</div>
+                <div class="result-value" id="omani-equivalent-total">0.00 / 410</div>
+              </div>
             </div>
           </div>
           <p class="section-desc">هذه النتيجة تقديرية ويجب تأكيدها رسمياً من مكتب تنسيق القبول بالجامعات والمعاهد المصرية.</p>
@@ -657,6 +755,10 @@
               <div class="result-flex-item" style="border-right: 1px solid var(--border-color); padding-right: 1.5rem;">
                 <div class="result-title-label">النسبة المئوية:</div>
                 <div class="result-value" id="yemeni-percentage">0.00%</div>
+              </div>
+              <div class="result-flex-item" style="border-right: 1px solid var(--border-color); padding-right: 1.5rem;">
+                <div class="result-title-label">المجموع الاعتباري (المجموع المصري):</div>
+                <div class="result-value" id="yemeni-equivalent-total">0.00 / 410</div>
               </div>
             </div>
           </div>
@@ -722,13 +824,140 @@
                 <div class="result-value" id="bahraini-percentage">0.00%</div>
               </div>
               <div class="result-flex-item" style="border-right: 1px solid var(--border-color); padding-right: 1.5rem;">
-                <div class="result-title-label">مجموعك الاعتباري للتنسيق المصري:</div>
+                <div class="result-title-label">المجموع الاعتباري (المجموع المصري):</div>
                 <div class="result-value" id="bahraini-equivalent-total">0.00 / 410</div>
               </div>
             </div>
           </div>
           <p class="section-desc">هذا الحساب تقريبي واستشاري، يرجى التأكد من الجهات الرسمية.</p>
         </div>
+      </div>
+
+      <!-- Palestinian Tawjihi Calculator Container: percentage-in only, no subjects/grades grid -->
+      <div id="palestinian-grades-container" style="display: none;">
+        <div class="form-group" style="max-width: 300px;">
+          <label for="palestinian-percentage">النسبة المئوية (كما هي مدونة بالشهادة) <span class="required">*</span></label>
+          <input type="number" id="palestinian-percentage" class="form-control" min="0" max="100" step="any" placeholder="0-100" required>
+        </div>
+
+        <div class="result-box" style="margin-top: 1.5rem;">
+          <div class="result-row-flex">
+            <div class="result-flex-item">
+              <div class="result-title-label">النسبة المئوية:</div>
+              <div class="result-value" id="palestinian-percentage-val">0.00%</div>
+            </div>
+            <div class="result-flex-item" style="border-right: 1px solid var(--border-color); padding-right: 1.5rem;">
+              <div class="result-title-label">المجموع الاعتباري (المجموع المصري):</div>
+              <div class="result-value" id="palestinian-equivalent-total">0.00 / 410</div>
+            </div>
+          </div>
+        </div>
+        <p class="section-desc">النتيجة تقديرية استرشادية فقط، والمعادلة الرسمية النهائية تتم من خلال المجلس الأعلى للجامعات.</p>
+      </div>
+
+      <!-- Egyptian Thanaweya Amma Calculator Container: track selects subject set, subject system
+           (قديم/حديث) selects per-subject max marks + the fixed denominator. -->
+      <div id="egyptian-grades-container" style="display: none;">
+        <div class="form-group" id="egyptian-system-group" style="display: none; max-width: 300px;">
+          <label for="egyptian-system-select">نظام المواد <span class="required">*</span></label>
+          <select id="egyptian-system-select" class="form-control" required>
+            <option value="">-- اختر --</option>
+            <option value="قديم">قديم</option>
+            <option value="حديث">حديث</option>
+          </select>
+        </div>
+
+        <div id="egyptian-subjects-block" style="display: none;">
+          <div class="table-responsive">
+            <table class="grades-table">
+              <thead>
+                <tr>
+                  <th class="col-num">#</th>
+                  <th class="col-subject">اسم المادة</th>
+                  <th class="col-grade">الدرجة</th>
+                  <th class="col-weight">الدرجة العظمى</th>
+                </tr>
+              </thead>
+              <tbody id="egyptian-subjects-body">
+                <!-- Dynamically populated based on المسار + نظام المواد -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="result-box" style="margin-top: 1.5rem;">
+            <div class="result-row-flex">
+              <div class="result-flex-item">
+                <div class="result-title-label">مجموع الدرجات:</div>
+                <div class="result-value" id="egyptian-final-total">0.00 / 0</div>
+              </div>
+              <div class="result-flex-item" style="border-right: 1px solid var(--border-color); padding-right: 1.5rem;">
+                <div class="result-title-label">النسبة المئوية:</div>
+                <div class="result-value" id="egyptian-percentage">0.00%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Azhar Thanaweya Calculator Container: القسم (from the shared track-select) selects a
+           fixed subject list directly — no secondary system select, unlike Egyptian. -->
+      <div id="azhar-grades-container" style="display: none;">
+        <div class="table-responsive">
+          <table class="grades-table">
+            <thead>
+              <tr>
+                <th class="col-num">#</th>
+                <th class="col-subject">اسم المادة</th>
+                <th class="col-grade">الدرجة</th>
+                <th class="col-weight">الدرجة العظمى</th>
+              </tr>
+            </thead>
+            <tbody id="azhar-subjects-body">
+              <!-- Dynamically populated based on القسم -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="result-box" style="margin-top: 1.5rem;">
+          <div class="result-row-flex">
+            <div class="result-flex-item">
+              <div class="result-title-label">مجموع الدرجات:</div>
+              <div class="result-value" id="azhar-final-total">0.00 / 0</div>
+            </div>
+            <div class="result-flex-item" style="border-right: 1px solid var(--border-color); padding-right: 1.5rem;">
+              <div class="result-title-label">النسبة المئوية:</div>
+              <div class="result-value" id="azhar-percentage">0.00%</div>
+            </div>
+            <div class="result-flex-item" style="border-right: 1px solid var(--border-color); padding-right: 1.5rem;">
+              <div class="result-title-label">المجموع الاعتباري (المجموع المصري):</div>
+              <div class="result-value" id="azhar-equivalent-total">0.00 / 410</div>
+            </div>
+          </div>
+        </div>
+        <p class="section-desc">هذه النتيجة تقديرية ويجب تأكيدها رسمياً من مكتب تنسيق القبول بالجامعات والمعاهد المصرية.</p>
+      </div>
+
+      <!-- "أخرى" (Other) Calculator Container: free-text certificate name + percentage-in only,
+           no track/subjects/year UI. -->
+      <div id="other-grades-container" style="display: none;">
+        <div class="form-group">
+          <label for="other-certificate-name">اسم الشهادة <span class="required">*</span></label>
+          <input type="text" id="other-certificate-name" class="form-control" maxlength="200" placeholder="أدخل اسم الشهادة" required>
+        </div>
+        <div class="form-group" style="max-width: 300px;">
+          <label for="other-percentage">النسبة المئوية <span class="required">*</span></label>
+          <input type="number" id="other-percentage" class="form-control" min="0" max="100" step="any" placeholder="0-100" required>
+        </div>
+
+        <div class="result-box" style="margin-top: 1.5rem;">
+          <div class="result-row-flex">
+            <div class="result-flex-item">
+              <div class="result-title-label">النسبة المئوية:</div>
+              <div class="result-value" id="other-percentage-val">0.00%</div>
+            </div>
+          </div>
+        </div>
+        <p class="section-desc">هذه النتيجة تقديرية ويجب تأكيدها رسمياً من مكتب تنسيق القبول بالجامعات والمعاهد المصرية.</p>
       </div>
     </section>
 
@@ -761,7 +990,7 @@
         <span class="receipt-val" id="receipt-cert">-</span>
       </div>
       <div class="receipt-row" id="receipt-program-row" style="display: none;">
-        <span class="receipt-label">برنامج الـ IG:</span>
+        <span class="receipt-label" id="receipt-program-label">برنامج الـ IG:</span>
         <span class="receipt-val" id="receipt-program">-</span>
       </div>
       <div class="receipt-row" id="receipt-year-row">
