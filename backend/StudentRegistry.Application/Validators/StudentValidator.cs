@@ -149,7 +149,7 @@ namespace StudentRegistry.Application.Validators
                 });
             });
 
-            When(x => !IsSaudiCert(x.Certification) && !IsIgCert(x.Certification) && !IsKuwaitiCert(x.Certification) && !IsQatariCert(x.Certification) && !IsOmaniCert(x.Certification) && !IsYemeniCert(x.Certification) && !IsBahrainiCert(x.Certification) && !IsPalestinianCert(x.Certification) && !IsOtherCert(x.Certification), () =>
+            When(x => !IsSaudiCert(x.Certification) && !IsIgCert(x.Certification) && !IsKuwaitiCert(x.Certification) && !IsQatariCert(x.Certification) && !IsOmaniCert(x.Certification) && !IsYemeniCert(x.Certification) && !IsBahrainiCert(x.Certification) && !IsPalestinianCert(x.Certification) && !IsOtherCert(x.Certification) && !IsEgyptianCert(x.Certification), () =>
             {
                 RuleFor(x => x.YearOfStudy)
                     .NotEmpty().WithMessage("الرجاء اختيار السنة الدراسية.");
@@ -356,6 +356,71 @@ namespace StudentRegistry.Application.Validators
                         .WithMessage("النسبة المئوية يجب أن تكون بين 0 و100.");
                 });
             });
+
+            // §Egyptian — this IS the target Egyptian certificate itself: Track (علمي علوم / علمي
+            // رياضة / أدبي) + SubjectSystem (قديم / حديث) together determine the exact subject set
+            // and each subject's fixed max mark (§EgyptianConstants). No equivalent-total conversion.
+            When(x => IsEgyptianCert(x.Certification), () =>
+            {
+                RuleFor(x => x.Track)
+                    .Must(t => EgyptianConstants.Tracks.Contains(t))
+                    .WithMessage("الرجاء اختيار المسار (علمي علوم أو علمي رياضة أو أدبي).");
+
+                // §5/§6 — the Wish section's college restricts which tracks are valid here; the
+                // client-side dropdown restriction is never trusted on its own.
+                RuleFor(x => x.Track)
+                    .Must((dto, track) => EgyptianConstants.GetAllowedTracksForCollege(dto.WishCollege).Contains(track))
+                    .WithMessage("المسار المختار غير متاح للكلية المحددة في قسم الرغبة.");
+
+                RuleFor(x => x.EgyptianData)
+                    .NotNull().WithMessage("بيانات الثانوية العامة المصرية مفقودة.");
+
+                When(x => x.EgyptianData != null, () =>
+                {
+                    RuleFor(x => x.EgyptianData!.SubjectSystem)
+                        .Must(s => s == EgyptianConstants.OldSystem || s == EgyptianConstants.NewSystem)
+                        .WithMessage("الرجاء اختيار نظام المواد (قديم أو حديث).");
+
+                    When(x => EgyptianConstants.Tracks.Contains(x.Track) &&
+                        (x.EgyptianData!.SubjectSystem == EgyptianConstants.OldSystem || x.EgyptianData!.SubjectSystem == EgyptianConstants.NewSystem), () =>
+                    {
+                        RuleFor(x => x.EgyptianData!.Subjects)
+                            .Must((dto, subjects) => MatchesExactEgyptianSubjectSet(subjects, EgyptianConstants.GetSubjectMaxMarks(dto.Track, dto.EgyptianData!.SubjectSystem)))
+                            .WithMessage("قائمة المواد يجب أن تطابق تماماً المواد المطلوبة للمسار ونظام المواد المختارين، بدون نقص أو زيادة أو تكرار.");
+
+                        RuleFor(x => x.EgyptianData!.Subjects)
+                            .Must((dto, subjects) => AllEgyptianMarksWithinRange(dto.Track, dto.EgyptianData!.SubjectSystem, subjects))
+                            .WithMessage("الرجاء إدخال درجة صحيحة (بين 0 والدرجة العظمى المحددة) لكل مادة.");
+                    });
+                });
+            });
+        }
+
+        // §Egyptian — exact match against the track+system's required subject set (from
+        // EgyptianConstants.GetSubjectMaxMarks), no missing/extra/duplicate subjects.
+        private bool MatchesExactEgyptianSubjectSet(
+            System.Collections.Generic.List<SingleYearSubjectMarkCreateDto>? subjects,
+            System.Collections.Generic.Dictionary<string, decimal> required)
+        {
+            if (subjects == null) return false;
+            var names = subjects.Select(s => s.SubjectName).ToList();
+            if (names.Count != required.Count) return false;
+            if (names.Distinct().Count() != names.Count) return false;
+            return required.Keys.All(names.Contains);
+        }
+
+        // §Egyptian — each subject's mark must be within [0, its own fixed max mark], which varies
+        // by subject (80/60/50/40), unlike the uniform-100 single-year-fixed-total family.
+        private bool AllEgyptianMarksWithinRange(string track, string system, System.Collections.Generic.List<SingleYearSubjectMarkCreateDto>? subjects)
+        {
+            if (subjects == null) return false;
+            var maxMarks = EgyptianConstants.GetSubjectMaxMarks(track, system);
+            foreach (var subject in subjects)
+            {
+                if (!maxMarks.TryGetValue(subject.SubjectName ?? string.Empty, out var max)) return false;
+                if (subject.Mark < 0 || subject.Mark > max) return false;
+            }
+            return true;
         }
 
         // Bahraini المسار العلمي only: same exact-count match as MatchesExactSingleYearSubjectSet but
@@ -449,6 +514,12 @@ namespace StudentRegistry.Application.Validators
         {
             if (string.IsNullOrEmpty(cert)) return false;
             return cert.Contains("أخرى") || cert.Equals("other", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool IsEgyptianCert(string cert)
+        {
+            if (string.IsNullOrEmpty(cert)) return false;
+            return cert.Contains("الثانوية العامة المصرية") || cert.Equals("egyptian", StringComparison.OrdinalIgnoreCase);
         }
 
         private bool WeightsSumToOneHundred(KuwaitiDataCreateDto? data)

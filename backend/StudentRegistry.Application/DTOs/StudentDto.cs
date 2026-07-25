@@ -66,6 +66,9 @@ namespace StudentRegistry.Application.DTOs
 
         // "أخرى" (other) specific fields
         public OtherDataCreateDto? OtherData { get; set; }
+
+        // Egyptian Thanaweya Amma specific fields
+        public EgyptianDataCreateDto? EgyptianData { get; set; }
     }
 
     public class KuwaitiDataCreateDto
@@ -131,6 +134,14 @@ namespace StudentRegistry.Application.DTOs
     {
         public string CertificateName { get; set; } = string.Empty;
         public decimal Percentage { get; set; }
+    }
+
+    // Track (Track on the parent DTO) + subject system determine the exact subject set — max marks
+    // are fixed server-side (§EgyptianConstants), never client-supplied.
+    public class EgyptianDataCreateDto
+    {
+        public string SubjectSystem { get; set; } = string.Empty;   // قديم / حديث
+        public List<SingleYearSubjectMarkCreateDto>? Subjects { get; set; }
     }
 
     // Shared by Qatari, Omani, Yemeni and Bahraini (all single-year, fixed-100-per-subject certificates).
@@ -208,6 +219,8 @@ namespace StudentRegistry.Application.DTOs
         public List<SingleYearSubjectMarkResponseDto>? BahrainiGrades { get; set; }
         public PalestinianTotalsResponseDto? PalestinianTotals { get; set; }
         public OtherTotalsResponseDto? OtherTotals { get; set; }
+        public EgyptianTotalsResponseDto? EgyptianTotals { get; set; }
+        public List<SingleYearSubjectMarkResponseDto>? EgyptianGrades { get; set; }
     }
 
     public class KuwaitiTotalsResponseDto
@@ -282,6 +295,17 @@ namespace StudentRegistry.Application.DTOs
         public string CertificateName { get; set; } = string.Empty;
         public decimal Percentage { get; set; }
         public string Disclaimer { get; set; } = string.Empty;
+    }
+
+    // This IS the Egyptian target certificate itself — no equivalent-total conversion, unlike every
+    // other certificate in this system.
+    public class EgyptianTotalsResponseDto
+    {
+        public string Track { get; set; } = string.Empty;
+        public string SubjectSystem { get; set; } = string.Empty;
+        public decimal FinalTotal { get; set; }
+        public decimal Denominator { get; set; }
+        public decimal Percentage { get; set; }
     }
 
     // Shared by Qatari, Omani, Yemeni and Bahraini grade lists.

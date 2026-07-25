@@ -5,6 +5,7 @@ let qatariConfig = null;
 let omaniConfig = null;
 let yemeniConfig = null;
 let bahrainiConfig = null;
+let egyptianConfig = null;
 
 // Fetch config from the ConfigController API (single source of truth)
 async function loadSubjectsConfig() {
@@ -90,6 +91,18 @@ async function loadSubjectsConfig() {
   } catch (error) {
     console.error('Could not load Bahraini subjects configuration.', error);
     showAlert('form-alert', 'تعذر تحميل بيانات مواد الشهادة البحرينية من الخادم. الرجاء تحديث الصفحة.', 'danger');
+  }
+
+  try {
+    const response = await fetch('/api/config/subjects-egyptian');
+    if (response.ok) {
+      egyptianConfig = await response.json();
+    } else {
+      throw new Error('Failed to load /api/config/subjects-egyptian: ' + response.status);
+    }
+  } catch (error) {
+    console.error('Could not load Egyptian subjects configuration.', error);
+    showAlert('form-alert', 'تعذر تحميل بيانات مواد الثانوية العامة المصرية من الخادم. الرجاء تحديث الصفحة.', 'danger');
   }
 }
 
@@ -212,6 +225,60 @@ const WISH_NO_PROGRAM_COLLEGES = ['طب بشري', 'طب أسنان', 'تمري�
 const WISH_PHARMACY_COLLEGE = 'صيدلة';
 const WISH_PHARMACY_PROGRAM = 'إكلينيكية';
 
+// Egyptian Thanaweya Amma — the Wish section's college restricts which Track options are offered
+// (only for this certification; mirrors backend EgyptianConstants.GetAllowedTracksForCollege).
+const EGYPTIAN_TRACKS_BY_COLLEGE = {
+  'طب بشري': ['علمي علوم'],
+  'طب أسنان': ['علمي علوم'],
+  'صيدلة': ['علمي علوم'],
+  'تمريض': ['علمي علوم'],
+  'حاسبات': ['علمي علوم', 'علمي رياضة'],
+  'هندسة': ['علمي رياضة'],
+  'تجارة': ['علمي علوم', 'علمي رياضة', 'أدبي']
+};
+
+function getEgyptianAllowedTracks(collegeVal) {
+  return EGYPTIAN_TRACKS_BY_COLLEGE[collegeVal] || [];
+}
+
+// Rebuilds the shared Track select's options for the Egyptian cert based on the currently selected
+// Wish college. If the previously chosen track is no longer allowed, resets it and forces the
+// student to choose again from the new allowed set (§5/§6) — a no-op for every other certification.
+function refreshEgyptianTrackOptions() {
+  const certSelect = document.getElementById('cert-select');
+  if (!certSelect || certSelect.value !== 'egyptian') return;
+
+  const trackSelect = document.getElementById('track-select');
+  const trackLockedIndicator = document.getElementById('track-locked-msg');
+  const collegeVal = document.getElementById('wish-college').value;
+  const allowedTracks = getEgyptianAllowedTracks(collegeVal);
+  const previousValue = trackSelect.value;
+
+  trackSelect.innerHTML = '<option value="">-- اختر --</option>';
+  allowedTracks.forEach(track => {
+    const option = document.createElement('option');
+    option.value = track;
+    option.textContent = track;
+    trackSelect.appendChild(option);
+  });
+
+  if (allowedTracks.includes(previousValue)) {
+    trackSelect.value = previousValue;
+    return;
+  }
+
+  // Previously selected track (if any) is no longer valid for the new college — reset it.
+  trackSelect.value = '';
+  trackSelect.disabled = false;
+  if (trackLockedIndicator) trackLockedIndicator.style.display = 'none';
+  deactivateSection('section-year');
+  deactivateSection('section-grades');
+  if (typeof generateEgyptianTrackUI === 'function') {
+    generateEgyptianTrackUI('');
+  }
+  updateProgressIndicator();
+}
+
 // Rebuild Section C (Wish) program dropdown based on the selected college.
 function initWishSection() {
   const collegeSelect = document.getElementById('wish-college');
@@ -244,6 +311,8 @@ function initWishSection() {
     } else if (WISH_NO_PROGRAM_COLLEGES.includes(college)) {
       programGroup.style.display = 'none';
     }
+
+    refreshEgyptianTrackOptions();
   });
 }
 
@@ -287,6 +356,14 @@ function initConditionals() {
     yearSelect.value = '';
     yearSelect.disabled = !certKey;
 
+    // Reset Egyptian's nested system-select + subjects table whenever the certification changes.
+    const egyptianSystemSelect = document.getElementById('egyptian-system-select');
+    const egyptianSystemGroup = document.getElementById('egyptian-system-group');
+    const egyptianSubjectsBlock = document.getElementById('egyptian-subjects-block');
+    if (egyptianSystemSelect) egyptianSystemSelect.value = '';
+    if (egyptianSystemGroup) egyptianSystemGroup.style.display = 'none';
+    if (egyptianSubjectsBlock) egyptianSubjectsBlock.style.display = 'none';
+
     // Hide following sections
     deactivateSection('section-track');
     deactivateSection('section-year');
@@ -302,6 +379,7 @@ function initConditionals() {
     document.getElementById('bahraini-grades-container').style.display = 'none';
     document.getElementById('palestinian-grades-container').style.display = 'none';
     document.getElementById('other-grades-container').style.display = 'none';
+    document.getElementById('egyptian-grades-container').style.display = 'none';
     document.getElementById('section-year').style.display = 'block';
     document.getElementById('section-grades-title').textContent = 'جدول إدخال الدرجات';
     document.getElementById('section-grades-desc').textContent = 'أدخل الدرجة والنسبة الموزونة لكل مادة أدناه. سيتم احتساب الدرجة المتحصلة تلقائياً.';
@@ -366,6 +444,15 @@ function initConditionals() {
         document.getElementById('other-grades-container').style.display = 'block';
         document.getElementById('section-grades-title').textContent = '🧮 حاسبة شهادة أخرى';
         document.getElementById('section-grades-desc').textContent = 'أدخل اسم الشهادة والنسبة المئوية النهائية.';
+      } else if (certKey === 'egyptian') {
+        // Egyptian Thanaweya Amma — track selects the subject set; a nested "نظام المواد"
+        // select (rendered inside the container itself, mirroring Kuwaiti's years-count) then
+        // selects قديم/حديث, which fixes each subject's max mark and the overall denominator.
+        document.getElementById('section-year').style.display = 'none';
+        document.getElementById('non-ig-grades-container').style.display = 'none';
+        document.getElementById('egyptian-grades-container').style.display = 'block';
+        document.getElementById('section-grades-title').textContent = '🧮 حاسبة الثانوية العامة المصرية';
+        document.getElementById('section-grades-desc').textContent = 'اختر نظام المواد، ثم أدخل درجة كل مادة.';
       }
 
       if (certKey === 'other') {
@@ -375,8 +462,10 @@ function initConditionals() {
           recalculateOther();
         }
       } else {
-        // Populate track options
-        const tracks = appConfig.certifications[certKey].tracks;
+        // Populate track options — Egyptian's options are restricted by the Wish college (§5).
+        const tracks = certKey === 'egyptian'
+          ? getEgyptianAllowedTracks(document.getElementById('wish-college').value)
+          : appConfig.certifications[certKey].tracks;
         tracks.forEach(track => {
           const option = document.createElement('option');
           option.value = track;
@@ -443,6 +532,11 @@ function initConditionals() {
         activateSection('section-grades');
         if (typeof recalculatePalestinian === 'function') {
           recalculatePalestinian();
+        }
+      } else if (certKey === 'egyptian') {
+        activateSection('section-grades');
+        if (typeof generateEgyptianTrackUI === 'function') {
+          generateEgyptianTrackUI(trackVal);
         }
       } else {
         yearSelect.value = '';

@@ -835,6 +835,50 @@
         <p class="section-desc">النتيجة تقديرية استرشادية فقط، والمعادلة الرسمية النهائية تتم من خلال المجلس الأعلى للجامعات.</p>
       </div>
 
+      <!-- Egyptian Thanaweya Amma Calculator Container: track selects subject set, subject system
+           (قديم/حديث) selects per-subject max marks + the fixed denominator. -->
+      <div id="egyptian-grades-container" style="display: none;">
+        <div class="form-group" id="egyptian-system-group" style="display: none; max-width: 300px;">
+          <label for="egyptian-system-select">نظام المواد <span class="required">*</span></label>
+          <select id="egyptian-system-select" class="form-control" required>
+            <option value="">-- اختر --</option>
+            <option value="قديم">قديم</option>
+            <option value="حديث">حديث</option>
+          </select>
+        </div>
+
+        <div id="egyptian-subjects-block" style="display: none;">
+          <div class="table-responsive">
+            <table class="grades-table">
+              <thead>
+                <tr>
+                  <th class="col-num">#</th>
+                  <th class="col-subject">اسم المادة</th>
+                  <th class="col-grade">الدرجة</th>
+                  <th class="col-weight">الدرجة العظمى</th>
+                </tr>
+              </thead>
+              <tbody id="egyptian-subjects-body">
+                <!-- Dynamically populated based on المسار + نظام المواد -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="result-box" style="margin-top: 1.5rem;">
+            <div class="result-row-flex">
+              <div class="result-flex-item">
+                <div class="result-title-label">مجموع الدرجات:</div>
+                <div class="result-value" id="egyptian-final-total">0.00 / 0</div>
+              </div>
+              <div class="result-flex-item" style="border-right: 1px solid var(--border-color); padding-right: 1.5rem;">
+                <div class="result-title-label">النسبة المئوية:</div>
+                <div class="result-value" id="egyptian-percentage">0.00%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- "أخرى" (Other) Calculator Container: free-text certificate name + percentage-in only,
            no track/subjects/year UI. -->
       <div id="other-grades-container" style="display: none;">

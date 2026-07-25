@@ -15,6 +15,7 @@ USE [StudentRegistryDb];
 GO
 
 -- 2. Drop existing tables if they exist (in reverse order of foreign keys)
+IF OBJECT_ID('dbo.EgyptianStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.EgyptianStudentTotals;
 IF OBJECT_ID('dbo.OtherStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.OtherStudentTotals;
 IF OBJECT_ID('dbo.PalestinianStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.PalestinianStudentTotals;
 IF OBJECT_ID('dbo.BahrainiStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.BahrainiStudentTotals;
@@ -259,6 +260,23 @@ CREATE TABLE dbo.OtherStudentTotals (
     Percentage DECIMAL(5,2) NOT NULL,
     CONSTRAINT PK_OtherStudentTotals PRIMARY KEY CLUSTERED (StudentId ASC),
     CONSTRAINT FK_OtherStudentTotals_Students_StudentId FOREIGN KEY (StudentId)
+        REFERENCES dbo.Students (Id) ON DELETE CASCADE
+);
+GO
+
+-- الثانوية العامة المصرية: this IS the target Egyptian certificate itself, so there is no
+-- equivalent-total conversion. Track + SubjectSystem (قديم/حديث) together determine the exact
+-- subject set and each subject's fixed max mark (see EgyptianConstants). Denominator is fixed by
+-- subject system alone (320 حديث / 410 قديم), never derived from the visible fields' own max marks.
+CREATE TABLE dbo.EgyptianStudentTotals (
+    StudentId INT NOT NULL,
+    Track NVARCHAR(50) NOT NULL,
+    SubjectSystem NVARCHAR(20) NOT NULL,
+    FinalTotal DECIMAL(6,2) NOT NULL,
+    Denominator DECIMAL(6,2) NOT NULL,
+    Percentage DECIMAL(5,2) NOT NULL,
+    CONSTRAINT PK_EgyptianStudentTotals PRIMARY KEY CLUSTERED (StudentId ASC),
+    CONSTRAINT FK_EgyptianStudentTotals_Students_StudentId FOREIGN KEY (StudentId)
         REFERENCES dbo.Students (Id) ON DELETE CASCADE
 );
 GO

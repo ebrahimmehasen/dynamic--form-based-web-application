@@ -13,6 +13,7 @@ function initFormHandlers() {
   setupBahrainiCalculatorListeners();
   setupPalestinianCalculatorListeners();
   setupOtherCalculatorListeners();
+  setupEgyptianCalculatorListeners();
   setupSubmissionHandler();
 }
 
@@ -1393,6 +1394,98 @@ function setupOtherCalculatorListeners() {
   }
 }
 
+// 3h. Egyptian Thanaweya Amma Calculator — track (from the shared track-select) + a nested
+// "نظام المواد" select together determine the exact subject set and each subject's fixed max
+// mark (mirrors StudentService.ProcessEgyptianCertificate / EgyptianConstants exactly). The
+// denominator is fixed by subject system alone (320 حديث / 410 قديم) — never derived from the
+// sum of the visible fields' own max marks.
+function generateEgyptianTrackUI(trackVal) {
+  const systemGroup = document.getElementById('egyptian-system-group');
+  const systemSelect = document.getElementById('egyptian-system-select');
+  const subjectsBlock = document.getElementById('egyptian-subjects-block');
+  if (!systemGroup || !systemSelect || !subjectsBlock) return;
+
+  systemSelect.value = '';
+  systemGroup.style.display = trackVal ? 'block' : 'none';
+  subjectsBlock.style.display = 'none';
+  document.getElementById('egyptian-subjects-body').innerHTML = '';
+
+  recalculateEgyptian();
+}
+
+function generateEgyptianSubjectsUI() {
+  const trackSelect = document.getElementById('track-select');
+  const systemSelect = document.getElementById('egyptian-system-select');
+  const subjectsBlock = document.getElementById('egyptian-subjects-block');
+  const tbody = document.getElementById('egyptian-subjects-body');
+  if (!trackSelect || !systemSelect || !subjectsBlock || !tbody) return;
+
+  const track = trackSelect.value;
+  const system = systemSelect.value;
+
+  if (!track || !system || !egyptianConfig) {
+    subjectsBlock.style.display = 'none';
+    tbody.innerHTML = '';
+    recalculateEgyptian();
+    return;
+  }
+
+  const subjects = (egyptianConfig.subjects_by_track_and_system[track] || {})[system] || [];
+  tbody.innerHTML = '';
+  subjects.forEach((subject, idx) => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td class="col-num">${idx + 1}</td>
+      <td class="col-subject">${subject.name}</td>
+      <td class="col-grade">
+        <input type="number" min="0" max="${subject.maxMark}" step="any" required placeholder="0-${subject.maxMark}"
+               class="table-input egyptian-mark-input" data-subject="${subject.name}" data-max="${subject.maxMark}">
+      </td>
+      <td class="col-weight">${subject.maxMark}</td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  subjectsBlock.style.display = 'block';
+
+  tbody.querySelectorAll('.egyptian-mark-input').forEach(input => {
+    input.addEventListener('input', recalculateEgyptian);
+    input.addEventListener('change', recalculateEgyptian);
+  });
+
+  recalculateEgyptian();
+}
+
+function recalculateEgyptian() {
+  const systemSelect = document.getElementById('egyptian-system-select');
+  const system = systemSelect ? systemSelect.value : '';
+  const denominator = egyptianConfig && system
+    ? (system === egyptianConfig.new_system_name ? egyptianConfig.denominators.new_system : egyptianConfig.denominators.old_system)
+    : 0;
+
+  let finalTotal = 0;
+  document.querySelectorAll('.egyptian-mark-input').forEach(input => {
+    finalTotal += parseFloat(input.value) || 0;
+  });
+
+  const rawPercentage = denominator > 0 ? (finalTotal / denominator) * 100 : 0;
+  const percentage = Math.round(rawPercentage * 100) / 100;
+
+  const totalEl = document.getElementById('egyptian-final-total');
+  const percentageEl = document.getElementById('egyptian-percentage');
+  if (totalEl) totalEl.textContent = finalTotal.toFixed(2) + ' / ' + denominator;
+  if (percentageEl) percentageEl.textContent = percentage.toFixed(2) + '%';
+
+  updateProgressIndicator();
+}
+
+function setupEgyptianCalculatorListeners() {
+  const systemSelect = document.getElementById('egyptian-system-select');
+  if (systemSelect) {
+    systemSelect.addEventListener('change', generateEgyptianSubjectsUI);
+  }
+}
+
 // 4. Form Submission and Validation
 function setupSubmissionHandler() {
   const mainForm = document.getElementById('student-reg-form');
@@ -1862,6 +1955,41 @@ function validateForm() {
     return { valid: true };
   }
 
+  // Check if Egyptian Thanaweya Amma Cert is active
+  if (certSelect.value === 'egyptian') {
+    const systemSelect = document.getElementById('egyptian-system-select');
+    if (!systemSelect.value) {
+      return {
+        valid: false,
+        message: 'الرجاء اختيار نظام المواد (قديم أو حديث).',
+        element: systemSelect
+      };
+    }
+
+    const markInputs = document.querySelectorAll('.egyptian-mark-input');
+    if (markInputs.length === 0) {
+      return {
+        valid: false,
+        message: 'الرجاء توليد جدول مواد الثانوية العامة المصرية أولاً.',
+        element: systemSelect
+      };
+    }
+
+    for (let i = 0; i < markInputs.length; i++) {
+      const markVal = parseFloat(markInputs[i].value);
+      const maxVal = parseFloat(markInputs[i].getAttribute('data-max'));
+      if (markInputs[i].value === '' || isNaN(markVal) || markVal < 0 || markVal > maxVal) {
+        return {
+          valid: false,
+          message: 'الرجاء إدخال درجة صحيحة (بين 0 و' + maxVal + ') لجميع المواد.',
+          element: markInputs[i]
+        };
+      }
+    }
+
+    return { valid: true };
+  }
+
   // 6. Year of Study (Non-IG, Non-Saudi)
   const yearSelect = document.getElementById('year-select');
   if (!yearSelect.value) {
@@ -2043,6 +2171,37 @@ function compilePayload() {
       palestinianData: { percentage: percentage, branch: trackVal },
       percentage: percentage,
       equivalentTotal: equivalentTotal,
+      submittedAt: new Date().toISOString()
+    };
+  }
+
+  if (certSelect.value === 'egyptian') {
+    const subjectSystem = document.getElementById('egyptian-system-select').value;
+    const subjects = [];
+    document.querySelectorAll('.egyptian-mark-input').forEach(input => {
+      subjects.push({
+        subjectName: input.getAttribute('data-subject'),
+        mark: parseFloat(input.value) || 0
+      });
+    });
+
+    const finalTotal = parseFloat(document.getElementById('egyptian-final-total').textContent) || 0;
+    const percentage = parseFloat(document.getElementById('egyptian-percentage').textContent) || 0;
+    const denominator = egyptianConfig && subjectSystem
+      ? (subjectSystem === egyptianConfig.new_system_name ? egyptianConfig.denominators.new_system : egyptianConfig.denominators.old_system)
+      : 0;
+
+    return {
+      ...personalInfo,
+      nationalId: document.getElementById('national-id').value.trim(),
+      certification: certSelect.options[certSelect.selectedIndex].text,
+      track: trackVal,
+      yearOfStudy: '',
+      photo: uploadedPhotoBase64,
+      egyptianData: { subjectSystem: subjectSystem, subjects: subjects },
+      finalTotal: finalTotal,
+      denominator: denominator,
+      percentage: percentage,
       submittedAt: new Date().toISOString()
     };
   }
@@ -2406,6 +2565,11 @@ function sendData(payload, submitBtn, originalText) {
       certificateName: payload.otherData.certificateName,
       percentage: payload.otherData.percentage
     };
+  } else if (payload.egyptianData) {
+    apiPayload.egyptianData = {
+      subjectSystem: payload.egyptianData.subjectSystem,
+      subjects: payload.egyptianData.subjects
+    };
   } else {
     apiPayload.yearOfStudy = payload.yearOfStudy;
     apiPayload.standardGrades = payload.grades.map(g => ({
@@ -2574,6 +2738,23 @@ function showSuccessScreen(payload, mode, serverPath = '') {
       document.getElementById('receipt-program').textContent = payload.otherData.certificateName;
     }
     if (yearRow) yearRow.style.display = 'none';
+    if (saudiGpaRow && saudiGpaVal) {
+      saudiGpaRow.style.display = 'flex';
+      saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+    }
+  } else if (payload.egyptianData) {
+    // This IS the target Egyptian certificate — no equivalent-total row, unlike every foreign cert.
+    if (programRow) {
+      programRow.style.display = 'flex';
+      const programLabel = document.getElementById('receipt-program-label');
+      if (programLabel) programLabel.textContent = 'نظام المواد:';
+      document.getElementById('receipt-program').textContent = payload.egyptianData.subjectSystem;
+    }
+    if (yearRow) {
+      yearRow.style.display = 'flex';
+      if (yearLabel) yearLabel.textContent = 'المجموع (من ' + (payload.denominator || 0) + '):';
+      document.getElementById('receipt-year').textContent = (payload.finalTotal || 0).toFixed(2) + ' / ' + (payload.denominator || 0);
+    }
     if (saudiGpaRow && saudiGpaVal) {
       saudiGpaRow.style.display = 'flex';
       saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
@@ -2756,6 +2937,18 @@ function downloadReceiptFile(payload, format) {
       csvRows.push(`اسم الشهادة,"${payload.otherData.certificateName}"`);
       csvRows.push(`النسبة المئوية,${(payload.percentage || 0)}%`);
       csvRows.push(`تاريخ الإرسال,${payload.submittedAt}`);
+    } else if (payload.egyptianData) {
+      const eg = payload.egyptianData;
+      csvRows.push(`المسار,"${payload.track}"`);
+      csvRows.push(`نظام المواد,"${eg.subjectSystem}"`);
+      csvRows.push(`المجموع (من ${payload.denominator || 0}),${(payload.finalTotal || 0)}`);
+      csvRows.push(`النسبة المئوية,${(payload.percentage || 0)}%`);
+      csvRows.push(`تاريخ الإرسال,${payload.submittedAt}`);
+      csvRows.push('');
+      csvRows.push('المادة,الدرجة');
+      eg.subjects.forEach(s => {
+        csvRows.push(`"${s.subjectName}",${s.mark}`);
+      });
     } else {
       csvRows.push(`المسار الأكاديمي,"${payload.track}"`);
       csvRows.push(`السنة الدراسية,"${payload.yearOfStudy}"`);

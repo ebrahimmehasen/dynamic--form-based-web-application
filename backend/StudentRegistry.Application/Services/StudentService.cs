@@ -97,6 +97,10 @@ namespace StudentRegistry.Application.Services
             {
                 ProcessOtherCertificate(createDto, student);
             }
+            else if (cert.Contains("الثانوية العامة المصرية") || cert.Equals("egyptian", StringComparison.OrdinalIgnoreCase))
+            {
+                ProcessEgyptianCertificate(createDto, student);
+            }
             else
             {
                 ProcessStandardCertificate(createDto, student);
@@ -540,6 +544,61 @@ namespace StudentRegistry.Application.Services
                 Student = student,
                 CertificateName = ot.CertificateName.Trim(),
                 Percentage = Math.Round(ot.Percentage, 2)
+            };
+        }
+
+        // §Egyptian — this IS the target Egyptian certificate itself, so there is no equivalent-total
+        // conversion (unlike every foreign certificate above). The denominator is fixed by subject
+        // system alone (320 حديث / 410 قديم) — it is NEVER derived from the sum of the visible
+        // fields' own max marks, which is an intentional business rule (they don't add up to it).
+        private void ProcessEgyptianCertificate(StudentCreateDto dto, Student student)
+        {
+            var eg = dto.EgyptianData;
+            if (eg == null)
+                throw new ArgumentException("بيانات الثانوية العامة المصرية مفقودة.");
+
+            if (!EgyptianConstants.GetAllowedTracksForCollege(dto.WishCollege).Contains(dto.Track))
+                throw new ArgumentException("المسار المختار غير متاح للكلية المحددة في قسم الرغبة.");
+
+            var maxMarks = EgyptianConstants.GetSubjectMaxMarks(dto.Track, eg.SubjectSystem);
+
+            if (eg.Subjects == null || eg.Subjects.Count == 0)
+                throw new ArgumentException("بيانات المواد والدرجات للثانوية العامة المصرية مفقودة.");
+
+            decimal finalTotal = 0;
+            foreach (var subject in eg.Subjects)
+            {
+                // Defence in depth: the validator already enforces an exact match against the
+                // track+system's required subject set and each mark's own max-mark range.
+                if (!maxMarks.TryGetValue(subject.SubjectName, out var maxMark))
+                    continue;
+
+                finalTotal += subject.Mark;
+
+                student.StandardGrades.Add(new StandardStudentGrades
+                {
+                    Student = student,
+                    YearOfStudy = "12",
+                    SubjectName = subject.SubjectName,
+                    Grade = subject.Mark,
+                    MaxMark = maxMark,
+                    WeightedPercentage = Math.Round((subject.Mark / maxMark) * 100, 2),
+                    Achieved = subject.Mark,
+                    GradeLevel = 12
+                });
+            }
+
+            decimal denominator = EgyptianConstants.GetDenominator(eg.SubjectSystem);
+            decimal percentage = denominator > 0 ? Math.Round((finalTotal / denominator) * 100, 2) : 0;
+
+            student.EgyptianTotals = new EgyptianStudentTotals
+            {
+                Student = student,
+                Track = dto.Track,
+                SubjectSystem = eg.SubjectSystem,
+                FinalTotal = Math.Round(finalTotal, 2),
+                Denominator = denominator,
+                Percentage = percentage
             };
         }
 
