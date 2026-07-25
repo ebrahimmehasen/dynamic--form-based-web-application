@@ -88,6 +88,9 @@ namespace StudentRegistry.Application.Mappings
             CreateMap<StandardStudentGrades, SingleYearSubjectMarkResponseDto>()
                 .ForMember(dest => dest.Mark, opt => opt.MapFrom(src => src.Grade));
 
+            CreateMap<Student, StudentListItemDto>();
+            CreateMap<ReviewNote, ReviewNoteResponseDto>();
+
             // CreateDTO -> Entity mapping
             CreateMap<StudentCreateDto, Student>()
                 .ForMember(dest => dest.PhotoPath, opt => opt.Ignore()) // Managed by storage service

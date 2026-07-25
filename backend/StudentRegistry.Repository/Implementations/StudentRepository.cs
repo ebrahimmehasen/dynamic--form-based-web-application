@@ -3,6 +3,7 @@ using StudentRegistry.Data.DbContext;
 using StudentRegistry.Domain.Entities;
 using StudentRegistry.Domain.Interfaces;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace StudentRegistry.Repository.Implementations
@@ -65,6 +66,34 @@ namespace StudentRegistry.Repository.Implementations
             return await _context.Students
                 .Include(s => s.SaudiTotals)
                 .Include(s => s.IgGrades)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Student>> SearchAsync(string? query, int take = 500)
+        {
+            var students = _context.Students.AsNoTracking().AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                var term = query.Trim();
+                students = students.Where(s =>
+                    s.StudentName.Contains(term) ||
+                    s.StudentNameEn.Contains(term) ||
+                    s.NationalId.Contains(term) ||
+                    s.Phone.Contains(term) ||
+                    s.Email.Contains(term) ||
+                    s.GuardianName.Contains(term) ||
+                    s.AddressGov.Contains(term) ||
+                    s.AddressCenter.Contains(term) ||
+                    s.Certification.Contains(term) ||
+                    s.Track.Contains(term) ||
+                    s.WishCollege.Contains(term) ||
+                    s.GraduationYear.ToString().Contains(term));
+            }
+
+            return await students
+                .OrderByDescending(s => s.SubmittedAt)
+                .Take(take)
                 .ToListAsync();
         }
 

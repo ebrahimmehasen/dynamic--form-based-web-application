@@ -37,6 +37,7 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IStudentRepository, StudentRepository>();
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
+builder.Services.AddScoped<IReviewNoteService, ReviewNoteService>();
 
 // Register AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);

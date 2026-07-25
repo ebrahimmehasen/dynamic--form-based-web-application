@@ -15,6 +15,7 @@ USE [StudentRegistryDb];
 GO
 
 -- 2. Drop existing tables if they exist (in reverse order of foreign keys)
+IF OBJECT_ID('dbo.ReviewNotes', 'U') IS NOT NULL DROP TABLE dbo.ReviewNotes;
 IF OBJECT_ID('dbo.AmericanDiplomaStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.AmericanDiplomaStudentTotals;
 IF OBJECT_ID('dbo.EmiratiStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.EmiratiStudentTotals;
 IF OBJECT_ID('dbo.AzharStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.AzharStudentTotals;
@@ -337,4 +338,25 @@ CREATE TABLE dbo.AmericanDiplomaStudentTotals (
     CONSTRAINT FK_AmericanDiplomaStudentTotals_Students_StudentId FOREIGN KEY (StudentId)
         REFERENCES dbo.Students (Id) ON DELETE CASCADE
 );
+GO
+
+-- Review notes: reviewer comments/suggested changes attached to individual student fields.
+-- Entirely separate from the student data itself — never modifies Students or any certificate
+-- table. Each row is an append-only note (edits are new rows, not updates); Author is a fixed
+-- "User" placeholder until authentication is implemented.
+CREATE TABLE dbo.ReviewNotes (
+    Id INT IDENTITY(1,1) NOT NULL,
+    StudentId INT NOT NULL,
+    FieldName NVARCHAR(150) NOT NULL,
+    FieldValueSnapshot NVARCHAR(MAX) NULL,
+    ReviewerNote NVARCHAR(MAX) NOT NULL,
+    Author NVARCHAR(100) NOT NULL CONSTRAINT DF_ReviewNotes_Author DEFAULT (N'User'),
+    CreatedAt DATETIME2 NOT NULL CONSTRAINT DF_ReviewNotes_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    UpdatedAt DATETIME2 NULL,
+    CONSTRAINT PK_ReviewNotes PRIMARY KEY CLUSTERED (Id ASC),
+    CONSTRAINT FK_ReviewNotes_Students_StudentId FOREIGN KEY (StudentId)
+        REFERENCES dbo.Students (Id) ON DELETE CASCADE
+);
+GO
+CREATE INDEX IX_ReviewNotes_StudentId_FieldName ON dbo.ReviewNotes (StudentId, FieldName);
 GO

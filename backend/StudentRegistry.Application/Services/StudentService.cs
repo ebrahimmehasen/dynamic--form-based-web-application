@@ -42,6 +42,12 @@ namespace StudentRegistry.Application.Services
             return _mapper.Map<IEnumerable<StudentResponseDto>>(students);
         }
 
+        public async Task<IEnumerable<StudentListItemDto>> SearchStudentsAsync(string? query)
+        {
+            var students = await _unitOfWork.Students.SearchAsync(query);
+            return _mapper.Map<IEnumerable<StudentListItemDto>>(students);
+        }
+
         public async Task<StudentResponseDto> RegisterStudentAsync(StudentCreateDto createDto)
         {
             // 1. Verify uniqueness of NationalId

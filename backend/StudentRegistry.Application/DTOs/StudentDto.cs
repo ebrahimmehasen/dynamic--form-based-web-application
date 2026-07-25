@@ -216,6 +216,24 @@ namespace StudentRegistry.Application.DTOs
         public decimal WeightedPercentage { get; set; }
     }
 
+    // Lightweight projection for the admin review page's searchable table — flat Student columns
+    // only, no per-certificate totals/grades (those load on-demand via StudentResponseDto when a
+    // row is opened).
+    public class StudentListItemDto
+    {
+        public int Id { get; set; }
+        public string StudentName { get; set; } = string.Empty;
+        public string StudentNameEn { get; set; } = string.Empty;
+        public string NationalId { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string AddressGov { get; set; } = string.Empty;
+        public string Certification { get; set; } = string.Empty;
+        public string Track { get; set; } = string.Empty;
+        public int GraduationYear { get; set; }
+        public DateTime SubmittedAt { get; set; }
+    }
+
     public class StudentResponseDto
     {
         public int Id { get; set; }

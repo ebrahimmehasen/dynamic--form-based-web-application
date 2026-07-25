@@ -1078,3 +1078,208 @@ body {
   color: var(--primary-color);
 }
 
+/* Student Records Review (admin) page */
+:root {
+  --review-highlight-bg: #fef9c3;
+  --review-highlight-border: #fde047;
+}
+
+.review-page-container {
+  max-width: 1400px;
+}
+
+.review-search-row {
+  margin-bottom: 0.5rem;
+}
+
+.review-search-input {
+  width: 100%;
+}
+
+.data-table tbody tr {
+  cursor: pointer;
+}
+
+.data-table td {
+  font-size: 0.85rem;
+}
+
+/* Large centered profile modal — reuses .app-modal-overlay/.app-modal-box, wider variant */
+#review-detail-overlay {
+  z-index: 1000;
+}
+
+.app-modal-box.review-modal-lg {
+  max-width: 960px;
+  width: 92vw;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+.review-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 1.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.review-modal-header .app-modal-title {
+  margin: 0;
+}
+
+.review-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+}
+
+.review-modal-close:hover {
+  background: var(--bg-main);
+  color: var(--text-main);
+}
+
+.app-modal-box.review-modal-lg .app-modal-body {
+  padding: 1.5rem 1.75rem;
+  overflow-y: auto;
+  margin-bottom: 0;
+}
+
+/* Field-note modal stacks above the profile modal */
+#review-field-overlay {
+  z-index: 1100;
+}
+
+.review-field-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+  margin-top: 1rem;
+}
+
+.review-field-label:first-child {
+  margin-top: 0;
+}
+
+.review-field-current {
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.85rem;
+  font-size: 0.9rem;
+  color: var(--text-main);
+}
+
+.review-field-current img {
+  max-width: 100%;
+  max-height: 240px;
+  border-radius: var(--radius-sm);
+  display: block;
+}
+
+.review-field-history {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.review-field-history-item {
+  background: var(--review-highlight-bg);
+  border: 1px solid var(--review-highlight-border);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.8rem;
+  font-size: 0.82rem;
+  color: var(--text-main);
+}
+
+.review-field-history-item .review-field-history-meta {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  margin-bottom: 0.25rem;
+}
+
+.review-field-textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 90px;
+}
+
+/* Review sections inside the profile modal */
+.review-section {
+  margin-bottom: 1.75rem;
+}
+
+.review-section:last-child {
+  margin-bottom: 0;
+}
+
+.review-section-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--secondary-color);
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--primary-border);
+}
+
+.review-field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.85rem;
+}
+
+.review-field-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.review-field-item-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* Every reviewable value — clickable, opens the field-note modal */
+.review-clickable-field {
+  cursor: pointer;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px dashed transparent;
+  font-size: 0.9rem;
+  color: var(--text-main);
+  transition: all 0.2s ease;
+}
+
+.review-clickable-field:hover {
+  border-color: var(--primary-border);
+  background: var(--primary-light);
+}
+
+/* Persistent highlight for fields that already have review notes */
+.review-clickable-field.field-reviewed {
+  background: var(--review-highlight-bg) !important;
+  border-color: var(--review-highlight-border);
+}
+
+.review-photo-frame {
+  max-width: 220px;
+}
+
+.review-cert-table th, .review-cert-table td {
+  font-size: 0.85rem;
+}
+

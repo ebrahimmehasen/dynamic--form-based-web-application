@@ -1,0 +1,93 @@
+@page "/admin/student-records-review"
+@model StudentRegistry.API.Pages.Admin.StudentRecordsReviewModel
+@{
+    ViewData["Title"] = "مراجعة سجلات الطلاب";
+}
+
+<div class="container review-page-container">
+  <!-- Header -->
+  <header class="app-header">
+    <h1 class="app-title">مراجعة سجلات الطلاب</h1>
+    <p class="app-subtitle">تصفح وابحث عن استمارات الطلاب المسجلة وأضف ملاحظات المراجعة — وضع العرض فقط، بدون تعديل على بيانات الطالب</p>
+  </header>
+
+  <!-- Search -->
+  <div class="form-section">
+    <div class="review-search-row">
+      <input type="text" id="review-search-input" class="table-input review-search-input"
+             placeholder="ابحث بالاسم، الرقم القومي، الهاتف، البريد الإلكتروني، الشهادة، المحافظة...">
+    </div>
+    <p class="field-hint" id="review-results-banner"></p>
+  </div>
+
+  <!-- Students table -->
+  <div class="form-section">
+    <div class="table-responsive">
+      <table class="grades-table data-table">
+        <thead>
+          <tr>
+            <th>اسم الطالب</th>
+            <th>الاسم بالإنجليزية</th>
+            <th>الرقم القومي</th>
+            <th>الهاتف</th>
+            <th>البريد الإلكتروني</th>
+            <th>المحافظة</th>
+            <th>الشهادة</th>
+            <th>المسار</th>
+            <th>سنة التخرج</th>
+            <th>تاريخ التقديم</th>
+          </tr>
+        </thead>
+        <tbody id="review-table-body">
+        </tbody>
+      </table>
+    </div>
+    <p class="field-hint" id="review-empty-state" style="display:none;">لا توجد نتائج مطابقة لبحثك.</p>
+  </div>
+
+  <!-- Large student profile modal -->
+  <div class="app-modal-overlay" id="review-detail-overlay">
+    <div class="app-modal-box review-modal-lg" id="review-detail-box">
+      <div class="review-modal-header">
+        <h3 class="app-modal-title" id="review-detail-title"></h3>
+        <button type="button" class="review-modal-close" id="review-detail-close" aria-label="إغلاق">&times;</button>
+      </div>
+      <div class="app-modal-body" id="review-detail-body"></div>
+    </div>
+  </div>
+
+  <!-- Small field-review modal, stacked above the profile modal -->
+  <div class="app-modal-overlay" id="review-field-overlay">
+    <div class="app-modal-box" id="review-field-box">
+      <div class="review-modal-header">
+        <h3 class="app-modal-title" id="review-field-title">ملاحظة مراجعة</h3>
+        <button type="button" class="review-modal-close" id="review-field-close" aria-label="إغلاق">&times;</button>
+      </div>
+      <div class="app-modal-body">
+        <div id="review-field-current-wrap">
+          <label class="review-field-label">القيمة الحالية</label>
+          <div class="review-field-current" id="review-field-current"></div>
+        </div>
+        <div id="review-field-history-wrap" style="display:none;">
+          <label class="review-field-label">ملاحظات سابقة</label>
+          <div class="review-field-history" id="review-field-history"></div>
+        </div>
+        <label class="review-field-label" for="review-field-note-input">اقتراح تعديل / ملاحظة المراجع</label>
+        <textarea id="review-field-note-input" class="table-input review-field-textarea" rows="4"
+                  placeholder="مثال: يجب أن تطابق الكتابة بالإنجليزية جواز السفر."></textarea>
+      </div>
+      <div class="app-modal-footer">
+        <button type="button" class="btn btn-secondary" id="review-field-cancel" style="flex:1;">إلغاء</button>
+        <button type="button" class="btn btn-primary" id="review-field-save" style="flex:1;">حفظ الملاحظة</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast notifications -->
+  <div class="app-toast-container" id="app-toast-container"></div>
+</div>
+
+@section Scripts {
+  <script src="~/js/app-modal.js" asp-append-version="true"></script>
+  <script src="~/js/review-page.js" asp-append-version="true"></script>
+}

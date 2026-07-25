@@ -80,5 +80,12 @@ namespace StudentRegistry.API.Controllers
             var result = await _studentService.GetAllStudentsAsync();
             return Ok(new { status = "success", data = result });
         }
+
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchStudents([FromQuery] string? q)
+        {
+            var result = await _studentService.SearchStudentsAsync(q);
+            return Ok(new { status = "success", data = result });
+        }
     }
 }
