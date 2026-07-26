@@ -304,11 +304,16 @@ function renderCertificateSection(student) {
     body = renderCertTotalsAndGrades(student.americanDiplomaTotals, student.americanDiplomaGrades, 'AmericanDiplomaTotals', [
       ['AverageScore', 'متوسط الدرجات'],
       ['BasePercentage', 'النسبة الأساسية'],
-      ['SatI', 'SAT I'],
-      ['SatII', 'SAT II'],
+      ['TestType1', 'نوع اختبار المستوى الأول'],
+      ['SatI', 'SAT I (معادل)'],
+      ['ActComposite', 'ACT (الكلية، خام)'],
+      ['TestType2', 'نوع اختبار المستوى الثاني'],
+      ['SatII', 'SAT II (معادل)'],
+      ['ActMath', 'ACT Math (خام)'],
       ['SatIISubject1', 'مادة SAT II الأولى'],
       ['SatIISubject2', 'مادة SAT II الثانية'],
-      ['StudiedAdvancedMath', 'درس رياضيات متقدمة']
+      ['StudiedAdvancedMath', 'درس رياضيات متقدمة'],
+      ['EquivalentPercentage', 'النسبة النهائية المعادلة']
     ], (g) => `${g.subjectName}: ${g.mark}`);
   }
 

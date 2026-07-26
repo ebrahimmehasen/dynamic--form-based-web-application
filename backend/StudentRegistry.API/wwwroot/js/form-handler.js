@@ -3126,8 +3126,12 @@ function sendData(payload, submitBtn, originalText) {
   } else if (payload.americanDiplomaData) {
     apiPayload.americanDiplomaData = {
       subjects: payload.americanDiplomaData.subjects,
+      testType1: payload.americanDiplomaData.testType1,
       satI: payload.americanDiplomaData.satI,
+      actComposite: payload.americanDiplomaData.actComposite,
+      testType2: payload.americanDiplomaData.testType2,
       satII: payload.americanDiplomaData.satII,
+      actMath: payload.americanDiplomaData.actMath,
       satIISubject1: payload.americanDiplomaData.satIISubject1,
       satIISubject2: payload.americanDiplomaData.satIISubject2,
       studiedAdvancedMath: payload.americanDiplomaData.studiedAdvancedMath
@@ -3157,7 +3161,7 @@ function sendData(payload, submitBtn, originalText) {
 
     if (response.ok && result.status === 'success') {
       const studentId = result.data && result.data.id ? result.data.id : null;
-      showSuccessScreen(payload, 'server', result.file_path || '', studentId);
+      showSuccessScreen(payload, 'server', result.file_path || '', studentId, result.data);
     } else {
       throw new Error(result.message || 'Server error occurred');
     }
@@ -3185,7 +3189,7 @@ function sendData(payload, submitBtn, originalText) {
 }
 
 // Show Success Receipt Screen
-function showSuccessScreen(payload, mode, serverPath = '', studentId = null) {
+function showSuccessScreen(payload, mode, serverPath = '', studentId = null, serverData = null) {
   document.getElementById('student-reg-form').style.display = 'none';
   document.getElementById('step-bar-container').style.display = 'none';
 
@@ -3371,6 +3375,18 @@ function showSuccessScreen(payload, mode, serverPath = '', studentId = null) {
       saudiGpaRow.style.display = 'flex';
       saudiGpaVal.textContent = 'المعدل: ' + (payload.averageScore || 0).toFixed(2) + ' / 100';
     }
+    // النسبة النهائية المعادلة قيمة محسوبة على الخادم فقط (تعتمد على تحويل ACT عند الحاجة)،
+    // فتُعرض فقط لو الاستمارة اتحفظت فعليًا على الخادم ورجع لنا الرد الكامل.
+    const equivalentPercentageRow = document.getElementById('receipt-equivalent-percentage-row');
+    const equivalentPercentageVal = document.getElementById('receipt-equivalent-percentage');
+    if (equivalentPercentageRow && equivalentPercentageVal) {
+      if (serverData && serverData.americanDiplomaTotals) {
+        equivalentPercentageRow.style.display = 'flex';
+        equivalentPercentageVal.textContent = (serverData.americanDiplomaTotals.equivalentPercentage || 0).toFixed(2) + '%';
+      } else {
+        equivalentPercentageRow.style.display = 'none';
+      }
+    }
   } else {
     if (programRow) programRow.style.display = 'none';
     if (yearRow) {
@@ -3394,267 +3410,23 @@ function showSuccessScreen(payload, mode, serverPath = '', studentId = null) {
   const btnDownloadPdf = document.getElementById('btn-download-pdf');
   if (btnDownloadPdf) {
     if (mode === 'server' && studentId) {
+      const pdfUrl = `/api/students/${studentId}/export/pdf?nationalId=${encodeURIComponent(payload.nationalId)}`;
       btnDownloadPdf.style.display = 'block';
       btnDownloadPdf.onclick = () => {
-        window.location.href = `/api/students/${studentId}/export/pdf?nationalId=${encodeURIComponent(payload.nationalId)}`;
+        window.location.href = pdfUrl;
       };
+      // Auto-download right after a successful server-side registration; the button stays
+      // visible above so the student can re-download it later if they missed it.
+      window.location.href = pdfUrl;
     } else {
       btnDownloadPdf.style.display = 'none';
     }
   }
 
-  const btnDownloadJson = document.getElementById('btn-download-json');
-  btnDownloadJson.onclick = () => {
-    downloadReceiptFile(payload, 'json');
-  };
-
-  const btnDownloadCsv = document.getElementById('btn-download-csv');
-  btnDownloadCsv.onclick = () => {
-    downloadReceiptFile(payload, 'csv');
-  };
-
   const btnNewForm = document.getElementById('btn-new-form');
   btnNewForm.onclick = () => {
     location.reload();
   };
-}
-
-// Download local JSON / CSV receipts
-function downloadReceiptFile(payload, format) {
-  let fileContent = '';
-  let fileName = `receipt_${payload.nationalId}`;
-  let mimeType = '';
-
-  if (format === 'json') {
-    fileContent = JSON.stringify(payload, null, 2);
-    fileName += '.json';
-    mimeType = 'application/json';
-  } else {
-    // Generate CSV
-    const csvRows = [];
-    csvRows.push('\uFEFF'); // UTF-8 BOM for Excel Arabic layout
-    csvRows.push('حقل,القيمة');
-    csvRows.push(`اسم الطالب (عربي),"${payload.studentNameAr || payload.studentName}"`);
-    csvRows.push(`اسم الطالب (انجليزي),"${payload.studentNameEn || ''}"`);
-    csvRows.push(`الرقم القومي,${payload.nationalId}`);
-    csvRows.push(`الكلية (الرغبة),"${payload.wishCollege || ''}"`);
-    csvRows.push(`البرنامج (الرغبة),"${payload.wishProgram || ''}"`);
-    csvRows.push(`سنة التخرج,"${payload.graduationYear || ''}"`);
-    csvRows.push(`النوع,"${payload.gender || ''}"`);
-    csvRows.push(`رقم هاتف الطالب,${payload.studentPhone || ''}`);
-    csvRows.push(`ايميل الشخصي للطالب,${payload.studentEmail || ''}`);
-    csvRows.push(`دولة الميلاد,"${payload.birthCountry || ''}"`);
-    csvRows.push(`محافظة الميلاد,"${payload.birthGovernorate || ''}"`);
-    csvRows.push(`مدينة الميلاد,"${payload.birthCity || ''}"`);
-    csvRows.push(`تاريخ الميلاد,${payload.birthDate || ''}`);
-    csvRows.push(`المدرسة,"${payload.schoolName || ''}"`);
-    csvRows.push(`اسم ولي الامر,"${payload.guardianName || ''}"`);
-    csvRows.push(`الرقم القومي لولي الامر,${payload.guardianNationalId || ''}`);
-    csvRows.push(`وظيفة ولي الامر,"${payload.guardianOccupation || ''}"`);
-    csvRows.push(`رقم هاتف ولي الامر,${payload.guardianPhone || ''}`);
-    csvRows.push(`رقم الهاتف الأرضي,${payload.guardianLandlinePhone || ''}`);
-    csvRows.push(`صلة قرابة ولي الامر,"${payload.guardianRelation || ''}"`);
-    csvRows.push(`المحافظه,"${payload.addressGov || ''}"`);
-    csvRows.push(`المركز,"${payload.addressCenter || ''}"`);
-    csvRows.push(`قرية/حي,"${payload.addressVillage || ''}"`);
-    csvRows.push(`شارع,"${payload.addressStreet || ''}"`);
-    csvRows.push(`رقم العماره,"${payload.addressBuilding || ''}"`);
-    csvRows.push(`رقم الدور,"${payload.addressFloor || ''}"`);
-    csvRows.push(`نوع الشهادة,"${payload.certification}"`);
-
-    if (payload.yearsCount) {
-      csvRows.push(`مسار الدراسة,"${payload.track}"`);
-      csvRows.push(`عدد سنوات الدراسة,"${payload.yearsCount}"`);
-      csvRows.push(`مجموع الدرجات المحرزة الكلي,${payload.overallTotals.totalAchieved}`);
-      csvRows.push(`مجموع المعاملات الكلي,${payload.overallTotals.totalCoefficients}`);
-      csvRows.push(`المجموع الموزون الكلي,${payload.overallTotals.totalWeighted}`);
-      csvRows.push(`النسبة المئوية النهائية (GPA),${payload.overallTotals.finalPercentage}%`);
-      csvRows.push(`تاريخ الإرسال,${payload.submittedAt}`);
-      csvRows.push('');
-
-      payload.years.forEach(yr => {
-        csvRows.push(`-- ${yr.yearLabelAr} --`);
-        csvRows.push('المادة,المعامل,الدرجة المحرزة,الدرجة الموزونة');
-        yr.grades.forEach(g => {
-          csvRows.push(`"${g.subjectName}",${g.coefficient},${g.achieved},${g.weighted}`);
-        });
-        csvRows.push(`مجموع درجات السنة,${yr.subtotal.totalAchieved}`);
-        csvRows.push(`مجموع معاملات السنة,${yr.subtotal.totalCoefficients}`);
-        csvRows.push(`مجموع موزون السنة,${yr.subtotal.totalWeighted}`);
-        csvRows.push('');
-      });
-    } else if (payload.igProgram) {
-      csvRows.push(`برنامج الـ IG,"${payload.track}"`);
-      csvRows.push(`نوع البرنامج,"${payload.igProgram}"`);
-      csvRows.push(`تطبيق المعامل النسبي,${payload.factor}`);
-      csvRows.push(`الحافز الرياضي,${payload.sportsBonus}%`);
-      csvRows.push(`النسبة المئوية المحسوبة,${payload.scorePercentage}%`);
-      csvRows.push(`المجموع الحكومي المعادل,${payload.governmentScore}/410`);
-      csvRows.push('');
-      csvRows.push('التقدير,العدد');
-
-      const activeSubkey = payload.igProgram === 'IGCSE' ? 'igcse' : (payload.igProgram === 'AS-Levels' ? 'as_level' : 'a_level');
-      const gradesObj = payload.grades[activeSubkey] || {};
-      Object.keys(gradesObj).forEach(gradeKey => {
-        csvRows.push(`"${gradeKey}",${gradesObj[gradeKey]}`);
-      });
-    } else if (payload.kuwaitiData) {
-      const kw = payload.kuwaitiData;
-      csvRows.push(`المسار الأكاديمي,"${payload.track}"`);
-      csvRows.push(`عدد سنوات الدراسة,${kuwaitiYearsCountLabel(kw.yearsCount)}`);
-      csvRows.push(`هل يوجد مواد بنظام الدور الثاني؟,${kw.hasSecondAttempt ? 'نعم' : 'لا'}`);
-      csvRows.push(`النسبة المئوية النهائية,${(payload.finalPercentage || 0)}%`);
-      csvRows.push(`المجموع المعادل,${(payload.equivalentTotal || 0)}/410`);
-      csvRows.push(`تاريخ الإرسال,${payload.submittedAt}`);
-      csvRows.push('');
-
-      const gradeLevels = [
-        { level: 10, label: 'الصف العاشر', weight: kw.grade10Weight, subjects: kw.grade10Subjects },
-        { level: 11, label: 'الصف الحادي عشر', weight: kw.grade11Weight, subjects: kw.grade11Subjects },
-        { level: 12, label: 'الصف الثاني عشر', weight: kw.grade12Weight, subjects: kw.grade12Subjects }
-      ];
-      gradeLevels.forEach(gl => {
-        if (!gl.subjects) return;
-        csvRows.push(`-- ${gl.label} (نسبتها ${gl.weight}%) --`);
-        csvRows.push('المادة,الدرجة المتحصلة');
-        gl.subjects.forEach(s => {
-          csvRows.push(`"${s.subjectName}",${s.obtained}`);
-        });
-        csvRows.push('');
-      });
-    } else if (payload.qatariData) {
-      const qa = payload.qatariData;
-      csvRows.push(`المسار الأكاديمي,"${payload.track}"`);
-      csvRows.push(`المجموع (من 700),${(payload.finalTotal || 0)}`);
-      csvRows.push(`النسبة المئوية,${(payload.percentage || 0)}%`);
-      csvRows.push(`المجموع الاعتباري (المجموع المصري),${(payload.equivalentTotal || 0)}/410`);
-      csvRows.push(`تاريخ الإرسال,${payload.submittedAt}`);
-      csvRows.push('');
-      csvRows.push('المادة,الدرجة');
-      qa.subjects.forEach(s => {
-        csvRows.push(`"${s.subjectName}",${s.mark}`);
-      });
-    } else if (payload.omaniData) {
-      const om = payload.omaniData;
-      csvRows.push(`المسار الأكاديمي,"${payload.track}"`);
-      csvRows.push(`المجموع (من 700),${(payload.finalTotal || 0)}`);
-      csvRows.push(`النسبة المئوية,${(payload.percentage || 0)}%`);
-      csvRows.push(`المجموع الاعتباري (المجموع المصري),${(payload.equivalentTotal || 0)}/410`);
-      csvRows.push(`تاريخ الإرسال,${payload.submittedAt}`);
-      csvRows.push('');
-      csvRows.push('المادة,الدرجة');
-      om.subjects.forEach(s => {
-        csvRows.push(`"${s.subjectName}",${s.mark}`);
-      });
-    } else if (payload.yemeniData) {
-      const ye = payload.yemeniData;
-      csvRows.push(`المسار الأكاديمي,"${payload.track}"`);
-      csvRows.push(`المجموع (من 600),${(payload.finalTotal || 0)}`);
-      csvRows.push(`النسبة المئوية,${(payload.percentage || 0)}%`);
-      csvRows.push(`المجموع الاعتباري (المجموع المصري),${(payload.equivalentTotal || 0)}/410`);
-      csvRows.push(`تاريخ الإرسال,${payload.submittedAt}`);
-      csvRows.push('');
-      csvRows.push('المادة,الدرجة');
-      ye.subjects.forEach(s => {
-        csvRows.push(`"${s.subjectName}",${s.mark}`);
-      });
-    } else if (payload.palestinianData) {
-      csvRows.push(`الفرع,"${payload.palestinianData.branch}"`);
-      csvRows.push(`النسبة المئوية,${(payload.percentage || 0)}%`);
-      csvRows.push(`المجموع الاعتباري (المجموع المصري),${(payload.equivalentTotal || 0)}/410`);
-      csvRows.push(`تاريخ الإرسال,${payload.submittedAt}`);
-    } else if (payload.otherData) {
-      csvRows.push(`اسم الشهادة,"${payload.otherData.certificateName}"`);
-      csvRows.push(`النسبة المئوية,${(payload.percentage || 0)}%`);
-      csvRows.push(`تاريخ الإرسال,${payload.submittedAt}`);
-    } else if (payload.egyptianData) {
-      const eg = payload.egyptianData;
-      csvRows.push(`المسار,"${payload.track}"`);
-      csvRows.push(`نظام المواد,"${eg.subjectSystem}"`);
-      csvRows.push(`المجموع (من ${payload.denominator || 0}),${(payload.finalTotal || 0)}`);
-      csvRows.push(`النسبة المئوية,${(payload.percentage || 0)}%`);
-      csvRows.push(`تاريخ الإرسال,${payload.submittedAt}`);
-      csvRows.push('');
-      csvRows.push('المادة,الدرجة');
-      eg.subjects.forEach(s => {
-        csvRows.push(`"${s.subjectName}",${s.mark}`);
-      });
-    } else if (payload.azharData) {
-      const az = payload.azharData;
-      csvRows.push(`القسم,"${payload.track}"`);
-      csvRows.push(`المجموع (من ${payload.denominator || 0}),${(payload.finalTotal || 0)}`);
-      csvRows.push(`النسبة المئوية,${(payload.percentage || 0)}%`);
-      csvRows.push(`المجموع الاعتباري (المجموع المصري),${(payload.equivalentTotal || 0)}/410`);
-      csvRows.push(`تاريخ الإرسال,${payload.submittedAt}`);
-      csvRows.push('');
-      csvRows.push('المادة,الدرجة');
-      az.subjects.forEach(s => {
-        csvRows.push(`"${s.subjectName}",${s.mark}`);
-      });
-    } else if (payload.emiratiData) {
-      const em = payload.emiratiData;
-      csvRows.push(`المجموع (من ${payload.denominator || 0}),${(payload.finalTotal || 0)}`);
-      csvRows.push(`النسبة المئوية,${(payload.percentage || 0)}%`);
-      csvRows.push(`المجموع الاعتباري (المجموع المصري),${(payload.equivalentTotal || 0)}/410`);
-      csvRows.push(`تاريخ الإرسال,${payload.submittedAt}`);
-      csvRows.push('');
-      csvRows.push('المادة,الدرجة');
-      em.subjects.forEach(s => {
-        csvRows.push(`"${s.subjectName}",${s.mark}`);
-      });
-    } else if (payload.americanDiplomaData) {
-      const am = payload.americanDiplomaData;
-      csvRows.push(`المعدل (من 100),${(payload.averageScore || 0)}`);
-      csvRows.push(`النسبة الأساسية (من 40),${(payload.basePercentage || 0)}`);
-      if (am.testType1 === 'ACT') {
-        csvRows.push(`نوع اختبار المستوى الأول,ACT`);
-        csvRows.push(`درجة ACT,${am.actComposite}`);
-      } else {
-        csvRows.push(`نوع اختبار المستوى الأول,SAT`);
-        csvRows.push(`SAT I,${am.satI}`);
-      }
-      if (am.testType2 === 'ACT' && am.actMath !== null && am.actMath !== undefined) {
-        csvRows.push(`نوع اختبار المستوى الثاني,ACT`);
-        csvRows.push(`درجة ACT Math,${am.actMath}`);
-        csvRows.push(`مادة SAT II الأولى,"${am.satIISubject1 || ''}"`);
-        csvRows.push(`مادة SAT II الثانية,"${am.satIISubject2 || ''}"`);
-      } else if (am.satII !== null && am.satII !== undefined) {
-        csvRows.push(`نوع اختبار المستوى الثاني,SAT`);
-        csvRows.push(`SAT II,${am.satII}`);
-        csvRows.push(`مادة SAT II الأولى,"${am.satIISubject1 || ''}"`);
-        csvRows.push(`مادة SAT II الثانية,"${am.satIISubject2 || ''}"`);
-      }
-      csvRows.push(`تاريخ الإرسال,${payload.submittedAt}`);
-      csvRows.push('');
-      csvRows.push('المادة,الدرجة');
-      am.subjects.forEach(s => {
-        csvRows.push(`"${s.subjectName}",${s.mark}`);
-      });
-    } else {
-      csvRows.push(`المسار الأكاديمي,"${payload.track}"`);
-      csvRows.push(`السنة الدراسية,"${payload.yearOfStudy}"`);
-      csvRows.push(`تاريخ الإرسال,${payload.submittedAt}`);
-      csvRows.push('');
-      csvRows.push('المادة,الدرجة,النسبة الموزونة,الدرجة المتحصلة');
-
-      payload.grades.forEach(g => {
-        csvRows.push(`"${g.subjectName}",${g.grade},${g.weighted},${g.achieved}`);
-      });
-    }
-
-    fileContent = csvRows.join('\n');
-    fileName += '.csv';
-    mimeType = 'text/csv;charset=utf-8;';
-  }
-
-  const blob = new Blob([fileContent], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', fileName);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
 }
 
 // Common Alerts

@@ -266,11 +266,12 @@ namespace StudentRegistry.Infrastructure.Export
             SetCellValue(wsPart, "C7", s.GuardianLandlinePhone ?? string.Empty);
             SetCellValue(wsPart, "E7", s.Phone);
             SetCellValue(wsPart, "C8", fullAddress);
-            SetCellValue(wsPart, "C9", s.AddressCenter);
-            SetCellValue(wsPart, "E9", s.AddressGov);
+            // Row 9 ("محل الميلاد") is now a single merged C9:E9 cell — AddressCenter/AddressGov no
+            // longer have their own row at all (AddressGov is still folded into C8's fullAddress).
+            SetCellValue(wsPart, "C9", birthLocation);
             SetCellValue(wsPart, "C10", s.Gender);
-            SetCellValue(wsPart, "E10", birthLocation);
-            SetCellValue(wsPart, "E11", s.BirthGovernorate);
+            // Row 11's second field (previously BirthGovernorate at E11) lost its label entirely —
+            // there's nowhere left to show it.
             SetCellValue(wsPart, "C11", s.BirthDate.ToString("dd/MM/yyyy"));
             SetCellValue(wsPart, "C12", ResolveScoreCell(s));
             SetCellValue(wsPart, "C13", s.Certification);
@@ -291,11 +292,11 @@ namespace StudentRegistry.Infrastructure.Export
             // No separate guardian address is collected — the guardian lives with the student,
             // so this reuses the same formatted address as C8.
             SetCellValue(wsPart, "C21", fullAddress);
-            // Row 22 is now a split landline/mobile pair, same layout as the student's C7/E7 —
-            // C22 = "رقم التليفون" (landline), E22 = "رقم الموبايل" (mobile). Row 23 is a blank
-            // spacer row with no label, so it must not be written to.
-            SetCellValue(wsPart, "C22", s.GuardianLandlinePhone ?? string.Empty);
-            SetCellValue(wsPart, "E22", s.GuardianPhone);
+            // Row 22 is back down to a single "رقم الهاتف" field (its old two-label landline/mobile
+            // split is gone) — only C22 has a label now, so only the guardian's phone goes there;
+            // there's no separate slot for the guardian's landline anymore (still shown once, for
+            // the household, at C7).
+            SetCellValue(wsPart, "C22", s.GuardianPhone);
         }
 
         private static string FormatAddress(string gov, string center, string? village, string street, string building, string? floor)

@@ -428,6 +428,8 @@ namespace StudentRegistry.Application.DTOs
         public bool StudiedAdvancedMath { get; set; }
         public bool SatIBelowMinimum { get; set; }
         public bool SatIIBelowMinimum { get; set; }
+        // النسبة النهائية المعادلة وفق معادلة الجامعات الحكومية والمعاهد العليا (رقم إضافي، لا يستبدل ما سبق).
+        public decimal EquivalentPercentage { get; set; }
         public string AdmissionNote { get; set; } = string.Empty;
         public string Disclaimer { get; set; } = string.Empty;
     }

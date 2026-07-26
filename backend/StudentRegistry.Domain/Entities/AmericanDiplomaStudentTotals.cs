@@ -22,6 +22,10 @@ namespace StudentRegistry.Domain.Entities
         public bool SatIBelowMinimum { get; set; }
         public bool SatIIBelowMinimum { get; set; }
 
+        // النسبة النهائية المعادلة وفق معادلة مكتب التنسيق للجامعات الحكومية:
+        // (SatI/1600 × 69 أو 60) + (SatII/1600 × 15 إذا SatII >= 1100) + AverageScore
+        public decimal EquivalentPercentage { get; set; }
+
         public virtual Student Student { get; set; } = null!;
     }
 }

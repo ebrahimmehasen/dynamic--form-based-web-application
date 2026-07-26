@@ -781,6 +781,21 @@ namespace StudentRegistry.Application.Services
                 ? (isAct2 ? AmericanDiplomaConstants.ConvertActMathToSatMath(am.ActMath!.Value) : am.SatII)
                 : null;
 
+            // النسبة النهائية المعادلة (مكتب تنسيق الجامعات الحكومية والمعاهد العليا) — تُحسب دائمًا
+            // من القيم المعادلة النهائية لـ SatI/SatII (بعد تحويل ACT إن وُجد، فلا فرق بين مصدري
+            // الاختبار هنا)، وتُضاف كرقم جديد بجانب القيم الحالية دون استبدالها.
+            int equivalentWeight = satI >= AmericanDiplomaConstants.EquivalentFormulaBonusThreshold
+                ? AmericanDiplomaConstants.EquivalentFormulaWeightWithBonus
+                : AmericanDiplomaConstants.EquivalentFormulaWeightBase;
+
+            decimal testIContribution = (decimal)satI / AmericanDiplomaConstants.SatMax * equivalentWeight;
+
+            decimal testIIContribution = (satIIProvided && satII!.Value >= AmericanDiplomaConstants.EquivalentFormulaSatIICountThreshold)
+                ? (decimal)satII.Value / AmericanDiplomaConstants.SatMax * AmericanDiplomaConstants.EquivalentFormulaSatIIWeight
+                : 0m;
+
+            decimal equivalentPercentage = Math.Round(testIContribution + testIIContribution + average, 2);
+
             student.AmericanDiplomaTotals = new AmericanDiplomaStudentTotals
             {
                 Student = student,
@@ -796,7 +811,8 @@ namespace StudentRegistry.Application.Services
                 SatIISubject2 = satIIProvided ? am.SatIISubject2 : null,
                 StudiedAdvancedMath = am.StudiedAdvancedMath,
                 SatIBelowMinimum = satI < AmericanDiplomaConstants.SatIMinimumThreshold,
-                SatIIBelowMinimum = satIIProvided && satII!.Value < AmericanDiplomaConstants.SatIIMinimumThreshold
+                SatIIBelowMinimum = satIIProvided && satII!.Value < AmericanDiplomaConstants.SatIIMinimumThreshold,
+                EquivalentPercentage = equivalentPercentage
             };
         }
 
