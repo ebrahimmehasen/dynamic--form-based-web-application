@@ -472,6 +472,19 @@ body {
   background-color: var(--bg-main);
 }
 
+.grades-table tbody tr.saudi-row-error td {
+  background-color: rgba(225, 29, 72, 0.08);
+}
+
+.grades-table tbody tr.saudi-row-error-message td {
+  background: var(--bg-card);
+  color: var(--danger-color);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding-top: 0;
+  text-align: right;
+}
+
 .col-num { width: 5%; text-align: center; }
 .col-subject { width: 35%; font-weight: 600; }
 .col-grade { width: 20%; }

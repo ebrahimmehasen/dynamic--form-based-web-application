@@ -54,14 +54,14 @@ namespace StudentRegistry.Application.Validators
                 .Must(NotContainHtml).WithMessage("دولة الميلاد غير صالحة ولا يمكن أن تحتوي على رموز أو وسوم HTML.");
 
             RuleFor(x => x.BirthGovernorate)
-                .NotEmpty().WithMessage("الرجاء إدخال محافظة الميلاد.")
                 .MaximumLength(100).WithMessage("يجب ألا تزيد محافظة الميلاد عن 100 حرف.")
-                .Must(NotContainHtml).WithMessage("محافظة الميلاد غير صالحة ولا يمكن أن تحتوي على رموز أو وسوم HTML.");
+                .Must(NotContainHtml).WithMessage("محافظة الميلاد غير صالحة ولا يمكن أن تحتوي على رموز أو وسوم HTML.")
+                .When(x => !string.IsNullOrEmpty(x.BirthGovernorate));
 
             RuleFor(x => x.BirthCity)
-                .NotEmpty().WithMessage("الرجاء إدخال مدينة الميلاد.")
                 .MaximumLength(100).WithMessage("يجب ألا تزيد مدينة الميلاد عن 100 حرف.")
-                .Must(NotContainHtml).WithMessage("مدينة الميلاد غير صالحة ولا يمكن أن تحتوي على رموز أو وسوم HTML.");
+                .Must(NotContainHtml).WithMessage("مدينة الميلاد غير صالحة ولا يمكن أن تحتوي على رموز أو وسوم HTML.")
+                .When(x => !string.IsNullOrEmpty(x.BirthCity));
 
             RuleFor(x => x.BirthDate)
                 .NotEmpty().WithMessage("الرجاء إدخال تاريخ الميلاد.")
