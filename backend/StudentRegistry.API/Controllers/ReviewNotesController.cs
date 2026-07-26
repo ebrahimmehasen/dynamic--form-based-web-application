@@ -1,12 +1,17 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using StudentRegistry.Application.Constants;
 using StudentRegistry.Application.DTOs;
 using StudentRegistry.Application.Interfaces;
 using System.Threading.Tasks;
 
 namespace StudentRegistry.API.Controllers
 {
+    // Reviewing/adding notes on student records is part of the Viewer's normal workflow on the
+    // Student Records Review page — entirely internal, never used by the public registration flow.
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Roles = AuthConstants.RoleViewer)]
     public class ReviewNotesController : ControllerBase
     {
         private readonly IReviewNoteService _reviewNoteService;

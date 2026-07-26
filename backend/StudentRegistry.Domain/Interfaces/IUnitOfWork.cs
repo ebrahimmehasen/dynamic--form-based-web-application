@@ -7,6 +7,7 @@ namespace StudentRegistry.Domain.Interfaces
     {
         IStudentRepository Students { get; }
         IReviewNoteRepository ReviewNotes { get; }
+        IUserRepository Users { get; }
         Task<int> CompleteAsync();
     }
 }

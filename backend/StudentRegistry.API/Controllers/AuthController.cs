@@ -1,6 +1,10 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudentRegistry.Application.DTOs;
 using StudentRegistry.Application.Interfaces;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace StudentRegistry.API.Controllers
@@ -16,18 +20,39 @@ namespace StudentRegistry.API.Controllers
             _authService = authService;
         }
 
-        // Placeholder endpoint — real credential validation, session/token issuance, and redirect
-        // logic will replace AuthService's implementation later. The request/response shape here
-        // (LoginRequestDto/LoginResultDto) is the stable contract the frontend already speaks, so
-        // wiring in real auth later needs no frontend changes.
+        // Credential verification happens entirely in AuthService (DB lookup + hash comparison).
+        // This controller's only auth-specific responsibility is turning a verified user into an
+        // authentication cookie via HttpContext.SignInAsync — kept here, not in the Application
+        // layer, since ClaimsPrincipal/HttpContext are ASP.NET Core web concerns.
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
         {
             var result = await _authService.LoginAsync(request);
 
-            // 501 Not Implemented — accurately reflects that this endpoint does not yet perform
-            // authentication, rather than returning a misleading 200/401.
-            return StatusCode(501, result);
+            if (!result.Success || result.Username == null || result.Role == null)
+            {
+                return Unauthorized(result);
+            }
+
+            var claims = new[]
+            {
+                new Claim(ClaimTypes.Name, result.Username),
+                new Claim(ClaimTypes.Role, result.Role)
+            };
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var principal = new ClaimsPrincipal(identity);
+
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+
+            return Ok(result);
+        }
+
+        [HttpPost("logout")]
+        [Authorize]
+        public async Task<IActionResult> Logout()
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return Ok(new { success = true });
         }
     }
 }

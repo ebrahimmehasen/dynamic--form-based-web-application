@@ -1,5 +1,7 @@
 using FluentValidation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using StudentRegistry.Application.Constants;
 using StudentRegistry.Application.DTOs;
 using StudentRegistry.Application.Interfaces;
 using System;
@@ -7,8 +9,12 @@ using System.Threading.Tasks;
 
 namespace StudentRegistry.API.Controllers
 {
+    // Student data (name, national ID, guardian info, grades...) is sensitive — every endpoint
+    // here requires the Viewer role except the public registration form itself, which stays
+    // anonymous on purpose (it's the student-facing submission flow, not an internal review tool).
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Roles = AuthConstants.RoleViewer)]
     public class StudentsController : ControllerBase
     {
         private readonly IStudentService _studentService;
@@ -21,6 +27,7 @@ namespace StudentRegistry.API.Controllers
         }
 
         [HttpPost("register")]
+        [AllowAnonymous]
         public async Task<IActionResult> RegisterStudent([FromBody] StudentCreateDto createDto)
         {
             // Validate creation request

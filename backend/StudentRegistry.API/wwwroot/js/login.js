@@ -72,23 +72,29 @@ function initLoginForm() {
     submitBtn.disabled = true;
     submitBtn.textContent = 'جاري تسجيل الدخول...';
 
-    try {
-      const { status, data } = await AuthApiClient.login(credentials);
+    let redirecting = false;
 
-      if (status === 501) {
-        // Expected while the real backend isn't wired up yet.
-        showLoginAlert((data && data.message) || 'تسجيل الدخول غير مفعل بعد.', 'danger');
-      } else if (data && data.success) {
+    try {
+      const { data } = await AuthApiClient.login(credentials);
+
+      if (data && data.success && data.redirectUrl) {
+        redirecting = true;
         showLoginAlert(data.message || 'تم تسجيل الدخول بنجاح.', 'success');
-      } else {
-        showLoginAlert((data && data.message) || 'تعذر تسجيل الدخول. الرجاء المحاولة مرة أخرى.', 'danger');
+        window.location.href = data.redirectUrl;
+        return;
       }
+
+      showLoginAlert((data && data.message) || 'تعذر تسجيل الدخول. الرجاء المحاولة مرة أخرى.', 'danger');
     } catch {
       showLoginAlert('تعذر الاتصال بالخادم. الرجاء المحاولة مرة أخرى.', 'danger');
     } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
-      passwordInput.value = '';
+      // Left disabled while the browser navigates away, so the button doesn't briefly flash back
+      // to its enabled/idle state on a successful login.
+      if (!redirecting) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+        passwordInput.value = '';
+      }
     }
   });
 }

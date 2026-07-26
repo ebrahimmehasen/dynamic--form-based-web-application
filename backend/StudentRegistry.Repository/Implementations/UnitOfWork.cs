@@ -9,6 +9,7 @@ namespace StudentRegistry.Repository.Implementations
         private readonly StudentRegistryDbContext _context;
         private IStudentRepository? _students;
         private IReviewNoteRepository? _reviewNotes;
+        private IUserRepository? _users;
 
         public UnitOfWork(StudentRegistryDbContext context)
         {
@@ -17,6 +18,7 @@ namespace StudentRegistry.Repository.Implementations
 
         public IStudentRepository Students => _students ??= new StudentRepository(_context);
         public IReviewNoteRepository ReviewNotes => _reviewNotes ??= new ReviewNoteRepository(_context);
+        public IUserRepository Users => _users ??= new UserRepository(_context);
 
         public async Task<int> CompleteAsync()
         {

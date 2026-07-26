@@ -1,19 +1,26 @@
 using FluentValidation;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using StudentRegistry.API.Middleware;
+using StudentRegistry.Application.Constants;
 using StudentRegistry.Application.Interfaces;
 using StudentRegistry.Application.Mappings;
 using StudentRegistry.Application.Services;
 using StudentRegistry.Application.Validators;
 using StudentRegistry.Data.DbContext;
+using StudentRegistry.Domain.Entities;
 using StudentRegistry.Domain.Interfaces;
 using StudentRegistry.Infrastructure.Storage;
 using StudentRegistry.Repository.Implementations;
+using System;
 using System.IO;
+using System.Threading.Tasks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,10 +42,12 @@ builder.Services.AddDbContext<StudentRegistryDbContext>(options =>
 // Configure Dependency Injection Layers
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IStudentRepository, StudentRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 builder.Services.AddScoped<IReviewNoteService, ReviewNoteService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 
 // Register AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
@@ -53,6 +62,45 @@ builder.Services.Configure<CookiePolicyOptions>(options =>
     options.HttpOnly = Microsoft.AspNetCore.CookiePolicy.HttpOnlyPolicy.Always;
     options.Secure = CookieSecurePolicy.Always;
 });
+
+// Cookie-based authentication for the internal (non-public) pages/APIs — the public registration
+// form/API stay anonymous. Unauthenticated/unauthorized requests to /api/* get a plain 401/403
+// instead of the default HTML redirect-to-login, since those are called from fetch(), not a browser
+// navigation; everything else (Razor Pages) gets the normal redirect-to-/login behavior.
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/login";
+        options.AccessDeniedPath = "/login";
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = true;
+        options.Cookie.Name = "StudentRegistry.Auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Strict;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.Events.OnRedirectToLogin = context =>
+        {
+            if (context.Request.Path.StartsWithSegments("/api"))
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return Task.CompletedTask;
+            }
+            context.Response.Redirect(context.RedirectUri);
+            return Task.CompletedTask;
+        };
+        options.Events.OnRedirectToAccessDenied = context =>
+        {
+            if (context.Request.Path.StartsWithSegments("/api"))
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return Task.CompletedTask;
+            }
+            context.Response.Redirect(context.RedirectUri);
+            return Task.CompletedTask;
+        };
+    });
+
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
@@ -83,6 +131,7 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
@@ -96,6 +145,33 @@ var uploadsPath = Path.Combine(app.Environment.WebRootPath ?? Path.Combine(Direc
 if (!Directory.Exists(uploadsPath))
 {
     Directory.CreateDirectory(uploadsPath);
+}
+
+// Seed the 3 test users (viewer/editor/admin, password "1234") on first run only — never
+// overwrites or duplicates existing accounts. Passwords are always stored hashed
+// (PasswordHasher<User>), never in plain text.
+using (var seedScope = app.Services.CreateScope())
+{
+    var unitOfWork = seedScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+    var passwordHasher = seedScope.ServiceProvider.GetRequiredService<IPasswordHasher<User>>();
+
+    if (!await unitOfWork.Users.AnyAsync())
+    {
+        var seedUsers = new[]
+        {
+            new User { Username = "viewer", Role = AuthConstants.RoleViewer },
+            new User { Username = "editor", Role = AuthConstants.RoleEditor },
+            new User { Username = "admin", Role = AuthConstants.RoleAdmin }
+        };
+
+        foreach (var seedUser in seedUsers)
+        {
+            seedUser.PasswordHash = passwordHasher.HashPassword(seedUser, "1234");
+            await unitOfWork.Users.AddAsync(seedUser);
+        }
+
+        await unitOfWork.CompleteAsync();
+    }
 }
 
 app.Run();

@@ -1301,3 +1301,38 @@ body {
   margin-top: 0.5rem;
 }
 
+/* Session bar — shown on every page once logged in (current user/role + logout) */
+.session-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 1.5rem;
+  background: var(--bg-main);
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.85rem;
+}
+
+.session-bar-user {
+  color: var(--text-muted);
+}
+
+.session-bar-logout-form {
+  margin: 0;
+}
+
+.session-bar-logout-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.9rem;
+  font-size: 0.8rem;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.session-bar-logout-btn:hover {
+  background: var(--primary-light);
+  border-color: var(--primary-border);
+}
+

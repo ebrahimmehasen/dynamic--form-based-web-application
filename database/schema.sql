@@ -15,6 +15,7 @@ USE [StudentRegistryDb];
 GO
 
 -- 2. Drop existing tables if they exist (in reverse order of foreign keys)
+IF OBJECT_ID('dbo.Users', 'U') IS NOT NULL DROP TABLE dbo.Users;
 IF OBJECT_ID('dbo.ReviewNotes', 'U') IS NOT NULL DROP TABLE dbo.ReviewNotes;
 IF OBJECT_ID('dbo.AmericanDiplomaStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.AmericanDiplomaStudentTotals;
 IF OBJECT_ID('dbo.EmiratiStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.EmiratiStudentTotals;
@@ -368,4 +369,19 @@ CREATE TABLE dbo.ReviewNotes (
 );
 GO
 CREATE INDEX IX_ReviewNotes_StudentId_FieldName ON dbo.ReviewNotes (StudentId, FieldName);
+GO
+
+-- System users: authentication + role-based access (Viewer/Editor/Admin). Passwords are always
+-- stored hashed (PasswordHasher<User>, PBKDF2), never in plain text.
+CREATE TABLE dbo.Users (
+    Id INT IDENTITY(1,1) NOT NULL,
+    Username NVARCHAR(50) NOT NULL,
+    PasswordHash NVARCHAR(256) NOT NULL,
+    Role NVARCHAR(30) NOT NULL,
+    CreatedAt DATETIME2 NOT NULL CONSTRAINT DF_Users_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    IsActive BIT NOT NULL CONSTRAINT DF_Users_IsActive DEFAULT (1),
+    CONSTRAINT PK_Users PRIMARY KEY CLUSTERED (Id ASC)
+);
+GO
+CREATE UNIQUE INDEX IX_Users_Username ON dbo.Users (Username);
 GO
