@@ -46,6 +46,11 @@ CREATE TABLE dbo.Students (
     Gender NVARCHAR(10) NOT NULL,       -- ذكر / أنثى
     Phone NVARCHAR(20) NOT NULL,
     Email NVARCHAR(150) NOT NULL,
+    BirthCountry NVARCHAR(100) NOT NULL,
+    BirthGovernorate NVARCHAR(100) NOT NULL,
+    BirthCity NVARCHAR(100) NOT NULL,
+    BirthDate DATE NOT NULL,
+    SchoolName NVARCHAR(150) NOT NULL,  -- المدرسة الحاصل منها على الثانوية العامة أو ما يعادلها
     GuardianName NVARCHAR(100) NOT NULL,
     GuardianNationalId NVARCHAR(20) NOT NULL,
     GuardianOccupation NVARCHAR(100) NOT NULL,

@@ -49,6 +49,26 @@ namespace StudentRegistry.Data.Configurations
                 .IsRequired()
                 .HasMaxLength(150);
 
+            builder.Property(s => s.BirthCountry)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            builder.Property(s => s.BirthGovernorate)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            builder.Property(s => s.BirthCity)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            builder.Property(s => s.BirthDate)
+                .IsRequired()
+                .HasColumnType("date");
+
+            builder.Property(s => s.SchoolName)
+                .IsRequired()
+                .HasMaxLength(150);
+
             builder.Property(s => s.GuardianName)
                 .IsRequired()
                 .HasMaxLength(100);
