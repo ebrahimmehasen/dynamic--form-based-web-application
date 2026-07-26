@@ -436,22 +436,34 @@ function refreshAmericanDiplomaSatIIFields() {
   const collegeVal = document.getElementById('wish-college').value;
   const isApplicable = americanDiplomaConfig.sat_ii_applicable_colleges.includes(collegeVal);
 
+  const testType2Group = document.getElementById('american-diploma-test-type-2-group');
+  const testType2Select = document.getElementById('american-diploma-test-type-2');
+  const actOption2 = testType2Select ? testType2Select.querySelector('option[value="ACT"]') : null;
+  const act2DisabledNote = document.getElementById('american-diploma-act2-disabled-note');
   const sat2Group = document.getElementById('american-diploma-sat2-group');
+  const act2Group = document.getElementById('american-diploma-act2-group');
   const sat2SubjectsGroup = document.getElementById('american-diploma-sat2-subjects-group');
   const advancedMathGroup = document.getElementById('american-diploma-advanced-math-group');
   const advancedMathCheckbox = document.getElementById('american-diploma-advanced-math-checkbox');
   const sat2 = document.getElementById('american-diploma-sat2');
+  const act2Math = document.getElementById('american-diploma-act2-math');
   const sat2Label = document.getElementById('american-diploma-sat2-label');
   const sat2RequirementHint = document.getElementById('american-diploma-sat2-requirement-hint');
+  const act2RequirementHint = document.getElementById('american-diploma-act2-requirement-hint');
   const subject1Select = document.getElementById('american-diploma-sat2-subject1');
   const subject2Select = document.getElementById('american-diploma-sat2-subject2');
 
   if (!isApplicable) {
+    testType2Group.style.display = 'none';
+    testType2Select.value = 'SAT';
     sat2Group.style.display = 'none';
+    act2Group.style.display = 'none';
     sat2SubjectsGroup.style.display = 'none';
     advancedMathGroup.style.display = 'none';
     sat2.value = '';
     sat2.required = false;
+    act2Math.value = '';
+    act2Math.required = false;
     advancedMathCheckbox.checked = false;
     subject1Select.innerHTML = '<option value="">-- اختر --</option>';
     subject2Select.innerHTML = '<option value="">-- اختر --</option>';
@@ -460,7 +472,7 @@ function refreshAmericanDiplomaSatIIFields() {
     return;
   }
 
-  sat2Group.style.display = 'block';
+  testType2Group.style.display = 'block';
   sat2SubjectsGroup.style.display = 'block';
 
   const isMedical = americanDiplomaConfig.medical_colleges.includes(collegeVal);
@@ -468,6 +480,21 @@ function refreshAmericanDiplomaSatIIFields() {
   const secondOptions = isMedical
     ? americanDiplomaConfig.medical_second_subject_options
     : americanDiplomaConfig.engineering_second_subject_options;
+
+  // ACT has no official College Board conversion for Physics/Chemistry/Biology — only usable for
+  // level 2 when the fixed first subject is Math (engineering/computers group).
+  const actAvailableForLevel2 = !isMedical;
+  if (actOption2) actOption2.disabled = !actAvailableForLevel2;
+  if (!actAvailableForLevel2 && testType2Select.value === 'ACT') testType2Select.value = 'SAT';
+  if (act2DisabledNote) {
+    act2DisabledNote.style.display = actAvailableForLevel2 ? 'none' : 'block';
+    act2DisabledNote.textContent = actAvailableForLevel2 ? '' : americanDiplomaConfig.act_level2_unavailable_note;
+  }
+
+  const isAct2 = testType2Select.value === 'ACT';
+  sat2Group.style.display = isAct2 ? 'none' : 'block';
+  act2Group.style.display = isAct2 ? 'block' : 'none';
+  if (isAct2) { sat2.value = ''; } else { act2Math.value = ''; }
 
   // Re-lock the first subject unconditionally — never leave a stale value from a previous college.
   subject1Select.innerHTML = `<option value="${fixedSubject}" selected>${fixedSubject}</option>`;
@@ -485,25 +512,54 @@ function refreshAmericanDiplomaSatIIFields() {
   // student re-pick from the new list.
   subject2Select.value = secondOptions.includes(previousSecond) ? previousSecond : '';
 
+  let mandatory;
   if (isMedical) {
     advancedMathGroup.style.display = 'none';
     advancedMathCheckbox.checked = false;
-    sat2.required = false;
-    if (sat2Label) sat2Label.innerHTML = 'درجة SAT II <span style="color:var(--text-muted); font-weight:400;">(اختياري)</span>';
-    if (sat2RequirementHint) sat2RequirementHint.textContent = 'SAT II اختياري لكليات المجموعة الطبية، لكن يُفضل إدخالها إن وُجدت لتحسين فرص القبول.';
+    mandatory = false;
   } else {
     advancedMathGroup.style.display = 'block';
-    const mandatory = !advancedMathCheckbox.checked;
-    sat2.required = mandatory;
-    if (sat2Label) sat2Label.innerHTML = mandatory
-      ? 'درجة SAT II <span class="required">*</span>'
-      : 'درجة SAT II <span style="color:var(--text-muted); font-weight:400;">(اختياري)</span>';
-    if (sat2RequirementHint) sat2RequirementHint.textContent = mandatory
-      ? 'SAT II إلزامي لمجموعة كليات الهندسة والحاسبات، إلا إذا أكدت أنك درست الرياضيات المتقدمة.'
-      : 'بما أنك أكدت دراسة الرياضيات المتقدمة، أصبحت SAT II اختيارية لهذه الكلية.';
+    mandatory = !advancedMathCheckbox.checked;
   }
 
+  sat2.required = mandatory && !isAct2;
+  act2Math.required = mandatory && isAct2;
+
+  const label = mandatory
+    ? '<span class="required">*</span>'
+    : '<span style="color:var(--text-muted); font-weight:400;">(اختياري)</span>';
+  if (sat2Label) sat2Label.innerHTML = `درجة SAT II ${label}`;
+
+  const hintText = isMedical
+    ? 'SAT II اختياري لكليات المجموعة الطبية، لكن يُفضل إدخالها إن وُجدت لتحسين فرص القبول.'
+    : (mandatory
+      ? 'SAT II إلزامي لمجموعة كليات الهندسة والحاسبات، إلا إذا أكدت أنك درست الرياضيات المتقدمة.'
+      : 'بما أنك أكدت دراسة الرياضيات المتقدمة، أصبحت SAT II اختيارية لهذه الكلية.');
+  if (sat2RequirementHint) sat2RequirementHint.textContent = hintText;
+  if (act2RequirementHint) act2RequirementHint.textContent = hintText.replace(/SAT II/g, 'ACT Math');
+
   updateAmericanDiplomaWarnings();
+}
+
+// American Diploma §ACT — Level 1 test-type toggle: SAT (400-1600) or ACT composite (1-36),
+// converted to an SAT-equivalent automatically server-side; only one of the two raw-score inputs
+// is ever shown/required at a time.
+function refreshAmericanDiplomaTestType1Fields() {
+  const testType1 = document.getElementById('american-diploma-test-type-1');
+  const sat1Group = document.getElementById('american-diploma-sat1-group');
+  const act1Group = document.getElementById('american-diploma-act1-group');
+  const sat1 = document.getElementById('american-diploma-sat1');
+  const act1 = document.getElementById('american-diploma-act1');
+  if (!testType1 || !sat1Group || !act1Group || !sat1 || !act1) return;
+
+  const isAct = testType1.value === 'ACT';
+  sat1Group.style.display = isAct ? 'none' : 'block';
+  act1Group.style.display = isAct ? 'block' : 'none';
+  sat1.required = !isAct;
+  act1.required = isAct;
+  if (isAct) { sat1.value = ''; } else { act1.value = ''; }
+
+  if (typeof updateAmericanDiplomaWarnings === 'function') updateAmericanDiplomaWarnings();
 }
 
 // §6 — non-blocking admission-minimum warnings (1050 SAT I / 1100 SAT II). Never prevents
@@ -517,11 +573,16 @@ function updateAmericanDiplomaWarnings() {
   const isEngineering = americanDiplomaConfig.engineering_colleges.includes(collegeVal);
   const groupSuffix = isMedical ? ' لكليات المجموعة الطبية' : (isEngineering ? ' لمجموعة كليات الهندسة والحاسبات' : '');
 
+  // The 1050/1100 thresholds are on the SAT scale — when ACT is the chosen test type, the raw
+  // input is on a 1-36 scale, so this warning is skipped there (the accurate, post-conversion
+  // below-minimum flag is still computed server-side and shown after submission in the receipt).
+  const testType1 = document.getElementById('american-diploma-test-type-1');
   const sat1 = document.getElementById('american-diploma-sat1');
   const sat1Warning = document.getElementById('american-diploma-sat1-warning');
   if (sat1 && sat1Warning) {
+    const isAct1 = testType1 && testType1.value === 'ACT';
     const sat1Val = parseFloat(sat1.value);
-    if (sat1.value !== '' && !isNaN(sat1Val) && sat1Val < americanDiplomaConfig.sat_i_minimum_threshold) {
+    if (!isAct1 && sat1.value !== '' && !isNaN(sat1Val) && sat1Val < americanDiplomaConfig.sat_i_minimum_threshold) {
       sat1Warning.textContent = `تنبيه: درجة SAT I أقل من الحد الأدنى المطلوب (${americanDiplomaConfig.sat_i_minimum_threshold})${groupSuffix}. يمكنك المتابعة، لكن يرجى مراجعة شروط القبول بالكلية.`;
       sat1Warning.style.display = 'block';
     } else {
@@ -529,12 +590,14 @@ function updateAmericanDiplomaWarnings() {
     }
   }
 
+  const testType2 = document.getElementById('american-diploma-test-type-2');
   const sat2 = document.getElementById('american-diploma-sat2');
   const sat2Warning = document.getElementById('american-diploma-sat2-warning');
   if (sat2 && sat2Warning) {
     const isApplicable = americanDiplomaConfig.sat_ii_applicable_colleges.includes(collegeVal);
+    const isAct2 = testType2 && testType2.value === 'ACT';
     const sat2Val = parseFloat(sat2.value);
-    if (isApplicable && sat2.value !== '' && !isNaN(sat2Val) && sat2Val < americanDiplomaConfig.sat_ii_minimum_threshold) {
+    if (isApplicable && !isAct2 && sat2.value !== '' && !isNaN(sat2Val) && sat2Val < americanDiplomaConfig.sat_ii_minimum_threshold) {
       sat2Warning.textContent = `تنبيه: درجة SAT II أقل من الحد الأدنى المطلوب (${americanDiplomaConfig.sat_ii_minimum_threshold})${groupSuffix}. يمكنك المتابعة، لكن يرجى مراجعة شروط القبول بالكلية.`;
       sat2Warning.style.display = 'block';
     } else {

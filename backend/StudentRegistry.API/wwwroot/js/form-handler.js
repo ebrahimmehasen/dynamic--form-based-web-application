@@ -1604,6 +1604,9 @@ function generateAmericanDiplomaGradesUI() {
   });
 
   recalculateAmericanDiploma();
+  if (typeof refreshAmericanDiplomaTestType1Fields === 'function') {
+    refreshAmericanDiplomaTestType1Fields();
+  }
   if (typeof refreshAmericanDiplomaSatIIFields === 'function') {
     refreshAmericanDiplomaSatIIFields();
   }
@@ -1634,6 +1637,8 @@ function recalculateAmericanDiploma() {
 function setupAmericanDiplomaCalculatorListeners() {
   const sat1 = document.getElementById('american-diploma-sat1');
   const sat2 = document.getElementById('american-diploma-sat2');
+  const act1 = document.getElementById('american-diploma-act1');
+  const act2Math = document.getElementById('american-diploma-act2-math');
   if (sat1) {
     sat1.addEventListener('input', () => {
       if (typeof updateAmericanDiplomaWarnings === 'function') updateAmericanDiplomaWarnings();
@@ -1642,6 +1647,30 @@ function setupAmericanDiplomaCalculatorListeners() {
   if (sat2) {
     sat2.addEventListener('input', () => {
       if (typeof updateAmericanDiplomaWarnings === 'function') updateAmericanDiplomaWarnings();
+    });
+  }
+  if (act1) {
+    act1.addEventListener('input', () => {
+      if (typeof updateAmericanDiplomaWarnings === 'function') updateAmericanDiplomaWarnings();
+    });
+  }
+  if (act2Math) {
+    act2Math.addEventListener('input', () => {
+      if (typeof updateAmericanDiplomaWarnings === 'function') updateAmericanDiplomaWarnings();
+    });
+  }
+  // Level 1/2 test-type selectors toggle which raw-score input is shown/required — the conversion
+  // to an SAT-equivalent happens silently server-side, the student only ever picks a test type.
+  const testType1 = document.getElementById('american-diploma-test-type-1');
+  if (testType1) {
+    testType1.addEventListener('change', () => {
+      if (typeof refreshAmericanDiplomaTestType1Fields === 'function') refreshAmericanDiplomaTestType1Fields();
+    });
+  }
+  const testType2 = document.getElementById('american-diploma-test-type-2');
+  if (testType2) {
+    testType2.addEventListener('change', () => {
+      if (typeof refreshAmericanDiplomaSatIIFields === 'function') refreshAmericanDiplomaSatIIFields();
     });
   }
   // "Studied advanced math" only ever flips the engineering group's SAT II mandatory/optional
@@ -1954,45 +1983,69 @@ function validateForm() {
       }
     }
 
-    const sat1Input = document.getElementById('american-diploma-sat1');
-    const sat1Val = parseFloat(sat1Input.value);
-    if (sat1Input.value === '' || isNaN(sat1Val) || sat1Val < 400 || sat1Val > 1600) {
-      return {
-        valid: false,
-        message: 'الرجاء إدخال درجة SAT I صحيحة (بين 400 و1600).',
-        element: sat1Input
-      };
+    // Level 1: SAT (400-1600) or ACT composite (1-36) — whichever test type is selected; the
+    // SAT-equivalent conversion for ACT happens automatically server-side.
+    const testType1 = document.getElementById('american-diploma-test-type-1').value;
+    if (testType1 === 'ACT') {
+      const act1Input = document.getElementById('american-diploma-act1');
+      const act1Val = parseFloat(act1Input.value);
+      if (act1Input.value === '' || isNaN(act1Val) || act1Val < 1 || act1Val > 36) {
+        return {
+          valid: false,
+          message: 'الرجاء إدخال درجة ACT صحيحة (بين 1 و36).',
+          element: act1Input
+        };
+      }
+    } else {
+      const sat1Input = document.getElementById('american-diploma-sat1');
+      const sat1Val = parseFloat(sat1Input.value);
+      if (sat1Input.value === '' || isNaN(sat1Val) || sat1Val < 400 || sat1Val > 1600) {
+        return {
+          valid: false,
+          message: 'الرجاء إدخال درجة SAT I صحيحة (بين 400 و1600).',
+          element: sat1Input
+        };
+      }
     }
 
-    // SAT II: shown for medical + engineering colleges (never تجارة). Medical is always optional;
-    // engineering is mandatory unless the student checked "studied advanced math". Whenever a
-    // value IS entered — mandatory or optionally filled in — its range and both subjects are
-    // still validated.
+    // Level 2 (SAT II): shown for medical + engineering colleges (never تجارة). Medical is always
+    // optional; engineering is mandatory unless the student checked "studied advanced math".
+    // Whenever a value IS entered — mandatory or optionally filled in — its range and both
+    // subjects are still validated, regardless of which test type (SAT or ACT Math) produced it.
     const collegeVal = document.getElementById('wish-college').value;
     const isSatIIApplicable = americanDiplomaConfig && americanDiplomaConfig.sat_ii_applicable_colleges.includes(collegeVal);
     if (isSatIIApplicable) {
       const isMedical = americanDiplomaConfig.medical_colleges.includes(collegeVal);
       const studiedAdvancedMath = document.getElementById('american-diploma-advanced-math-checkbox').checked;
       const mandatory = !isMedical && !studiedAdvancedMath;
+      const testType2 = document.getElementById('american-diploma-test-type-2').value;
+      const isAct2 = testType2 === 'ACT';
 
-      const sat2Input = document.getElementById('american-diploma-sat2');
-      const sat2Provided = sat2Input.value !== '';
+      const levelInput = isAct2
+        ? document.getElementById('american-diploma-act2-math')
+        : document.getElementById('american-diploma-sat2');
+      const levelProvided = levelInput.value !== '';
 
-      if (mandatory && !sat2Provided) {
+      if (mandatory && !levelProvided) {
         return {
           valid: false,
-          message: 'الرجاء إدخال درجة SAT II (مطلوبة لهذه الكلية، إلا إذا أكدت دراسة الرياضيات المتقدمة).',
-          element: sat2Input
+          message: isAct2
+            ? 'الرجاء إدخال درجة ACT Math (مطلوبة لهذه الكلية، إلا إذا أكدت دراسة الرياضيات المتقدمة).'
+            : 'الرجاء إدخال درجة SAT II (مطلوبة لهذه الكلية، إلا إذا أكدت دراسة الرياضيات المتقدمة).',
+          element: levelInput
         };
       }
 
-      if (sat2Provided) {
-        const sat2Val = parseFloat(sat2Input.value);
-        if (isNaN(sat2Val) || sat2Val < 400 || sat2Val > 1600) {
+      if (levelProvided) {
+        const levelVal = parseFloat(levelInput.value);
+        const [min, max] = isAct2 ? [1, 36] : [400, 1600];
+        if (isNaN(levelVal) || levelVal < min || levelVal > max) {
           return {
             valid: false,
-            message: 'الرجاء إدخال درجة SAT II صحيحة (بين 400 و1600).',
-            element: sat2Input
+            message: isAct2
+              ? 'الرجاء إدخال درجة ACT Math صحيحة (بين 1 و36).'
+              : 'الرجاء إدخال درجة SAT II صحيحة (بين 400 و1600).',
+            element: levelInput
           };
         }
 
@@ -2610,11 +2663,25 @@ function compilePayload() {
     const collegeVal = document.getElementById('wish-college').value;
     const isSatIIApplicable = americanDiplomaConfig && americanDiplomaConfig.sat_ii_applicable_colleges.includes(collegeVal);
     const studiedAdvancedMath = document.getElementById('american-diploma-advanced-math-checkbox').checked;
-    const satI = parseInt(document.getElementById('american-diploma-sat1').value, 10) || 0;
 
+    // Level 1 — the raw score is sent as-is; the server converts ACT to an SAT-equivalent before
+    // it enters any calculation. satI/satIBelowMinimum below are only a client-side preview for
+    // the receipt display when SAT was chosen directly — the backend recomputes independently.
+    const testType1 = document.getElementById('american-diploma-test-type-1').value;
+    const isAct1 = testType1 === 'ACT';
+    const actComposite = isAct1 ? (parseInt(document.getElementById('american-diploma-act1').value, 10) || 0) : null;
+    const satI = isAct1 ? 0 : (parseInt(document.getElementById('american-diploma-sat1').value, 10) || 0);
+
+    // Level 2 — same pattern: only one of SAT II / ACT Math is ever populated, per the chosen
+    // level-2 test type (ACT only offered at all when the fixed subject is Math).
+    const testType2 = isSatIIApplicable ? document.getElementById('american-diploma-test-type-2').value : null;
+    const isAct2 = testType2 === 'ACT';
     const sat2Input = document.getElementById('american-diploma-sat2');
-    const satIIProvided = isSatIIApplicable && sat2Input.value !== '';
-    const satII = satIIProvided ? (parseInt(sat2Input.value, 10) || 0) : null;
+    const act2Input = document.getElementById('american-diploma-act2-math');
+    const levelInput = isAct2 ? act2Input : sat2Input;
+    const satIIProvided = isSatIIApplicable && levelInput.value !== '';
+    const satII = satIIProvided && !isAct2 ? (parseInt(sat2Input.value, 10) || 0) : null;
+    const actMath = satIIProvided && isAct2 ? (parseInt(act2Input.value, 10) || 0) : null;
     const satIISubject1 = satIIProvided ? document.getElementById('american-diploma-sat2-subject1').value : null;
     const satIISubject2 = satIIProvided ? document.getElementById('american-diploma-sat2-subject2').value : null;
 
@@ -2630,16 +2697,20 @@ function compilePayload() {
       photo: uploadedPhotoBase64,
       americanDiplomaData: {
         subjects: subjects,
+        testType1: testType1,
         satI: satI,
+        actComposite: actComposite,
+        testType2: testType2,
         satII: satII,
+        actMath: actMath,
         satIISubject1: satIISubject1,
         satIISubject2: satIISubject2,
         studiedAdvancedMath: studiedAdvancedMath
       },
       averageScore: averageScore,
       basePercentage: basePercentage,
-      satIBelowMinimum: americanDiplomaConfig ? satI < americanDiplomaConfig.sat_i_minimum_threshold : false,
-      satIIBelowMinimum: !!(satIIProvided && americanDiplomaConfig && satII < americanDiplomaConfig.sat_ii_minimum_threshold),
+      satIBelowMinimum: !isAct1 && americanDiplomaConfig ? satI < americanDiplomaConfig.sat_i_minimum_threshold : false,
+      satIIBelowMinimum: !!(satIIProvided && !isAct2 && americanDiplomaConfig && satII < americanDiplomaConfig.sat_ii_minimum_threshold),
       submittedAt: new Date().toISOString()
     };
   }
@@ -3248,9 +3319,16 @@ function showSuccessScreen(payload, mode, serverPath = '') {
       programRow.style.display = 'flex';
       const programLabel = document.getElementById('receipt-program-label');
       if (programLabel) programLabel.textContent = 'SAT I / SAT II:';
-      document.getElementById('receipt-program').textContent = am.satII !== null && am.satII !== undefined
-        ? `${am.satI} / ${am.satII}`
-        : `${am.satI} (SAT II غير مطلوب)`;
+      const level1Display = am.testType1 === 'ACT' ? `ACT ${am.actComposite}` : `${am.satI}`;
+      let level2Display;
+      if (am.testType2 === 'ACT' && am.actMath !== null && am.actMath !== undefined) {
+        level2Display = `ACT Math ${am.actMath}`;
+      } else if (am.satII !== null && am.satII !== undefined) {
+        level2Display = `${am.satII}`;
+      } else {
+        level2Display = 'غير مطلوب';
+      }
+      document.getElementById('receipt-program').textContent = `${level1Display} / ${level2Display}`;
     }
     if (yearRow) {
       yearRow.style.display = 'flex';
@@ -3483,8 +3561,20 @@ function downloadReceiptFile(payload, format) {
       const am = payload.americanDiplomaData;
       csvRows.push(`المعدل (من 100),${(payload.averageScore || 0)}`);
       csvRows.push(`النسبة الأساسية (من 40),${(payload.basePercentage || 0)}`);
-      csvRows.push(`SAT I,${am.satI}`);
-      if (am.satII !== null && am.satII !== undefined) {
+      if (am.testType1 === 'ACT') {
+        csvRows.push(`نوع اختبار المستوى الأول,ACT`);
+        csvRows.push(`درجة ACT,${am.actComposite}`);
+      } else {
+        csvRows.push(`نوع اختبار المستوى الأول,SAT`);
+        csvRows.push(`SAT I,${am.satI}`);
+      }
+      if (am.testType2 === 'ACT' && am.actMath !== null && am.actMath !== undefined) {
+        csvRows.push(`نوع اختبار المستوى الثاني,ACT`);
+        csvRows.push(`درجة ACT Math,${am.actMath}`);
+        csvRows.push(`مادة SAT II الأولى,"${am.satIISubject1 || ''}"`);
+        csvRows.push(`مادة SAT II الثانية,"${am.satIISubject2 || ''}"`);
+      } else if (am.satII !== null && am.satII !== undefined) {
+        csvRows.push(`نوع اختبار المستوى الثاني,SAT`);
         csvRows.push(`SAT II,${am.satII}`);
         csvRows.push(`مادة SAT II الأولى,"${am.satIISubject1 || ''}"`);
         csvRows.push(`مادة SAT II الثانية,"${am.satIISubject2 || ''}"`);

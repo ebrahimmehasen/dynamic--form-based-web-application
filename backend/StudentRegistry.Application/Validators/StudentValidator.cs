@@ -501,24 +501,86 @@ namespace StudentRegistry.Application.Validators
                             .WithMessage("درجة كل مادة يجب أن تكون بين 0 و100.");
                     });
 
-                    RuleFor(x => x.AmericanDiplomaData!.SatI)
-                        .InclusiveBetween(AmericanDiplomaConstants.SatMin, AmericanDiplomaConstants.SatMax)
-                        .WithMessage($"درجة SAT I يجب أن تكون بين {AmericanDiplomaConstants.SatMin} و{AmericanDiplomaConstants.SatMax}.");
+                    // §Level 1 test type — SAT (400-1600, unchanged) or ACT composite (1-36),
+                    // converted to an SAT-equivalent server-side before entering any calculation.
+                    RuleFor(x => x.AmericanDiplomaData!.TestType1)
+                        .Must(t => t == AmericanDiplomaConstants.TestTypeSat || t == AmericanDiplomaConstants.TestTypeAct)
+                        .WithMessage("نوع اختبار المستوى الأول غير صالح.");
+
+                    When(x => x.AmericanDiplomaData!.TestType1 == AmericanDiplomaConstants.TestTypeSat, () =>
+                    {
+                        RuleFor(x => x.AmericanDiplomaData!.SatI)
+                            .InclusiveBetween(AmericanDiplomaConstants.SatMin, AmericanDiplomaConstants.SatMax)
+                            .WithMessage($"درجة SAT I يجب أن تكون بين {AmericanDiplomaConstants.SatMin} و{AmericanDiplomaConstants.SatMax}.");
+                    });
+
+                    When(x => x.AmericanDiplomaData!.TestType1 == AmericanDiplomaConstants.TestTypeAct, () =>
+                    {
+                        RuleFor(x => x.AmericanDiplomaData!.ActComposite)
+                            .NotNull().WithMessage("درجة ACT مطلوبة.");
+
+                        When(x => x.AmericanDiplomaData!.ActComposite.HasValue, () =>
+                        {
+                            RuleFor(x => x.AmericanDiplomaData!.ActComposite!.Value)
+                                .InclusiveBetween(AmericanDiplomaConstants.ActMin, AmericanDiplomaConstants.ActMax)
+                                .WithMessage($"درجة ACT يجب أن تكون بين {AmericanDiplomaConstants.ActMin} و{AmericanDiplomaConstants.ActMax}.");
+                        });
+                    });
 
                     // §5/§6 — the Wish section's college determines whether SAT II applies at all,
                     // whether it's mandatory, and (whenever provided) which two subjects are valid;
                     // the client-side gating is never trusted on its own.
                     When(x => AmericanDiplomaConstants.IsSatIIApplicable(x.WishCollege), () =>
                     {
-                        When(x => AmericanDiplomaConstants.IsSatIIMandatory(x.WishCollege, x.AmericanDiplomaData!.StudiedAdvancedMath), () =>
+                        RuleFor(x => x.AmericanDiplomaData!.TestType2)
+                            .Must(t => t == null || t == AmericanDiplomaConstants.TestTypeSat || t == AmericanDiplomaConstants.TestTypeAct)
+                            .WithMessage("نوع اختبار المستوى الثاني غير صالح.");
+
+                        // ACT has no official per-subject College Board conversion except Math —
+                        // only usable for level 2 when the college's fixed first subject is Math
+                        // (engineering/computers group); Biology (medical group) has none.
+                        When(x => x.AmericanDiplomaData!.TestType2 == AmericanDiplomaConstants.TestTypeAct, () =>
                         {
-                            RuleFor(x => x.AmericanDiplomaData!.SatII)
-                                .NotNull().WithMessage("درجة SAT II مطلوبة للكلية المختارة (إلا إذا أكدت أنك درست الرياضيات المتقدمة).");
+                            RuleFor(x => x.AmericanDiplomaData!.TestType2)
+                                .Must((dto, _) => AmericanDiplomaConstants.GetSatIIFixedFirstSubject(dto.WishCollege) == AmericanDiplomaConstants.MathSubject)
+                                .WithMessage(AmericanDiplomaConstants.ActLevel2UnavailableNote);
                         });
 
-                        // Whenever SAT II IS provided — mandatory or optionally filled in — its
-                        // range and both subjects are validated the same way.
-                        When(x => x.AmericanDiplomaData!.SatII.HasValue, () =>
+                        bool IsAct2(AmericanDiplomaDataCreateDto d) => d.TestType2 == AmericanDiplomaConstants.TestTypeAct;
+
+                        When(x => AmericanDiplomaConstants.IsSatIIMandatory(x.WishCollege, x.AmericanDiplomaData!.StudiedAdvancedMath), () =>
+                        {
+                            When(x => IsAct2(x.AmericanDiplomaData!), () =>
+                            {
+                                RuleFor(x => x.AmericanDiplomaData!.ActMath)
+                                    .NotNull().WithMessage("درجة ACT Math مطلوبة للكلية المختارة (إلا إذا أكدت أنك درست الرياضيات المتقدمة).");
+                            });
+                            When(x => !IsAct2(x.AmericanDiplomaData!), () =>
+                            {
+                                RuleFor(x => x.AmericanDiplomaData!.SatII)
+                                    .NotNull().WithMessage("درجة SAT II مطلوبة للكلية المختارة (إلا إذا أكدت أنك درست الرياضيات المتقدمة).");
+                            });
+                        });
+
+                        // Whenever a level-2 score IS provided — mandatory or optionally filled in
+                        // — its range and both subjects are validated the same way, regardless of
+                        // which test type produced it.
+                        When(x => IsAct2(x.AmericanDiplomaData!) && x.AmericanDiplomaData!.ActMath.HasValue, () =>
+                        {
+                            RuleFor(x => x.AmericanDiplomaData!.ActMath!.Value)
+                                .InclusiveBetween(AmericanDiplomaConstants.ActMin, AmericanDiplomaConstants.ActMax)
+                                .WithMessage($"درجة ACT Math يجب أن تكون بين {AmericanDiplomaConstants.ActMin} و{AmericanDiplomaConstants.ActMax}.");
+
+                            RuleFor(x => x.AmericanDiplomaData!.SatIISubject1)
+                                .Must((dto, s1) => s1 == AmericanDiplomaConstants.GetSatIIFixedFirstSubject(dto.WishCollege))
+                                .WithMessage("مادة SAT II الأولى غير صحيحة لهذه الكلية.");
+
+                            RuleFor(x => x.AmericanDiplomaData!.SatIISubject2)
+                                .Must((dto, s2) => s2 != null && AmericanDiplomaConstants.GetSatIISecondSubjectOptions(dto.WishCollege).Contains(s2))
+                                .WithMessage("الرجاء اختيار مادة SAT II الثانية من القائمة المتاحة لهذه الكلية.");
+                        });
+
+                        When(x => !IsAct2(x.AmericanDiplomaData!) && x.AmericanDiplomaData!.SatII.HasValue, () =>
                         {
                             RuleFor(x => x.AmericanDiplomaData!.SatII!.Value)
                                 .InclusiveBetween(AmericanDiplomaConstants.SatMin, AmericanDiplomaConstants.SatMax)
@@ -533,22 +595,26 @@ namespace StudentRegistry.Application.Validators
                                 .WithMessage("الرجاء اختيار مادة SAT II الثانية من القائمة المتاحة لهذه الكلية.");
                         });
 
-                        // Optional-and-skipped: subjects must stay empty (defense in depth).
-                        When(x => !x.AmericanDiplomaData!.SatII.HasValue, () =>
+                        // Optional-and-skipped entirely (neither test type's score provided):
+                        // subjects must stay empty (defense in depth).
+                        When(x => !x.AmericanDiplomaData!.SatII.HasValue && !x.AmericanDiplomaData!.ActMath.HasValue, () =>
                         {
                             RuleFor(x => x.AmericanDiplomaData!.SatIISubject1)
-                                .Must(v => v == null).WithMessage("لا يمكن اختيار مادة SAT II الأولى بدون إدخال درجة SAT II.");
+                                .Must(v => v == null).WithMessage("لا يمكن اختيار مادة SAT II الأولى بدون إدخال درجة.");
                             RuleFor(x => x.AmericanDiplomaData!.SatIISubject2)
-                                .Must(v => v == null).WithMessage("لا يمكن اختيار مادة SAT II الثانية بدون إدخال درجة SAT II.");
+                                .Must(v => v == null).WithMessage("لا يمكن اختيار مادة SAT II الثانية بدون إدخال درجة.");
                         });
                     });
 
-                    // Colleges where SAT II doesn't apply at all (تجارة) must not submit it — defense in depth.
+                    // Colleges where SAT II doesn't apply at all (تجارة) must not submit any level-2 score.
                     When(x => !AmericanDiplomaConstants.IsSatIIApplicable(x.WishCollege), () =>
                     {
                         RuleFor(x => x.AmericanDiplomaData!.SatII)
                             .Must(v => v == null)
                             .WithMessage("درجة SAT II غير مطلوبة للكلية المختارة.");
+                        RuleFor(x => x.AmericanDiplomaData!.ActMath)
+                            .Must(v => v == null)
+                            .WithMessage("درجة ACT Math غير مطلوبة للكلية المختارة.");
                     });
                 });
             });

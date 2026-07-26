@@ -16,6 +16,8 @@ namespace StudentRegistry.Data.Configurations
             builder.Property(t => t.BasePercentage).HasPrecision(5, 2);
             builder.Property(t => t.SatIISubject1).HasMaxLength(50);
             builder.Property(t => t.SatIISubject2).HasMaxLength(50);
+            builder.Property(t => t.TestType1).HasMaxLength(10).IsRequired();
+            builder.Property(t => t.TestType2).HasMaxLength(10);
 
             builder.HasOne(t => t.Student)
                 .WithOne(s => s.AmericanDiplomaTotals)

@@ -762,25 +762,41 @@ namespace StudentRegistry.Application.Services
             decimal average = sum / AmericanDiplomaConstants.BestSubjectsCount;
             decimal basePercentage = Math.Round(average * AmericanDiplomaConstants.BasePercentageWeight / 100m, 2);
 
-            // SAT II is only ever persisted when it was both applicable to this college AND
-            // actually provided — mandatory (engineering, no checkbox) or optionally filled in
+            // Level 1: resolve the SAT-equivalent value server-side, authoritatively — a native
+            // SAT score passes through unchanged, an ACT composite is converted via the official
+            // concordance table before it ever reaches SatI/SatIBelowMinimum below. The client's
+            // own SatI value (if any) is never trusted when the test type is ACT.
+            bool isAct1 = am.TestType1 == AmericanDiplomaConstants.TestTypeAct;
+            int satI = isAct1 ? AmericanDiplomaConstants.ConvertActToSat(am.ActComposite!.Value) : am.SatI;
+
+            // SAT II / Level 2 is only ever persisted when it was both applicable to this college
+            // AND actually provided — mandatory (engineering, no checkbox) or optionally filled in
             // (medical, or engineering with the checkbox). The validator already enforced that
-            // subjects only accompany an actual SAT II value.
+            // subjects only accompany an actual level-2 value, and that ACT is only chosen there
+            // when the college's fixed subject is Math.
             bool satIIApplicable = AmericanDiplomaConstants.IsSatIIApplicable(dto.WishCollege);
-            bool satIIProvided = satIIApplicable && am.SatII.HasValue;
+            bool isAct2 = am.TestType2 == AmericanDiplomaConstants.TestTypeAct;
+            bool satIIProvided = satIIApplicable && (isAct2 ? am.ActMath.HasValue : am.SatII.HasValue);
+            int? satII = satIIProvided
+                ? (isAct2 ? AmericanDiplomaConstants.ConvertActMathToSatMath(am.ActMath!.Value) : am.SatII)
+                : null;
 
             student.AmericanDiplomaTotals = new AmericanDiplomaStudentTotals
             {
                 Student = student,
                 AverageScore = Math.Round(average, 2),
                 BasePercentage = basePercentage,
-                SatI = am.SatI,
-                SatII = satIIProvided ? am.SatII : null,
+                TestType1 = am.TestType1,
+                SatI = satI,
+                ActComposite = isAct1 ? am.ActComposite : null,
+                TestType2 = satIIProvided ? am.TestType2 : null,
+                SatII = satII,
+                ActMath = satIIProvided && isAct2 ? am.ActMath : null,
                 SatIISubject1 = satIIProvided ? am.SatIISubject1 : null,
                 SatIISubject2 = satIIProvided ? am.SatIISubject2 : null,
                 StudiedAdvancedMath = am.StudiedAdvancedMath,
-                SatIBelowMinimum = am.SatI < AmericanDiplomaConstants.SatIMinimumThreshold,
-                SatIIBelowMinimum = satIIProvided && am.SatII!.Value < AmericanDiplomaConstants.SatIIMinimumThreshold
+                SatIBelowMinimum = satI < AmericanDiplomaConstants.SatIMinimumThreshold,
+                SatIIBelowMinimum = satIIProvided && satII!.Value < AmericanDiplomaConstants.SatIIMinimumThreshold
             };
         }
 

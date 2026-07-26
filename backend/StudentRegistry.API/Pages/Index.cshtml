@@ -1036,9 +1036,30 @@
           </div>
           <div class="form-grid-2">
             <div class="form-group">
+              <label for="american-diploma-test-type-1">نوع الاختبار <span class="required">*</span></label>
+              <select id="american-diploma-test-type-1" class="form-control">
+                <option value="SAT" selected>SAT</option>
+                <option value="ACT">ACT</option>
+              </select>
+            </div>
+            <div class="form-group" id="american-diploma-test-type-2-group" style="display: none;">
+              <label for="american-diploma-test-type-2" id="american-diploma-test-type-2-label">نوع اختبار المستوى الثاني <span class="required">*</span></label>
+              <select id="american-diploma-test-type-2" class="form-control">
+                <option value="SAT" selected>SAT</option>
+                <option value="ACT">ACT</option>
+              </select>
+              <div class="field-hint" id="american-diploma-act2-disabled-note" style="display: none; color: var(--danger-color);"></div>
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group" id="american-diploma-sat1-group">
               <label for="american-diploma-sat1">درجة SAT I <span class="required">*</span></label>
               <input type="number" id="american-diploma-sat1" class="form-control" min="400" max="1600" step="1" placeholder="400-1600" required>
               <div class="field-warning" id="american-diploma-sat1-warning"></div>
+            </div>
+            <div class="form-group" id="american-diploma-act1-group" style="display: none;">
+              <label for="american-diploma-act1">درجة ACT (الكلية) <span class="required">*</span></label>
+              <input type="number" id="american-diploma-act1" class="form-control" min="1" max="36" step="1" placeholder="1-36">
             </div>
             <div class="form-group" id="american-diploma-sat2-group" style="display: none;">
               <label for="american-diploma-sat2" id="american-diploma-sat2-label">درجة SAT II <span class="required">*</span></label>
@@ -1046,6 +1067,11 @@
               <div class="field-hint">تاريخ اختبار SAT II يجب ألا يتعدى تاريخ الحصول على الدبلومة الأمريكية.</div>
               <div class="field-hint" id="american-diploma-sat2-requirement-hint"></div>
               <div class="field-warning" id="american-diploma-sat2-warning"></div>
+            </div>
+            <div class="form-group" id="american-diploma-act2-group" style="display: none;">
+              <label for="american-diploma-act2-math" id="american-diploma-act2-label">درجة ACT Math <span class="required">*</span></label>
+              <input type="number" id="american-diploma-act2-math" class="form-control" min="1" max="36" step="1" placeholder="1-36">
+              <div class="field-hint" id="american-diploma-act2-requirement-hint"></div>
             </div>
           </div>
           <div class="form-group" id="american-diploma-advanced-math-group" style="display: none;">

@@ -184,8 +184,12 @@ namespace StudentRegistry.Application.DTOs
     public class AmericanDiplomaDataCreateDto
     {
         public List<SingleYearSubjectMarkCreateDto>? Subjects { get; set; }
-        public int SatI { get; set; }
+        public string TestType1 { get; set; } = "SAT";   // "SAT" or "ACT" — level 1 test type
+        public int SatI { get; set; }                     // required when TestType1 == "SAT"
+        public int? ActComposite { get; set; }             // required when TestType1 == "ACT" (1-36); server converts to SatI
+        public string? TestType2 { get; set; }             // "SAT" or "ACT" — level 2 test type, only when SAT II applicable
         public int? SatII { get; set; }
+        public int? ActMath { get; set; }                  // required when TestType2 == "ACT" (1-36); server converts to SatII
         public string? SatIISubject1 { get; set; }
         public string? SatIISubject2 { get; set; }
         public bool StudiedAdvancedMath { get; set; }   // only meaningful for the engineering group
@@ -409,8 +413,12 @@ namespace StudentRegistry.Application.DTOs
     {
         public decimal AverageScore { get; set; }
         public decimal BasePercentage { get; set; }   // out of 40
+        public string TestType1 { get; set; } = "SAT";
         public int SatI { get; set; }
+        public int? ActComposite { get; set; }
+        public string? TestType2 { get; set; }
         public int? SatII { get; set; }
+        public int? ActMath { get; set; }
         public string? SatIISubject1 { get; set; }
         public string? SatIISubject2 { get; set; }
         public bool StudiedAdvancedMath { get; set; }
