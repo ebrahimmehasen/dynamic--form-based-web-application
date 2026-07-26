@@ -16,6 +16,9 @@ GO
 
 -- 2. Drop existing tables if they exist (in reverse order of foreign keys)
 IF OBJECT_ID('dbo.Users', 'U') IS NOT NULL DROP TABLE dbo.Users;
+IF OBJECT_ID('dbo.FieldEdits', 'U') IS NOT NULL DROP TABLE dbo.FieldEdits;
+IF OBJECT_ID('dbo.FieldComments', 'U') IS NOT NULL DROP TABLE dbo.FieldComments;
+IF OBJECT_ID('dbo.DeleteRequests', 'U') IS NOT NULL DROP TABLE dbo.DeleteRequests;
 IF OBJECT_ID('dbo.ReviewNotes', 'U') IS NOT NULL DROP TABLE dbo.ReviewNotes;
 IF OBJECT_ID('dbo.AmericanDiplomaStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.AmericanDiplomaStudentTotals;
 IF OBJECT_ID('dbo.EmiratiStudentTotals', 'U') IS NOT NULL DROP TABLE dbo.EmiratiStudentTotals;
@@ -385,4 +388,69 @@ CREATE TABLE dbo.Users (
 );
 GO
 CREATE UNIQUE INDEX IX_Users_Username ON dbo.Users (Username);
+GO
+
+-- Student Records Editor: per-field edit audit trail (append-only — every save is a new row).
+CREATE TABLE dbo.FieldComments (
+    Id INT IDENTITY(1,1) NOT NULL,
+    StudentId INT NOT NULL,
+    FieldName NVARCHAR(150) NOT NULL,
+    FieldSnapshot NVARCHAR(MAX) NULL,
+    CommentText NVARCHAR(MAX) NOT NULL,
+    Author NVARCHAR(100) NOT NULL CONSTRAINT DF_FieldComments_Author DEFAULT (N'Editor'),
+    CreatedAt DATETIME2 NOT NULL CONSTRAINT DF_FieldComments_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    UpdatedAt DATETIME2 NULL,
+    Status NVARCHAR(20) NOT NULL CONSTRAINT DF_FieldComments_Status DEFAULT (N'unreviewed'),
+    CONSTRAINT PK_FieldComments PRIMARY KEY CLUSTERED (Id ASC),
+    CONSTRAINT FK_FieldComments_Students_StudentId FOREIGN KEY (StudentId)
+        REFERENCES dbo.Students (Id) ON DELETE CASCADE
+);
+GO
+CREATE INDEX IX_FieldComments_StudentId_FieldName ON dbo.FieldComments (StudentId, FieldName);
+CREATE INDEX IX_FieldComments_Status ON dbo.FieldComments (Status);
+GO
+
+CREATE TABLE dbo.FieldEdits (
+    Id INT IDENTITY(1,1) NOT NULL,
+    StudentId INT NOT NULL,
+    FieldName NVARCHAR(150) NOT NULL,
+    OldValue NVARCHAR(MAX) NULL,
+    NewValue NVARCHAR(MAX) NULL,
+    Editor NVARCHAR(100) NOT NULL CONSTRAINT DF_FieldEdits_Editor DEFAULT (N'Editor'),
+    EditedAt DATETIME2 NOT NULL CONSTRAINT DF_FieldEdits_EditedAt DEFAULT (SYSUTCDATETIME()),
+    Note NVARCHAR(MAX) NULL,
+    Source NVARCHAR(20) NOT NULL CONSTRAINT DF_FieldEdits_Source DEFAULT (N'manual'),
+    SourceCommentId INT NULL,
+    CONSTRAINT PK_FieldEdits PRIMARY KEY CLUSTERED (Id ASC),
+    CONSTRAINT FK_FieldEdits_Students_StudentId FOREIGN KEY (StudentId)
+        REFERENCES dbo.Students (Id) ON DELETE CASCADE,
+    -- NO ACTION: SQL Server rejects a second cascading path to FieldEdits via FieldComments (which
+    -- itself cascades from Students). Both tables are cleared together by the same Students delete.
+    CONSTRAINT FK_FieldEdits_FieldComments_SourceCommentId FOREIGN KEY (SourceCommentId)
+        REFERENCES dbo.FieldComments (Id) ON DELETE NO ACTION
+);
+GO
+CREATE INDEX IX_FieldEdits_StudentId_FieldName ON dbo.FieldEdits (StudentId, FieldName);
+CREATE INDEX IX_FieldEdits_SourceCommentId ON dbo.FieldEdits (SourceCommentId);
+GO
+
+-- Editor-requested student deletions — Editors can never delete a student row directly; only an
+-- Admin approving this request does. StudentId is nullable + SET NULL (not cascade) so this audit
+-- row survives the student's actual deletion as proof the approval happened.
+CREATE TABLE dbo.DeleteRequests (
+    Id INT IDENTITY(1,1) NOT NULL,
+    StudentId INT NULL,
+    RequestedBy NVARCHAR(100) NOT NULL CONSTRAINT DF_DeleteRequests_RequestedBy DEFAULT (N'Editor'),
+    RequestedAt DATETIME2 NOT NULL CONSTRAINT DF_DeleteRequests_RequestedAt DEFAULT (SYSUTCDATETIME()),
+    Reason NVARCHAR(MAX) NULL,
+    Status NVARCHAR(20) NOT NULL CONSTRAINT DF_DeleteRequests_Status DEFAULT (N'pending'),
+    ReviewedBy NVARCHAR(100) NULL,
+    ReviewedAt DATETIME2 NULL,
+    CONSTRAINT PK_DeleteRequests PRIMARY KEY CLUSTERED (Id ASC),
+    CONSTRAINT FK_DeleteRequests_Students_StudentId FOREIGN KEY (StudentId)
+        REFERENCES dbo.Students (Id) ON DELETE SET NULL
+);
+GO
+CREATE INDEX IX_DeleteRequests_StudentId ON dbo.DeleteRequests (StudentId);
+CREATE INDEX IX_DeleteRequests_Status ON dbo.DeleteRequests (Status);
 GO

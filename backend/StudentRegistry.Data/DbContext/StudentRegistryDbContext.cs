@@ -30,6 +30,9 @@ namespace StudentRegistry.Data.DbContext
         public DbSet<AmericanDiplomaStudentTotals> AmericanDiplomaStudentTotals => Set<AmericanDiplomaStudentTotals>();
         public DbSet<ReviewNote> ReviewNotes => Set<ReviewNote>();
         public DbSet<User> Users => Set<User>();
+        public DbSet<FieldEdit> FieldEdits => Set<FieldEdit>();
+        public DbSet<FieldComment> FieldComments => Set<FieldComment>();
+        public DbSet<DeleteRequest> DeleteRequests => Set<DeleteRequest>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

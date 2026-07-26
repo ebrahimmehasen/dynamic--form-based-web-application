@@ -282,7 +282,7 @@ function recalculateSaudi() {
         let cardCoefficients = 0;
         let cardHasError = false;
 
-        const rows = card.querySelectorAll('tbody tr');
+        const rows = card.querySelectorAll('tbody tr:not(.saudi-row-error-message)');
         rows.forEach(row => {
           const achievedInput = row.querySelector('.saudi-achieved-input');
           const weightedInput = row.querySelector('.saudi-weighted-input');
@@ -293,11 +293,11 @@ function recalculateSaudi() {
           const achieved = parseFloat(achievedRaw) || 0;
           const weighted = parseFloat(weightedRaw) || 0;
 
-          achievedInput.style.borderColor = '';
-          weightedInput.style.borderColor = '';
           coefficientCell.style.color = '';
 
           let coefficient = 0;
+          let rowInvalid = false;
+          let rowErrorMessage = '';
 
           if (achievedRaw === '' || weightedRaw === '') {
             coefficientCell.textContent = '-';
@@ -305,7 +305,8 @@ function recalculateSaudi() {
           } else if (achieved <= 0) {
             coefficientCell.textContent = '⚠️';
             coefficientCell.style.color = 'var(--danger-color)';
-            achievedInput.style.borderColor = 'var(--danger-color)';
+            rowInvalid = true;
+            rowErrorMessage = 'الدرجة المتحصلة يجب أن تكون أكبر من صفر';
             cardHasError = true;
           } else {
             const rawCoefficient = weighted / achieved;
@@ -316,11 +317,14 @@ function recalculateSaudi() {
             } else {
               coefficientCell.textContent = `⚠️ ${rawCoefficient.toFixed(2)}`;
               coefficientCell.style.color = 'var(--danger-color)';
-              achievedInput.style.borderColor = 'var(--danger-color)';
-              weightedInput.style.borderColor = 'var(--danger-color)';
+              rowInvalid = true;
+              rowErrorMessage = 'المعامل (الدرجة الموزونة ÷ الدرجة المتحصلة) يجب أن يكون رقماً صحيحاً';
               cardHasError = true;
             }
           }
+
+          row.classList.toggle('saudi-row-error', rowInvalid);
+          updateSaudiRowErrorMessage(row, rowInvalid, rowErrorMessage);
 
           cardAchieved += achieved;
           cardWeighted += weighted;
@@ -378,8 +382,8 @@ function recalculateSaudi() {
 
       if (elFinalGPA) {
         if (hasError) {
-          elFinalGPA.textContent = '⚠️ يوجد أخطاء في الدرجات المدخلة (تأكد أن المعامل رقم صحيح لكل مادة)';
-          elFinalGPA.style.color = 'var(--danger-color)';
+          elFinalGPA.textContent = '—';
+          elFinalGPA.style.color = '';
           if (elEquivalentTotal) { elEquivalentTotal.textContent = '—'; elEquivalentTotal.style.color = ''; }
         } else if (!hasValidAptitude) {
           elFinalGPA.textContent = '— (أدخل درجة القدرات)';
@@ -401,6 +405,29 @@ function recalculateSaudi() {
       }
 
       updateProgressIndicator();
+}
+
+// Toggles an inline error row directly under a subject row (colspan across the whole table)
+// so the invalid-coefficient message sits next to the row it explains, and disappears the
+// moment the row's coefficient becomes valid again.
+function updateSaudiRowErrorMessage(row, show, message) {
+  const existing = row.nextElementSibling;
+  const hasErrorRow = existing && existing.classList && existing.classList.contains('saudi-row-error-message');
+
+  if (show) {
+    let errorRow = hasErrorRow ? existing : null;
+    if (!errorRow) {
+      errorRow = document.createElement('tr');
+      errorRow.className = 'saudi-row-error-message';
+      const td = document.createElement('td');
+      td.colSpan = 6;
+      errorRow.appendChild(td);
+      row.insertAdjacentElement('afterend', errorRow);
+    }
+    errorRow.querySelector('td').textContent = `⚠️ ${message}`;
+  } else if (hasErrorRow) {
+    existing.remove();
+  }
 }
 
 // Attach live-recalculation listeners to a single row's achieved/weighted inputs. Reuses the
@@ -465,7 +492,7 @@ function checkSaudiSubjectAllowed(rawName) {
 // Recomputes the "#" and displayed subject-name (with duplicate-occurrence suffixes) for a
 // single card's rows, without touching any already-entered achieved/weighted values.
 function renumberSaudiCardRows(card) {
-  const rows = card.querySelectorAll('tbody tr');
+  const rows = card.querySelectorAll('tbody tr:not(.saudi-row-error-message)');
   const occurrenceCounts = {};
   rows.forEach(row => {
     const subject = row.querySelector('.saudi-achieved-input').getAttribute('data-subject');
@@ -573,6 +600,10 @@ async function handleDeleteSaudiSubject(card, row) {
 
   if (!result.confirmed) return;
 
+  const errorRow = row.nextElementSibling;
+  if (errorRow && errorRow.classList.contains('saudi-row-error-message')) {
+    errorRow.remove();
+  }
   row.remove();
   renumberSaudiCardRows(card);
   recalculateSaudi();
@@ -1811,8 +1842,6 @@ function validateForm() {
     { id: 'student-phone', name: 'رقم هاتف الطالب' },
     { id: 'student-email', name: 'ايميل الشخصي للطالب' },
     { id: 'student-birth-country', name: 'دولة الميلاد' },
-    { id: 'student-birth-governorate', name: 'محافظة الميلاد' },
-    { id: 'student-birth-city', name: 'مدينة الميلاد' },
     { id: 'student-birth-date', name: 'تاريخ الميلاد' },
     { id: 'student-school', name: 'المدرسة الحاصل منها على الثانوية العامة أو ما يعادلها' },
     { id: 'guardian-name', name: 'اسم ولي الامر' },

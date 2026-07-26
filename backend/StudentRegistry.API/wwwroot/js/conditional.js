@@ -878,8 +878,7 @@ function initConditionals() {
     const certKey = certSelect.value;
 
     if (trackVal) {
-      trackSelect.disabled = true;
-      trackLockedIndicator.style.display = 'flex';
+      trackLockedIndicator.style.display = 'none';
 
       if (certKey === 'ig') {
         activateSection('section-grades');

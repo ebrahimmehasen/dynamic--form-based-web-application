@@ -49,6 +49,11 @@ builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 builder.Services.AddScoped<IReviewNoteService, ReviewNoteService>();
 builder.Services.AddScoped<IStudentExcelExportService, StudentExcelExportService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IFieldEditService, FieldEditService>();
+builder.Services.AddScoped<IFieldCommentService, FieldCommentService>();
+builder.Services.AddScoped<IDeleteRequestService, DeleteRequestService>();
+builder.Services.AddScoped<IEditorStudentService, EditorStudentService>();
+builder.Services.AddScoped<IAdminReviewService, AdminReviewService>();
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 
 // Register AutoMapper

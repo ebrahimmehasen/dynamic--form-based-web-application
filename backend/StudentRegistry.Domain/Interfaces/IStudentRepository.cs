@@ -10,6 +10,7 @@ namespace StudentRegistry.Domain.Interfaces
         Task<Student?> GetByNationalIdAsync(string nationalId);
         Task<IEnumerable<Student>> GetAllAsync();
         Task<IEnumerable<Student>> SearchAsync(string? query, int take = 500);
+        Task<(IEnumerable<Student> Items, int TotalCount)> SearchPagedAsync(string? query, int page, int pageSize);
         Task AddAsync(Student student);
         void Update(Student student);
         void Delete(Student student);

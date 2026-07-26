@@ -8,6 +8,9 @@ namespace StudentRegistry.Domain.Interfaces
         IStudentRepository Students { get; }
         IReviewNoteRepository ReviewNotes { get; }
         IUserRepository Users { get; }
+        IFieldEditRepository FieldEdits { get; }
+        IFieldCommentRepository FieldComments { get; }
+        IDeleteRequestRepository DeleteRequests { get; }
         Task<int> CompleteAsync();
     }
 }

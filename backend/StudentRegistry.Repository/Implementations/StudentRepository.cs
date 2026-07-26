@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using StudentRegistry.Data.DbContext;
 using StudentRegistry.Domain.Entities;
 using StudentRegistry.Domain.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -95,6 +96,40 @@ namespace StudentRegistry.Repository.Implementations
                 .OrderByDescending(s => s.SubmittedAt)
                 .Take(take)
                 .ToListAsync();
+        }
+
+        // Additive, DB-level paginated search used only by the Student Records Editor page — leaves
+        // SearchAsync (used by the read-only Student Records Review page) untouched.
+        public async Task<(IEnumerable<Student> Items, int TotalCount)> SearchPagedAsync(string? query, int page, int pageSize)
+        {
+            var students = _context.Students.AsNoTracking().AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                var term = query.Trim();
+                students = students.Where(s =>
+                    s.StudentName.Contains(term) ||
+                    s.StudentNameEn.Contains(term) ||
+                    s.NationalId.Contains(term) ||
+                    s.Phone.Contains(term) ||
+                    s.Email.Contains(term) ||
+                    s.GuardianName.Contains(term) ||
+                    s.AddressGov.Contains(term) ||
+                    s.AddressCenter.Contains(term) ||
+                    s.Certification.Contains(term) ||
+                    s.Track.Contains(term) ||
+                    s.WishCollege.Contains(term) ||
+                    s.GraduationYear.ToString().Contains(term));
+            }
+
+            var totalCount = await students.CountAsync();
+            var items = await students
+                .OrderByDescending(s => s.SubmittedAt)
+                .Skip(Math.Max(0, page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
         }
 
         public async Task AddAsync(Student student)
