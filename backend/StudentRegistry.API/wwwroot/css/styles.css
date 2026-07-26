@@ -1296,6 +1296,292 @@ body {
   font-size: 0.85rem;
 }
 
+/* Student Records Editor page — builds on the .review-* block above (search, large profile modal,
+   field grid, section titles) and adds only what the read-only Review page doesn't need. */
+:root {
+  --editor-edit-bg: #dbeafe;
+  --editor-edit-border: #93c5fd;
+}
+
+.editor-header-nav {
+  margin-top: 0.75rem;
+}
+
+.editor-notifications-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: auto;
+}
+
+.editor-unreviewed-badge {
+  background: var(--danger-color);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.25rem 0.45rem;
+  border-radius: 999px;
+  min-width: 1.2rem;
+  text-align: center;
+}
+
+/* Left-border indicator on table rows that have any edit/comment activity or a pending delete request */
+.data-table tbody tr.editor-row-flagged {
+  border-inline-start: 4px solid var(--border-focus);
+}
+
+.editor-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.editor-pagination-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.editor-pending-badge {
+  display: inline-block;
+  background: #fee2e2;
+  color: var(--danger-color);
+  border: 1px solid #fecaca;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.editor-modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.editor-request-delete-btn {
+  width: auto;
+  background: #fff;
+  color: var(--danger-color);
+  border: 1px solid var(--danger-color);
+}
+
+.editor-request-delete-btn:hover {
+  background: #fef2f2;
+}
+
+/* Details / Audit Log tabs inside the profile modal */
+.editor-tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0 1.75rem;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.editor-tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  padding: 0.75rem 0.5rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.editor-tab-btn:hover {
+  color: var(--text-main);
+}
+
+.editor-tab-btn.editor-tab-active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+.editor-audit-filters {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.editor-audit-filters select {
+  max-width: 200px;
+}
+
+/* Click-to-edit field affordance: value span + comment icon (icon appears on hover only) */
+.editor-field-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.editor-comment-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0.2rem;
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.editor-field-wrap:hover .editor-comment-icon,
+.editor-comment-icon:focus-visible {
+  opacity: 1;
+}
+
+.editor-comment-icon:hover {
+  background: var(--bg-main);
+}
+
+/* Edited / commented field highlighting */
+.editor-editable-field.editor-field-edited {
+  background: var(--editor-edit-bg) !important;
+  border-color: var(--editor-edit-border);
+}
+
+.editor-editable-field.editor-field-commented {
+  background: var(--review-highlight-bg) !important;
+  border-color: var(--review-highlight-border);
+}
+
+.editor-editable-field.editor-field-edited.editor-field-commented {
+  background: var(--review-highlight-bg) !important;
+  border: 2px solid var(--border-focus);
+}
+
+.editor-inline-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.editor-inline-input {
+  min-width: 120px;
+  padding: 0.35rem 0.5rem !important;
+  font-size: 0.9rem !important;
+}
+
+.editor-inline-save, .editor-inline-cancel {
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0.35rem 0.5rem;
+}
+
+.editor-inline-save {
+  color: var(--success-color);
+  border-color: var(--success-color);
+}
+
+.editor-inline-cancel {
+  color: var(--danger-color);
+  border-color: var(--danger-color);
+}
+
+.editor-inline-save:hover, .editor-inline-cancel:hover {
+  background: var(--bg-main);
+}
+
+/* Comment popup: per-comment approve/write/dismiss actions */
+.editor-comment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.editor-comment-actions .btn {
+  width: auto;
+  flex: none;
+  font-size: 0.78rem;
+  padding: 0.4rem 0.7rem;
+}
+
+.editor-comment-edit-area:not(:empty) {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--border-color);
+}
+
+/* Notifications (inbox) page */
+.editor-notif-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.85rem;
+}
+
+.editor-notif-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.editor-notif-student-link {
+  font-weight: 800;
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+.editor-notif-student-link:hover {
+  text-decoration: underline;
+}
+
+.editor-notif-field {
+  font-size: 0.78rem;
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  color: var(--text-muted);
+}
+
+.editor-notif-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-inline-start: auto;
+}
+
+.editor-notif-body {
+  font-size: 0.9rem;
+  color: var(--text-main);
+}
+
+.editor-notif-status {
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+/* Admin oversight page */
+.editor-admin-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.editor-admin-checkbox input {
+  width: auto;
+}
+
 /* Login Page */
 .login-page-wrapper {
   max-width: 420px;

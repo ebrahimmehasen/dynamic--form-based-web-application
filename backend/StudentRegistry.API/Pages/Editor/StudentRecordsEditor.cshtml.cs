@@ -5,7 +5,7 @@ using StudentRegistry.Application.Constants;
 namespace StudentRegistry.API.Pages.Editor
 {
     [Authorize(Roles = AuthConstants.RoleEditor)]
-    public class HomeModel : PageModel
+    public class StudentRecordsEditorModel : PageModel
     {
         public void OnGet()
         {

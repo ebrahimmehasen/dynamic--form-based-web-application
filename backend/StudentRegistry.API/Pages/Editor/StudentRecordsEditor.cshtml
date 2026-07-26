@@ -1,0 +1,135 @@
+@page "/editor"
+@model StudentRegistry.API.Pages.Editor.StudentRecordsEditorModel
+@{
+    ViewData["Title"] = "محرر سجلات الطلاب";
+}
+
+<div class="container review-page-container">
+  <!-- Header -->
+  <header class="app-header">
+    <h1 class="app-title">محرر سجلات الطلاب</h1>
+    <p class="app-subtitle">تصفح، عدّل، وأضف ملاحظات على استمارات الطلاب المسجلة</p>
+    <div class="editor-header-nav">
+      <a href="/editor/notifications" class="btn btn-secondary editor-notifications-link">
+        الإشعارات
+        <span id="editor-unreviewed-badge" class="editor-unreviewed-badge" style="display:none;"></span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Search -->
+  <div class="form-section">
+    <div class="review-search-row">
+      <input type="text" id="editor-search-input" class="table-input review-search-input"
+             placeholder="ابحث بالاسم، الرقم القومي، الهاتف، البريد الإلكتروني، الشهادة، المحافظة...">
+    </div>
+    <p class="field-hint" id="editor-results-banner"></p>
+  </div>
+
+  <!-- Students table -->
+  <div class="form-section">
+    <div class="table-responsive">
+      <table class="grades-table data-table">
+        <thead>
+          <tr>
+            <th>اسم الطالب</th>
+            <th>الاسم بالإنجليزية</th>
+            <th>الرقم القومي</th>
+            <th>الهاتف</th>
+            <th>البريد الإلكتروني</th>
+            <th>المحافظة</th>
+            <th>الشهادة</th>
+            <th>المسار</th>
+            <th>سنة التخرج</th>
+            <th>تاريخ التقديم</th>
+          </tr>
+        </thead>
+        <tbody id="editor-table-body">
+        </tbody>
+      </table>
+    </div>
+    <p class="field-hint" id="editor-empty-state" style="display:none;">لا توجد نتائج مطابقة لبحثك.</p>
+    <div class="editor-pagination" id="editor-pagination"></div>
+  </div>
+
+  <!-- Large student profile modal -->
+  <div class="app-modal-overlay" id="editor-detail-overlay">
+    <div class="app-modal-box review-modal-lg" id="editor-detail-box">
+      <div class="review-modal-header">
+        <h3 class="app-modal-title" id="editor-detail-title"></h3>
+        <div class="editor-modal-header-actions">
+          <span id="editor-delete-badge" class="editor-pending-badge" style="display:none;">حذف معلق — بانتظار مراجعة المسؤول</span>
+          <button type="button" class="btn btn-secondary editor-request-delete-btn" id="editor-request-delete-btn">طلب حذف الطالب</button>
+          <button type="button" class="review-modal-close" id="editor-detail-close" aria-label="إغلاق">&times;</button>
+        </div>
+      </div>
+      <div class="editor-tabs">
+        <button type="button" class="editor-tab-btn editor-tab-active" id="editor-tab-btn-details">البيانات</button>
+        <button type="button" class="editor-tab-btn" id="editor-tab-btn-audit">سجل التعديلات</button>
+      </div>
+      <div class="app-modal-body editor-detail-tab active" id="editor-detail-tab-details">
+        <div id="editor-detail-body"></div>
+      </div>
+      <div class="app-modal-body editor-detail-tab" id="editor-detail-tab-audit" style="display:none;">
+        <div class="editor-audit-filters">
+          <select id="editor-audit-type-filter" class="table-input">
+            <option value="">كل الأنواع</option>
+            <option value="Edit">تعديل</option>
+            <option value="Comment">تعليق</option>
+            <option value="DeleteRequest">طلب حذف</option>
+          </select>
+          <input type="text" id="editor-audit-field-filter" class="table-input" placeholder="تصفية حسب اسم الحقل...">
+        </div>
+        <div id="editor-audit-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Small field-comment modal, stacked above the profile modal -->
+  <div class="app-modal-overlay" id="editor-field-overlay">
+    <div class="app-modal-box" id="editor-field-box">
+      <div class="review-modal-header">
+        <h3 class="app-modal-title" id="editor-field-title">تعليق على الحقل</h3>
+        <button type="button" class="review-modal-close" id="editor-field-close" aria-label="إغلاق">&times;</button>
+      </div>
+      <div class="app-modal-body">
+        <label class="review-field-label">القيمة الحالية</label>
+        <div class="review-field-current" id="editor-field-current"></div>
+
+        <div id="editor-field-history-wrap" style="display:none;">
+          <label class="review-field-label">التعليقات السابقة</label>
+          <div class="review-field-history" id="editor-field-history"></div>
+        </div>
+
+        <label class="review-field-label" for="editor-field-comment-input">تعليق جديد</label>
+        <textarea id="editor-field-comment-input" class="table-input review-field-textarea" rows="3"
+                  placeholder="اكتب تعليقك هنا..."></textarea>
+      </div>
+      <div class="app-modal-footer">
+        <button type="button" class="btn btn-secondary" id="editor-field-cancel" style="flex:1;">إلغاء</button>
+        <button type="button" class="btn btn-primary" id="editor-field-save" style="flex:1;">حفظ التعليق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generic confirmation / input modal (used by Request Deletion) -->
+  <div class="app-modal-overlay" id="app-modal-overlay">
+    <div class="app-modal-box" id="app-modal-box">
+      <h3 class="app-modal-title" id="app-modal-title"></h3>
+      <div class="app-modal-body" id="app-modal-body"></div>
+      <div class="app-modal-footer">
+        <button type="button" class="btn btn-secondary" id="app-modal-cancel" style="flex:1;">إلغاء</button>
+        <button type="button" class="btn btn-primary" id="app-modal-confirm" style="flex:1;">تأكيد</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast notifications -->
+  <div class="app-toast-container" id="app-toast-container"></div>
+</div>
+
+@section Scripts {
+  <script src="~/js/app-modal.js" asp-append-version="true"></script>
+  <script src="~/js/editor-shared.js" asp-append-version="true"></script>
+  <script src="~/js/editor-page.js" asp-append-version="true"></script>
+}

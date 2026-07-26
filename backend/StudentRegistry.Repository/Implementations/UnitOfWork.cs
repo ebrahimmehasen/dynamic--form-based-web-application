@@ -10,6 +10,9 @@ namespace StudentRegistry.Repository.Implementations
         private IStudentRepository? _students;
         private IReviewNoteRepository? _reviewNotes;
         private IUserRepository? _users;
+        private IFieldEditRepository? _fieldEdits;
+        private IFieldCommentRepository? _fieldComments;
+        private IDeleteRequestRepository? _deleteRequests;
 
         public UnitOfWork(StudentRegistryDbContext context)
         {
@@ -19,6 +22,9 @@ namespace StudentRegistry.Repository.Implementations
         public IStudentRepository Students => _students ??= new StudentRepository(_context);
         public IReviewNoteRepository ReviewNotes => _reviewNotes ??= new ReviewNoteRepository(_context);
         public IUserRepository Users => _users ??= new UserRepository(_context);
+        public IFieldEditRepository FieldEdits => _fieldEdits ??= new FieldEditRepository(_context);
+        public IFieldCommentRepository FieldComments => _fieldComments ??= new FieldCommentRepository(_context);
+        public IDeleteRequestRepository DeleteRequests => _deleteRequests ??= new DeleteRequestRepository(_context);
 
         public async Task<int> CompleteAsync()
         {

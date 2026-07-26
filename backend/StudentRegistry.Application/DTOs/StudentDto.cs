@@ -322,6 +322,8 @@ namespace StudentRegistry.Application.DTOs
 
     public class KuwaitiGradeResponseDto
     {
+        // Row Id, needed so the Editor page can address (and inline-edit) a specific grade row.
+        public int Id { get; set; }
         public int GradeLevel { get; set; }
         public string SubjectName { get; set; } = string.Empty;
         public decimal Obtained { get; set; }
@@ -431,6 +433,8 @@ namespace StudentRegistry.Application.DTOs
     // Shared by Qatari, Omani, Yemeni, Bahraini and Emirati grade lists.
     public class SingleYearSubjectMarkResponseDto
     {
+        // Row Id, needed so the Editor page can address (and inline-edit) a specific grade row.
+        public int Id { get; set; }
         public string SubjectName { get; set; } = string.Empty;
         public decimal Mark { get; set; }
     }
@@ -449,6 +453,8 @@ namespace StudentRegistry.Application.DTOs
 
     public class SaudiGradeResponseDto
     {
+        // Row Id, needed so the Editor page can address (and inline-edit) a specific grade row.
+        public int Id { get; set; }
         public string YearLabel { get; set; } = string.Empty;
         public string SubjectName { get; set; } = string.Empty;
         public int Coefficient { get; set; }
@@ -468,6 +474,8 @@ namespace StudentRegistry.Application.DTOs
 
     public class IgGradeCountResponseDto
     {
+        // Row Id, needed so the Editor page can address (and inline-edit) a specific grade row.
+        public int Id { get; set; }
         public string GradeType { get; set; } = string.Empty;
         public string Grade { get; set; } = string.Empty;
         public int Count { get; set; }
@@ -475,6 +483,8 @@ namespace StudentRegistry.Application.DTOs
 
     public class StandardGradeResponseDto
     {
+        // Row Id, needed so the Editor page can address (and inline-edit) a specific grade row.
+        public int Id { get; set; }
         public string YearOfStudy { get; set; } = string.Empty;
         public string SubjectName { get; set; } = string.Empty;
         public decimal Grade { get; set; }

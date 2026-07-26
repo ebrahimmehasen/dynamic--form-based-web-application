@@ -89,7 +89,15 @@ namespace StudentRegistry.Application.Mappings
                 .ForMember(dest => dest.Mark, opt => opt.MapFrom(src => src.Grade));
 
             CreateMap<Student, StudentListItemDto>();
+            CreateMap<Student, EditorStudentListItemDto>();
             CreateMap<ReviewNote, ReviewNoteResponseDto>();
+
+            CreateMap<FieldEdit, FieldEditResponseDto>()
+                .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.Student != null ? src.Student.StudentName : null));
+            CreateMap<FieldComment, FieldCommentResponseDto>()
+                .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.Student != null ? src.Student.StudentName : null));
+            CreateMap<DeleteRequest, DeleteRequestResponseDto>()
+                .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.Student != null ? src.Student.StudentName : null));
 
             // CreateDTO -> Entity mapping
             CreateMap<StudentCreateDto, Student>()

@@ -1,0 +1,43 @@
+@page "/editor/notifications"
+@model StudentRegistry.API.Pages.Editor.NotificationsModel
+@{
+    ViewData["Title"] = "إشعارات المحرر";
+}
+
+<div class="container review-page-container">
+  <header class="app-header">
+    <h1 class="app-title">الإشعارات</h1>
+    <p class="app-subtitle">التعليقات التي بانتظار المراجعة على استمارات الطلاب</p>
+    <div class="editor-header-nav">
+      <a href="/editor" class="btn btn-secondary">العودة إلى محرر السجلات</a>
+    </div>
+  </header>
+
+  <div class="form-section">
+    <div class="editor-tabs">
+      <button type="button" class="editor-tab-btn editor-tab-active" id="notif-tab-btn-unreviewed">غير مراجعة</button>
+      <button type="button" class="editor-tab-btn" id="notif-tab-btn-resolved">تمت مراجعتها</button>
+    </div>
+    <div id="notif-list"></div>
+  </div>
+
+  <!-- Generic confirmation modal (unused here today, kept for parity with app-modal.js expectations) -->
+  <div class="app-modal-overlay" id="app-modal-overlay">
+    <div class="app-modal-box" id="app-modal-box">
+      <h3 class="app-modal-title" id="app-modal-title"></h3>
+      <div class="app-modal-body" id="app-modal-body"></div>
+      <div class="app-modal-footer">
+        <button type="button" class="btn btn-secondary" id="app-modal-cancel" style="flex:1;">إلغاء</button>
+        <button type="button" class="btn btn-primary" id="app-modal-confirm" style="flex:1;">تأكيد</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-toast-container" id="app-toast-container"></div>
+</div>
+
+@section Scripts {
+  <script src="~/js/app-modal.js" asp-append-version="true"></script>
+  <script src="~/js/editor-shared.js" asp-append-version="true"></script>
+  <script src="~/js/editor-notifications.js" asp-append-version="true"></script>
+}
