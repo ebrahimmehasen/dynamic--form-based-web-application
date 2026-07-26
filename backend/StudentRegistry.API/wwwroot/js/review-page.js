@@ -158,6 +158,7 @@ function renderStudentDetail(student) {
       ['Student.GuardianName', 'اسم ولي الأمر', student.guardianName],
       ['Student.GuardianNationalId', 'الرقم القومي لولي الأمر', student.guardianNationalId],
       ['Student.GuardianPhone', 'هاتف ولي الأمر', student.guardianPhone],
+      ['Student.GuardianLandlinePhone', 'رقم الهاتف الأرضي', student.guardianLandlinePhone],
       ['Student.GuardianRelation', 'صلة القرابة', student.guardianRelation],
       ['Student.GuardianOccupation', 'مهنة ولي الأمر', student.guardianOccupation]
     ]),

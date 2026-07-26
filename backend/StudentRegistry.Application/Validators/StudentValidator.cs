@@ -91,6 +91,10 @@ namespace StudentRegistry.Application.Validators
                 .NotEmpty().WithMessage("الرجاء إدخال رقم هاتف ولي الأمر.")
                 .Matches(@"^[0-9+\s]{8,20}$").WithMessage("الرجاء إدخال رقم هاتف صحيح لولي الأمر.");
 
+            RuleFor(x => x.GuardianLandlinePhone)
+                .Matches(@"^[0-9+\s]{6,20}$").WithMessage("الرجاء إدخال رقم هاتف أرضي صحيح.")
+                .When(x => !string.IsNullOrWhiteSpace(x.GuardianLandlinePhone));
+
             RuleFor(x => x.GuardianRelation)
                 .NotEmpty().WithMessage("الرجاء اختيار صلة القرابة بولي الأمر.");
 

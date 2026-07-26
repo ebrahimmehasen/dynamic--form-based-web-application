@@ -16,6 +16,7 @@ using StudentRegistry.Application.Validators;
 using StudentRegistry.Data.DbContext;
 using StudentRegistry.Domain.Entities;
 using StudentRegistry.Domain.Interfaces;
+using StudentRegistry.Infrastructure.Export;
 using StudentRegistry.Infrastructure.Storage;
 using StudentRegistry.Repository.Implementations;
 using System;
@@ -46,6 +47,7 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 builder.Services.AddScoped<IReviewNoteService, ReviewNoteService>();
+builder.Services.AddScoped<IStudentExcelExportService, StudentExcelExportService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 

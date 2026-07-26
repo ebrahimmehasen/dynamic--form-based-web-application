@@ -57,6 +57,7 @@ CREATE TABLE dbo.Students (
     GuardianNationalId NVARCHAR(20) NOT NULL,
     GuardianOccupation NVARCHAR(100) NOT NULL,
     GuardianPhone NVARCHAR(20) NOT NULL,
+    GuardianLandlinePhone NVARCHAR(20) NULL,
     GuardianRelation NVARCHAR(100) NOT NULL,
     AddressGov NVARCHAR(100) NOT NULL,
     AddressCenter NVARCHAR(100) NOT NULL,

@@ -23,6 +23,7 @@ namespace StudentRegistry.Application.DTOs
         public string GuardianNationalId { get; set; } = string.Empty;
         public string GuardianOccupation { get; set; } = string.Empty;
         public string GuardianPhone { get; set; } = string.Empty;
+        public string? GuardianLandlinePhone { get; set; }
         public string GuardianRelation { get; set; } = string.Empty;
         public string AddressGov { get; set; } = string.Empty;
         public string AddressCenter { get; set; } = string.Empty;
@@ -264,6 +265,7 @@ namespace StudentRegistry.Application.DTOs
         public string GuardianNationalId { get; set; } = string.Empty;
         public string GuardianOccupation { get; set; } = string.Empty;
         public string GuardianPhone { get; set; } = string.Empty;
+        public string? GuardianLandlinePhone { get; set; }
         public string GuardianRelation { get; set; } = string.Empty;
         public string AddressGov { get; set; } = string.Empty;
         public string AddressCenter { get; set; } = string.Empty;

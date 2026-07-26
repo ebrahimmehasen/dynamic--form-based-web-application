@@ -2460,6 +2460,7 @@ function compilePayload() {
     guardianNationalId: document.getElementById('guardian-national-id').value.trim(),
     guardianOccupation: document.getElementById('guardian-occupation').value.trim(),
     guardianPhone: document.getElementById('guardian-phone').value.trim(),
+    guardianLandlinePhone: document.getElementById('guardian-landline-phone').value.trim() || null,
     guardianRelation: document.getElementById('guardian-relation').value.trim(),
     addressGov: document.getElementById('address-gov').value.trim(),
     addressCenter: document.getElementById('address-center').value.trim(),
@@ -2990,6 +2991,7 @@ function sendData(payload, submitBtn, originalText) {
     guardianNationalId: payload.guardianNationalId,
     guardianOccupation: payload.guardianOccupation,
     guardianPhone: payload.guardianPhone,
+    guardianLandlinePhone: payload.guardianLandlinePhone,
     guardianRelation: payload.guardianRelation,
     addressGov: payload.addressGov,
     addressCenter: payload.addressCenter,
@@ -3125,7 +3127,8 @@ function sendData(payload, submitBtn, originalText) {
     } catch(e) {}
 
     if (response.ok && result.status === 'success') {
-      showSuccessScreen(payload, 'server', result.file_path || '');
+      const studentId = result.data && result.data.id ? result.data.id : null;
+      showSuccessScreen(payload, 'server', result.file_path || '', studentId);
     } else {
       throw new Error(result.message || 'Server error occurred');
     }
@@ -3153,7 +3156,7 @@ function sendData(payload, submitBtn, originalText) {
 }
 
 // Show Success Receipt Screen
-function showSuccessScreen(payload, mode, serverPath = '') {
+function showSuccessScreen(payload, mode, serverPath = '', studentId = null) {
   document.getElementById('student-reg-form').style.display = 'none';
   document.getElementById('step-bar-container').style.display = 'none';
 
@@ -3359,6 +3362,18 @@ function showSuccessScreen(payload, mode, serverPath = '') {
   }
 
   // Setup Actions
+  const btnDownloadPdf = document.getElementById('btn-download-pdf');
+  if (btnDownloadPdf) {
+    if (mode === 'server' && studentId) {
+      btnDownloadPdf.style.display = 'block';
+      btnDownloadPdf.onclick = () => {
+        window.location.href = `/api/students/${studentId}/export/pdf?nationalId=${encodeURIComponent(payload.nationalId)}`;
+      };
+    } else {
+      btnDownloadPdf.style.display = 'none';
+    }
+  }
+
   const btnDownloadJson = document.getElementById('btn-download-json');
   btnDownloadJson.onclick = () => {
     downloadReceiptFile(payload, 'json');
@@ -3408,6 +3423,7 @@ function downloadReceiptFile(payload, format) {
     csvRows.push(`الرقم القومي لولي الامر,${payload.guardianNationalId || ''}`);
     csvRows.push(`وظيفة ولي الامر,"${payload.guardianOccupation || ''}"`);
     csvRows.push(`رقم هاتف ولي الامر,${payload.guardianPhone || ''}`);
+    csvRows.push(`رقم الهاتف الأرضي,${payload.guardianLandlinePhone || ''}`);
     csvRows.push(`صلة قرابة ولي الامر,"${payload.guardianRelation || ''}"`);
     csvRows.push(`المحافظه,"${payload.addressGov || ''}"`);
     csvRows.push(`المركز,"${payload.addressCenter || ''}"`);
