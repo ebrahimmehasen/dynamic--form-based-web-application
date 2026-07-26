@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using StudentRegistry.Data.DbContext;
 
@@ -11,9 +12,11 @@ using StudentRegistry.Data.DbContext;
 namespace StudentRegistry.Data.Migrations
 {
     [DbContext(typeof(StudentRegistryDbContext))]
-    partial class StudentRegistryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260726052931_AddStudentBirthAndSchoolDetails")]
+    partial class AddStudentBirthAndSchoolDetails
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -379,51 +382,6 @@ namespace StudentRegistry.Data.Migrations
                     b.HasKey("StudentId");
 
                     b.ToTable("QatariStudentTotals", "dbo");
-                });
-
-            modelBuilder.Entity("StudentRegistry.Domain.Entities.ReviewNote", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Author")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
-                        .HasDefaultValue("User");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("SYSUTCDATETIME()");
-
-                    b.Property<string>("FieldName")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.Property<string>("FieldValueSnapshot")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ReviewerNote")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("StudentId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("StudentId", "FieldName");
-
-                    b.ToTable("ReviewNotes", "dbo");
                 });
 
             modelBuilder.Entity("StudentRegistry.Domain.Entities.SaudiStudentGrades", b =>
@@ -856,17 +814,6 @@ namespace StudentRegistry.Data.Migrations
                     b.HasOne("StudentRegistry.Domain.Entities.Student", "Student")
                         .WithOne("QatariTotals")
                         .HasForeignKey("StudentRegistry.Domain.Entities.QatariStudentTotals", "StudentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Student");
-                });
-
-            modelBuilder.Entity("StudentRegistry.Domain.Entities.ReviewNote", b =>
-                {
-                    b.HasOne("StudentRegistry.Domain.Entities.Student", "Student")
-                        .WithMany()
-                        .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

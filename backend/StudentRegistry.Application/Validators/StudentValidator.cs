@@ -48,6 +48,30 @@ namespace StudentRegistry.Application.Validators
                 .NotEmpty().WithMessage("الرجاء إدخال البريد الإلكتروني.")
                 .EmailAddress().WithMessage("الرجاء إدخال بريد إلكتروني صحيح.");
 
+            RuleFor(x => x.BirthCountry)
+                .NotEmpty().WithMessage("الرجاء إدخال دولة الميلاد.")
+                .MaximumLength(100).WithMessage("يجب ألا تزيد دولة الميلاد عن 100 حرف.")
+                .Must(NotContainHtml).WithMessage("دولة الميلاد غير صالحة ولا يمكن أن تحتوي على رموز أو وسوم HTML.");
+
+            RuleFor(x => x.BirthGovernorate)
+                .NotEmpty().WithMessage("الرجاء إدخال محافظة الميلاد.")
+                .MaximumLength(100).WithMessage("يجب ألا تزيد محافظة الميلاد عن 100 حرف.")
+                .Must(NotContainHtml).WithMessage("محافظة الميلاد غير صالحة ولا يمكن أن تحتوي على رموز أو وسوم HTML.");
+
+            RuleFor(x => x.BirthCity)
+                .NotEmpty().WithMessage("الرجاء إدخال مدينة الميلاد.")
+                .MaximumLength(100).WithMessage("يجب ألا تزيد مدينة الميلاد عن 100 حرف.")
+                .Must(NotContainHtml).WithMessage("مدينة الميلاد غير صالحة ولا يمكن أن تحتوي على رموز أو وسوم HTML.");
+
+            RuleFor(x => x.BirthDate)
+                .NotEmpty().WithMessage("الرجاء إدخال تاريخ الميلاد.")
+                .LessThan(DateTime.UtcNow.Date).WithMessage("تاريخ الميلاد يجب أن يكون تاريخاً سابقاً.");
+
+            RuleFor(x => x.SchoolName)
+                .NotEmpty().WithMessage("الرجاء إدخال اسم المدرسة الحاصل منها على الثانوية العامة أو ما يعادلها.")
+                .MaximumLength(150).WithMessage("يجب ألا يزيد اسم المدرسة عن 150 حرف.")
+                .Must(NotContainHtml).WithMessage("اسم المدرسة غير صالح ولا يمكن أن يحتوي على رموز أو وسوم HTML.");
+
             RuleFor(x => x.GuardianName)
                 .NotEmpty().WithMessage("الرجاء إدخال اسم ولي الأمر.")
                 .MaximumLength(100).WithMessage("يجب ألا يزيد اسم ولي الأمر عن 100 حرف.")

@@ -1781,6 +1781,11 @@ function validateForm() {
     { id: 'student-gender', name: 'النوع' },
     { id: 'student-phone', name: 'رقم هاتف الطالب' },
     { id: 'student-email', name: 'ايميل الشخصي للطالب' },
+    { id: 'student-birth-country', name: 'دولة الميلاد' },
+    { id: 'student-birth-governorate', name: 'محافظة الميلاد' },
+    { id: 'student-birth-city', name: 'مدينة الميلاد' },
+    { id: 'student-birth-date', name: 'تاريخ الميلاد' },
+    { id: 'student-school', name: 'المدرسة الحاصل منها على الثانوية العامة أو ما يعادلها' },
     { id: 'guardian-name', name: 'اسم ولي الامر' },
     { id: 'guardian-national-id', name: 'الرقم القومي لولي الامر' },
     { id: 'guardian-occupation', name: 'وظيفة ولي الامر' },
@@ -2393,6 +2398,11 @@ function compilePayload() {
     gender: document.getElementById('student-gender').value.trim(),
     studentPhone: document.getElementById('student-phone').value.trim(),
     studentEmail: document.getElementById('student-email').value.trim(),
+    birthCountry: document.getElementById('student-birth-country').value.trim(),
+    birthGovernorate: document.getElementById('student-birth-governorate').value.trim(),
+    birthCity: document.getElementById('student-birth-city').value.trim(),
+    birthDate: document.getElementById('student-birth-date').value.trim(),
+    schoolName: document.getElementById('student-school').value.trim(),
     guardianName: document.getElementById('guardian-name').value.trim(),
     guardianNationalId: document.getElementById('guardian-national-id').value.trim(),
     guardianOccupation: document.getElementById('guardian-occupation').value.trim(),
@@ -2900,6 +2910,11 @@ function sendData(payload, submitBtn, originalText) {
     gender: payload.gender,
     phone: payload.studentPhone,
     email: payload.studentEmail,
+    birthCountry: payload.birthCountry,
+    birthGovernorate: payload.birthGovernorate,
+    birthCity: payload.birthCity,
+    birthDate: payload.birthDate,
+    schoolName: payload.schoolName,
     guardianName: payload.guardianName,
     guardianNationalId: payload.guardianNationalId,
     guardianOccupation: payload.guardianOccupation,
@@ -3306,6 +3321,11 @@ function downloadReceiptFile(payload, format) {
     csvRows.push(`النوع,"${payload.gender || ''}"`);
     csvRows.push(`رقم هاتف الطالب,${payload.studentPhone || ''}`);
     csvRows.push(`ايميل الشخصي للطالب,${payload.studentEmail || ''}`);
+    csvRows.push(`دولة الميلاد,"${payload.birthCountry || ''}"`);
+    csvRows.push(`محافظة الميلاد,"${payload.birthGovernorate || ''}"`);
+    csvRows.push(`مدينة الميلاد,"${payload.birthCity || ''}"`);
+    csvRows.push(`تاريخ الميلاد,${payload.birthDate || ''}`);
+    csvRows.push(`المدرسة,"${payload.schoolName || ''}"`);
     csvRows.push(`اسم ولي الامر,"${payload.guardianName || ''}"`);
     csvRows.push(`الرقم القومي لولي الامر,${payload.guardianNationalId || ''}`);
     csvRows.push(`وظيفة ولي الامر,"${payload.guardianOccupation || ''}"`);

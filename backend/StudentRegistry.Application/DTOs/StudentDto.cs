@@ -14,6 +14,11 @@ namespace StudentRegistry.Application.DTOs
         public string Gender { get; set; } = string.Empty;   // ذكر / أنثى
         public string Phone { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
+        public string BirthCountry { get; set; } = string.Empty;
+        public string BirthGovernorate { get; set; } = string.Empty;
+        public string BirthCity { get; set; } = string.Empty;
+        public DateTime BirthDate { get; set; }
+        public string SchoolName { get; set; } = string.Empty;
         public string GuardianName { get; set; } = string.Empty;
         public string GuardianNationalId { get; set; } = string.Empty;
         public string GuardianOccupation { get; set; } = string.Empty;
@@ -246,6 +251,11 @@ namespace StudentRegistry.Application.DTOs
         public string Gender { get; set; } = string.Empty;
         public string Phone { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
+        public string BirthCountry { get; set; } = string.Empty;
+        public string BirthGovernorate { get; set; } = string.Empty;
+        public string BirthCity { get; set; } = string.Empty;
+        public DateTime BirthDate { get; set; }
+        public string SchoolName { get; set; } = string.Empty;
         public string GuardianName { get; set; } = string.Empty;
         public string GuardianNationalId { get; set; } = string.Empty;
         public string GuardianOccupation { get; set; } = string.Empty;

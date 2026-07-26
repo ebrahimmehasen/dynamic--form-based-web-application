@@ -1,0 +1,41 @@
+@page "/login"
+@model StudentRegistry.API.Pages.LoginModel
+@{
+    ViewData["Title"] = "تسجيل الدخول";
+}
+
+<div class="container login-page-wrapper">
+  <!-- Header (reuses the same header pattern as the rest of the site) -->
+  <header class="app-header">
+    <h1 class="app-title">جامعة الزقازيق الأهلية</h1>
+    <p class="app-subtitle">تسجيل دخول الموظفين</p>
+  </header>
+
+  <!-- Alert Message Container -->
+  <div id="login-alert" class="alert alert-danger" role="alert"></div>
+
+  <!-- Login Card -->
+  <section class="form-section active login-card">
+    <form id="login-form" novalidate autocomplete="off">
+      @Html.AntiForgeryToken()
+
+      <div class="form-group">
+        <label for="login-username">اسم المستخدم</label>
+        <input type="text" id="login-username" name="username" class="form-control"
+               autocomplete="off" autocapitalize="off" spellcheck="false">
+      </div>
+
+      <div class="form-group">
+        <label for="login-password">كلمة المرور</label>
+        <input type="password" id="login-password" name="password" class="form-control"
+               autocomplete="off">
+      </div>
+
+      <button type="submit" class="btn btn-primary login-submit-btn" id="login-submit-btn">تسجيل الدخول</button>
+    </form>
+  </section>
+</div>
+
+@section Scripts {
+  <script src="~/js/login.js" asp-append-version="true"></script>
+}

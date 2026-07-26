@@ -1283,3 +1283,21 @@ body {
   font-size: 0.85rem;
 }
 
+/* Login Page */
+.login-page-wrapper {
+  max-width: 420px;
+  min-height: calc(100vh - 4rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.login-card {
+  margin-bottom: 0;
+}
+
+.login-submit-btn {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
