@@ -6,7 +6,8 @@ var reviewState = {
   notesByField: new Map(), // fieldName -> ReviewNoteResponseDto[]
   currentFieldName: null,
   currentFieldSnapshot: null,
-  currentQuery: ''
+  currentQuery: '',
+  currentHasPendingReview: false
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -93,8 +94,13 @@ async function loadStudents(query) {
 }
 
 function renderStudentRow(student) {
+  const rowClasses = [
+    student.hasReviewNotes ? 'row-has-comment' : '',
+    student.hasPendingReview ? 'row-pending-review' : ''
+  ].filter(Boolean).join(' ');
+  const statusBadge = student.hasPendingReview ? '<span class="pending-review-badge">قيد المراجعة</span>' : '';
   return `
-    <tr data-student-id="${student.id}" class="${student.hasReviewNotes ? 'row-has-comment' : ''}">
+    <tr data-student-id="${student.id}" class="${rowClasses}">
       <td>${displayValue(student.studentName)}</td>
       <td>${displayValue(student.studentNameEn)}</td>
       <td>${displayValue(student.nationalId)}</td>
@@ -105,6 +111,7 @@ function renderStudentRow(student) {
       <td>${displayValue(student.track)}</td>
       <td>${displayValue(student.graduationYear)}</td>
       <td>${formatDate(student.submittedAt)}</td>
+      <td>${statusBadge}</td>
     </tr>`;
 }
 
@@ -134,11 +141,53 @@ async function openStudentDetail(studentId) {
     });
 
     renderStudentDetail(student);
+    updatePendingReviewUi(student.hasPendingReview);
 
     const overlay = document.getElementById('review-detail-overlay');
     if (overlay) overlay.style.display = 'flex';
   } catch (err) {
     showToast(err.message || 'حدث خطأ أثناء تحميل بيانات الطالب.', 'danger');
+  }
+}
+
+function updatePendingReviewUi(hasPendingReview) {
+  reviewState.currentHasPendingReview = !!hasPendingReview;
+  const badge = document.getElementById('review-pending-badge');
+  const btn = document.getElementById('review-mark-pending-btn');
+  if (badge) badge.style.display = reviewState.currentHasPendingReview ? 'inline-block' : 'none';
+  if (btn) btn.style.display = reviewState.currentHasPendingReview ? 'none' : 'inline-flex';
+}
+
+// Live-patches the table row's class and status badge in place — no full page/list reload needed
+// so the table always reflects the latest state right after the modal action, matching whatever the
+// Editor's own table shows for the same student (same class/badge markup on both pages).
+function setRowPendingReviewState(studentId, isPending) {
+  const row = document.querySelector(`#review-table-body tr[data-student-id="${studentId}"]`);
+  if (!row) return;
+  row.classList.toggle('row-pending-review', isPending);
+  const statusCell = row.lastElementChild;
+  if (statusCell) {
+    statusCell.innerHTML = isPending ? '<span class="pending-review-badge">قيد المراجعة</span>' : '';
+  }
+}
+
+async function markCurrentStudentPendingReview() {
+  if (!reviewState.currentStudentId) return;
+  const btn = document.getElementById('review-mark-pending-btn');
+  if (btn) btn.disabled = true;
+  try {
+    const response = await fetch(`/api/students/${reviewState.currentStudentId}/pending-review`, { method: 'POST' });
+    const payload = await response.json();
+    if (!response.ok || payload.status !== 'success') {
+      throw new Error(payload.message || 'حدث خطأ أثناء وضع الطالب قيد المراجعة.');
+    }
+    updatePendingReviewUi(true);
+    setRowPendingReviewState(reviewState.currentStudentId, true);
+    showToast('تم وضع الطالب قيد المراجعة.', 'success');
+  } catch (err) {
+    showToast(err.message || 'حدث خطأ أثناء وضع الطالب قيد المراجعة.', 'danger');
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -416,6 +465,9 @@ function initReviewModals() {
       if (e.target === detailOverlay) closeDetailModal();
     });
   }
+
+  const markPendingBtn = document.getElementById('review-mark-pending-btn');
+  if (markPendingBtn) markPendingBtn.addEventListener('click', markCurrentStudentPendingReview);
 
   const fieldClose = document.getElementById('review-field-close');
   const fieldCancel = document.getElementById('review-field-cancel');

@@ -99,10 +99,16 @@ function renderStudentRow(student) {
   // field on this student has a comment — independent of the edit/pending-delete indicator.
   const flagged = student.hasFieldEdits || student.hasPendingDeleteRequest;
   const commented = student.hasFieldComments;
-  const rowClasses = [flagged ? 'editor-row-flagged' : '', commented ? 'row-has-comment' : ''].filter(Boolean).join(' ');
+  const rowClasses = [
+    flagged ? 'editor-row-flagged' : '',
+    commented ? 'row-has-comment' : '',
+    student.hasPendingReview ? 'row-pending-review' : ''
+  ].filter(Boolean).join(' ');
   const pendingBadge = student.hasPendingDeleteRequest
     ? '<span class="editor-pending-badge">حذف معلق</span>'
     : '';
+  const reviewBadge = student.hasPendingReview ? '<span class="pending-review-badge">قيد المراجعة</span>' : '';
+  const eligibilityBadge = eligibilityBadgeHtml(student.eligibilityStatus);
   return `
     <tr data-student-id="${student.id}" class="${rowClasses}">
       <td>${displayValue(student.studentName)}</td>
@@ -115,7 +121,17 @@ function renderStudentRow(student) {
       <td>${displayValue(student.track)}</td>
       <td>${displayValue(student.graduationYear)}</td>
       <td>${formatDate(student.submittedAt)} ${pendingBadge}</td>
+      <td class="col-pending-review">${reviewBadge}</td>
+      <td class="col-eligibility">${eligibilityBadge}</td>
     </tr>`;
+}
+
+// "Eligible" -> green "مستوفي", "NotEligible" -> red "غير مستوفي", null/undefined -> empty (not yet
+// confirmed by an Editor).
+function eligibilityBadgeHtml(status) {
+  if (status === 'Eligible') return '<span class="eligibility-badge eligible">مستوفي</span>';
+  if (status === 'NotEligible') return '<span class="eligibility-badge not-eligible">غير مستوفي</span>';
+  return '';
 }
 
 function renderPagination(totalCount, page, pageSize) {
@@ -158,6 +174,8 @@ async function openStudentDetail(studentId) {
 
     renderStudentDetail(student);
     renderDeleteRequestBadge();
+    updatePendingReviewUi(student.hasPendingReview);
+    updateEligibilityUi(student.eligibilityStatus);
     showDetailTab('details');
 
     const overlay = document.getElementById('editor-detail-overlay');
@@ -185,8 +203,99 @@ async function refreshCurrentStudentDetail() {
     comments.filter(c => c.status === 'unreviewed').map(c => c.fieldName)
   );
   renderStudentDetail(student);
+  updatePendingReviewUi(student.hasPendingReview);
+  updateEligibilityUi(student.eligibilityStatus);
   if (document.getElementById('editor-detail-tab-audit').classList.contains('active')) {
     loadAuditLog(studentId);
+  }
+}
+
+function updatePendingReviewUi(hasPendingReview) {
+  const badge = document.getElementById('editor-pending-review-badge');
+  const btn = document.getElementById('editor-resolve-pending-review-btn');
+  if (badge) badge.style.display = hasPendingReview ? 'inline-block' : 'none';
+  if (btn) btn.style.display = hasPendingReview ? 'inline-flex' : 'none';
+}
+
+// Live-patches the table row's class and status badge in place — no full page/list reload needed
+// so the table always reflects the latest state right after the modal action.
+function setRowPendingReviewState(studentId, isPending) {
+  const row = document.querySelector(`#editor-table-body tr[data-student-id="${studentId}"]`);
+  if (!row) return;
+  row.classList.toggle('row-pending-review', isPending);
+  const statusCell = row.querySelector('.col-pending-review');
+  if (statusCell) {
+    statusCell.innerHTML = isPending ? '<span class="pending-review-badge">قيد المراجعة</span>' : '';
+  }
+}
+
+// Same live-patch approach as setRowPendingReviewState, for the "مستوفي/غير مستوفي" column.
+function setRowEligibilityState(studentId, status) {
+  const row = document.querySelector(`#editor-table-body tr[data-student-id="${studentId}"]`);
+  if (!row) return;
+  const cell = row.querySelector('.col-eligibility');
+  if (cell) cell.innerHTML = eligibilityBadgeHtml(status);
+}
+
+function updateEligibilityUi(status) {
+  const badge = document.getElementById('editor-eligibility-badge');
+  const eligibleBtn = document.getElementById('editor-mark-eligible-btn');
+  const notEligibleBtn = document.getElementById('editor-mark-not-eligible-btn');
+
+  if (badge) {
+    if (status === 'Eligible') {
+      badge.textContent = 'مستوفي';
+      badge.className = 'eligibility-badge eligible';
+      badge.style.display = 'inline-block';
+    } else if (status === 'NotEligible') {
+      badge.textContent = 'غير مستوفي';
+      badge.className = 'eligibility-badge not-eligible';
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  if (eligibleBtn) eligibleBtn.classList.toggle('active', status === 'Eligible');
+  if (notEligibleBtn) notEligibleBtn.classList.toggle('active', status === 'NotEligible');
+}
+
+async function setCurrentStudentEligibility(status) {
+  if (!editorState.currentStudentId) return;
+  const eligibleBtn = document.getElementById('editor-mark-eligible-btn');
+  const notEligibleBtn = document.getElementById('editor-mark-not-eligible-btn');
+  if (eligibleBtn) eligibleBtn.disabled = true;
+  if (notEligibleBtn) notEligibleBtn.disabled = true;
+  try {
+    await fetchJson(`/api/editor/students/${editorState.currentStudentId}/eligibility`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    updateEligibilityUi(status);
+    setRowEligibilityState(editorState.currentStudentId, status);
+    showToast(status === 'Eligible' ? 'تم تأكيد أن الطالب مستوفي.' : 'تم تأكيد أن الطالب غير مستوفي.', 'success');
+  } catch (err) {
+    showToast(err.message || 'حدث خطأ أثناء تحديث حالة الاستيفاء.', 'danger');
+  } finally {
+    if (eligibleBtn) eligibleBtn.disabled = false;
+    if (notEligibleBtn) notEligibleBtn.disabled = false;
+  }
+}
+
+async function resolveCurrentStudentPendingReview() {
+  if (!editorState.currentStudentId) return;
+  const btn = document.getElementById('editor-resolve-pending-review-btn');
+  if (btn) btn.disabled = true;
+  try {
+    await fetchJson(`/api/editor/students/${editorState.currentStudentId}/resolve-pending-review`, { method: 'POST' });
+    showToast('تم إزالة علامة قيد المراجعة.', 'success');
+    updatePendingReviewUi(false);
+    setRowPendingReviewState(editorState.currentStudentId, false);
+  } catch (err) {
+    showToast(err.message || 'حدث خطأ أثناء إزالة علامة قيد المراجعة.', 'danger');
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -493,6 +602,13 @@ async function recalculateCurrentStudentGrades() {
   }
 }
 
+// Editing any of these raw underlying grade fields changes what the certificate's totals SHOULD
+// be, so saving one of them auto-triggers a recalculation (same math as the main registration page)
+// instead of requiring a separate manual click — see recalculateCurrentStudentGrades(). Totals groups
+// themselves are deliberately excluded: overwriting a Totals field the editor just typed with a fresh
+// recalculation would silently discard their edit.
+const GRADE_AFFECTING_GROUPS = new Set(['SaudiGrades', 'StandardGrades', 'IgGradeCounts', 'IgGrades']);
+
 function startInlineEdit(el) {
   if (editorState.activeEdit) return; // one inline edit at a time
 
@@ -541,6 +657,18 @@ function startInlineEdit(el) {
       await applyFieldEdit({ studentId: editorState.currentStudentId, entityGroup, entityRowId, propertyName, newValue });
 
       editorState.editedFieldPaths.add(fieldPath);
+      editorState.activeEdit = null;
+
+      if (GRADE_AFFECTING_GROUPS.has(entityGroup)) {
+        // A raw grade/subject value changed — the certificate's totals are now stale, so recalculate
+        // immediately instead of leaving it to a separate manual step. This re-fetches and re-renders
+        // the whole detail body (including this field), so just restore the DOM position first.
+        wrap.replaceWith(el);
+        showToast('تم حفظ التعديل، جاري إعادة حساب النتيجة النهائية...', 'success');
+        await recalculateCurrentStudentGrades();
+        return;
+      }
+
       el.setAttribute('data-field-value', newValue);
       el.textContent = kind === 'bool' ? (newValue === 'true' ? 'نعم' : 'لا') : (newValue === '' ? '—' : newValue);
       el.classList.add('editor-field-edited');
@@ -549,7 +677,6 @@ function startInlineEdit(el) {
       // the new value, not the stale pre-edit one.
       const icon = el.parentElement ? el.parentElement.querySelector('.editor-comment-icon') : null;
       if (icon) icon.setAttribute('data-field-value', newValue);
-      editorState.activeEdit = null;
       showToast('تم حفظ التعديل بنجاح.', 'success');
     } catch (err) {
       showToast(err.message || 'تعذر حفظ التعديل.', 'danger');
@@ -856,6 +983,14 @@ function initEditorModals() {
 
   const downloadPdfBtn = document.getElementById('editor-download-pdf-btn');
   if (downloadPdfBtn) downloadPdfBtn.addEventListener('click', downloadCurrentStudentPdf);
+
+  const resolvePendingReviewBtn = document.getElementById('editor-resolve-pending-review-btn');
+  if (resolvePendingReviewBtn) resolvePendingReviewBtn.addEventListener('click', resolveCurrentStudentPendingReview);
+
+  const markEligibleBtn = document.getElementById('editor-mark-eligible-btn');
+  if (markEligibleBtn) markEligibleBtn.addEventListener('click', () => setCurrentStudentEligibility('Eligible'));
+  const markNotEligibleBtn = document.getElementById('editor-mark-not-eligible-btn');
+  if (markNotEligibleBtn) markNotEligibleBtn.addEventListener('click', () => setCurrentStudentEligibility('NotEligible'));
 
   const fieldClose = document.getElementById('editor-field-close');
   const fieldCancel = document.getElementById('editor-field-cancel');

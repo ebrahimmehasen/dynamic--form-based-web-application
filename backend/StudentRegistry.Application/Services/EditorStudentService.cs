@@ -1,7 +1,9 @@
 using AutoMapper;
 using StudentRegistry.Application.DTOs;
 using StudentRegistry.Application.Interfaces;
+using StudentRegistry.Domain.Entities;
 using StudentRegistry.Domain.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -33,6 +35,7 @@ namespace StudentRegistry.Application.Services
             var edits = await _unitOfWork.FieldEdits.GetByStudentIdsAsync(studentIds);
             var comments = await _unitOfWork.FieldComments.GetByStudentIdsAsync(studentIds);
             var deleteRequests = await _unitOfWork.DeleteRequests.GetByStudentIdsAsync(studentIds);
+            var pendingReviews = await _unitOfWork.PendingReviews.GetPendingByStudentIdsAsync(studentIds);
 
             var editedIds = edits.Select(e => e.StudentId).ToHashSet();
             var commentedIds = comments.Select(c => c.StudentId).ToHashSet();
@@ -40,12 +43,14 @@ namespace StudentRegistry.Application.Services
                 .Where(d => d.Status == "pending" && d.StudentId.HasValue)
                 .Select(d => d.StudentId!.Value)
                 .ToHashSet();
+            var pendingReviewIds = pendingReviews.Select(p => p.StudentId).ToHashSet();
 
             foreach (var item in mapped)
             {
                 item.HasFieldEdits = editedIds.Contains(item.Id);
                 item.HasFieldComments = commentedIds.Contains(item.Id);
                 item.HasPendingDeleteRequest = pendingDeleteIds.Contains(item.Id);
+                item.HasPendingReview = pendingReviewIds.Contains(item.Id);
             }
 
             return new PagedResultDto<EditorStudentListItemDto>
@@ -61,6 +66,42 @@ namespace StudentRegistry.Application.Services
 
         public Task<StudentResponseDto> RecalculateAsync(int studentId, string editorUsername) =>
             _studentService.RecalculateStudentTotalsAsync(studentId, editorUsername);
+
+        public async Task<StudentResponseDto> SetEligibilityAsync(int studentId, string status, string confirmedBy)
+        {
+            if (status != "Eligible" && status != "NotEligible")
+            {
+                throw new ArgumentException("حالة الاستيفاء غير صالحة.");
+            }
+
+            var student = await _unitOfWork.Students.GetByIdAsync(studentId);
+            if (student == null)
+            {
+                throw new KeyNotFoundException("الطالب غير موجود.");
+            }
+
+            var oldStatus = student.EligibilityStatus;
+            student.EligibilityStatus = status;
+            student.EligibilityConfirmedBy = confirmedBy;
+            student.EligibilityConfirmedAt = DateTime.UtcNow;
+
+            // Logged in the same edits sheet as every other Editor write, so who confirmed
+            // eligibility (and when/what it changed from) shows up in the audit log too.
+            await _unitOfWork.FieldEdits.AddAsync(new FieldEdit
+            {
+                StudentId = studentId,
+                FieldName = "Student.EligibilityStatus",
+                OldValue = oldStatus,
+                NewValue = status,
+                Editor = confirmedBy,
+                Source = "manual",
+                EditedAt = DateTime.UtcNow
+            });
+
+            await _unitOfWork.CompleteAsync();
+
+            return _mapper.Map<StudentResponseDto>(student);
+        }
 
         public async Task<IEnumerable<AuditLogEntryDto>> GetAuditLogAsync(int studentId)
         {

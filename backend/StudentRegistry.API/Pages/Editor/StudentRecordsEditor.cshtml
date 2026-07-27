@@ -42,6 +42,8 @@
             <th>المسار</th>
             <th>سنة التخرج</th>
             <th>تاريخ التقديم</th>
+            <th>الحالة</th>
+            <th>الاستيفاء</th>
           </tr>
         </thead>
         <tbody id="editor-table-body">
@@ -59,6 +61,11 @@
         <h3 class="app-modal-title" id="editor-detail-title"></h3>
         <div class="editor-modal-header-actions">
           <span id="editor-delete-badge" class="editor-pending-badge" style="display:none;">حذف معلق — بانتظار مراجعة المسؤول</span>
+          <span id="editor-pending-review-badge" class="pending-review-badge" style="display:none;">قيد المراجعة</span>
+          <button type="button" class="btn btn-secondary" id="editor-resolve-pending-review-btn" style="display:none;">إزالة علامة قيد المراجعة</button>
+          <span id="editor-eligibility-badge" class="eligibility-badge" style="display:none;"></span>
+          <button type="button" class="btn btn-secondary eligibility-btn-eligible" id="editor-mark-eligible-btn">مستوفي ✓</button>
+          <button type="button" class="btn btn-secondary eligibility-btn-not-eligible" id="editor-mark-not-eligible-btn">غير مستوفي ✗</button>
           <button type="button" class="btn btn-secondary" id="editor-download-pdf-btn">تنزيل PDF 📄</button>
           <button type="button" class="btn btn-secondary editor-request-delete-btn" id="editor-request-delete-btn">طلب حذف الطالب</button>
           <button type="button" class="review-modal-close" id="editor-detail-close" aria-label="إغلاق">&times;</button>

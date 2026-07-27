@@ -28,7 +28,15 @@ namespace StudentRegistry.Application.Services
         public async Task<StudentResponseDto?> GetStudentByIdAsync(int id)
         {
             var student = await _unitOfWork.Students.GetByIdAsync(id);
-            return _mapper.Map<StudentResponseDto>(student);
+            if (student == null)
+            {
+                return null;
+            }
+
+            var dto = _mapper.Map<StudentResponseDto>(student);
+            var pendingReview = await _unitOfWork.PendingReviews.GetPendingForStudentAsync(id);
+            dto.HasPendingReview = pendingReview != null;
+            return dto;
         }
 
         public async Task<StudentResponseDto?> GetStudentByNationalIdAsync(string nationalId)
@@ -51,10 +59,13 @@ namespace StudentRegistry.Application.Services
             var studentIds = mapped.Select(m => m.Id).ToList();
             var notes = await _unitOfWork.ReviewNotes.GetByStudentIdsAsync(studentIds);
             var notedIds = notes.Select(n => n.StudentId).ToHashSet();
+            var pendingReviews = await _unitOfWork.PendingReviews.GetPendingByStudentIdsAsync(studentIds);
+            var pendingIds = pendingReviews.Select(p => p.StudentId).ToHashSet();
 
             foreach (var item in mapped)
             {
                 item.HasReviewNotes = notedIds.Contains(item.Id);
+                item.HasPendingReview = pendingIds.Contains(item.Id);
             }
 
             return mapped;

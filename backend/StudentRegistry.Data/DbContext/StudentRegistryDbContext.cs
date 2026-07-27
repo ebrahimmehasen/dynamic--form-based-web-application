@@ -33,6 +33,7 @@ namespace StudentRegistry.Data.DbContext
         public DbSet<FieldEdit> FieldEdits => Set<FieldEdit>();
         public DbSet<FieldComment> FieldComments => Set<FieldComment>();
         public DbSet<DeleteRequest> DeleteRequests => Set<DeleteRequest>();
+        public DbSet<PendingReview> PendingReviews => Set<PendingReview>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

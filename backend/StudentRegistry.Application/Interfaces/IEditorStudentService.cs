@@ -13,5 +13,9 @@ namespace StudentRegistry.Application.Interfaces
         // Throws KeyNotFoundException if the student doesn't exist, ArgumentException if this
         // certificate type has nothing to recalculate or the edited grades are no longer valid.
         Task<StudentResponseDto> RecalculateAsync(int studentId, string editorUsername);
+
+        // Throws KeyNotFoundException if the student doesn't exist, ArgumentException if status
+        // isn't "Eligible"/"NotEligible".
+        Task<StudentResponseDto> SetEligibilityAsync(int studentId, string status, string confirmedBy);
     }
 }
