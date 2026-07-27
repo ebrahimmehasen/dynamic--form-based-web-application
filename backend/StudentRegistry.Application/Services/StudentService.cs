@@ -45,7 +45,18 @@ namespace StudentRegistry.Application.Services
         public async Task<IEnumerable<StudentListItemDto>> SearchStudentsAsync(string? query)
         {
             var students = await _unitOfWork.Students.SearchAsync(query);
-            return _mapper.Map<IEnumerable<StudentListItemDto>>(students);
+            var mapped = _mapper.Map<List<StudentListItemDto>>(students);
+
+            var studentIds = mapped.Select(m => m.Id).ToList();
+            var notes = await _unitOfWork.ReviewNotes.GetByStudentIdsAsync(studentIds);
+            var notedIds = notes.Select(n => n.StudentId).ToHashSet();
+
+            foreach (var item in mapped)
+            {
+                item.HasReviewNotes = notedIds.Contains(item.Id);
+            }
+
+            return mapped;
         }
 
         public async Task<StudentResponseDto> RegisterStudentAsync(StudentCreateDto createDto)

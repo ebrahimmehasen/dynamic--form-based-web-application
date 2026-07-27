@@ -3,6 +3,7 @@ using StudentRegistry.Data.DbContext;
 using StudentRegistry.Domain.Entities;
 using StudentRegistry.Domain.Interfaces;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace StudentRegistry.Repository.Implementations
@@ -22,6 +23,17 @@ namespace StudentRegistry.Repository.Implementations
                 .AsNoTracking()
                 .Where(n => n.StudentId == studentId)
                 .OrderBy(n => n.CreatedAt)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<ReviewNote>> GetByStudentIdsAsync(IEnumerable<int> studentIds)
+        {
+            // EF.Constant forces this list to be inlined as SQL literals instead of EF Core 8's default
+            // OPENJSON-based parameterization, which this SQL Server instance's compatibility level rejects.
+            var idsList = studentIds as List<int> ?? studentIds.ToList();
+            return await _context.ReviewNotes
+                .AsNoTracking()
+                .Where(n => EF.Constant(idsList).Contains(n.StudentId))
                 .ToListAsync();
         }
 

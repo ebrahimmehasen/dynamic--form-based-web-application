@@ -311,34 +311,37 @@ namespace StudentRegistry.Infrastructure.Export
         // the percentage instead (per registrar's instruction — not the converted EquivalentTotal).
         private static string ResolveScoreCell(StudentResponseDto s)
         {
+            // Raw achieved total, not a percentage — no "%" suffix.
             if (s.EgyptianTotals != null)
                 return s.EgyptianTotals.FinalTotal.ToString("0.##");
+
+            // Every other certificate's value here is a percentage — suffixed with "%".
             if (s.SaudiTotals != null)
-                return s.SaudiTotals.FinalPercentage.ToString("0.##");
+                return s.SaudiTotals.FinalPercentage.ToString("0.##") + "%";
             if (s.KuwaitiTotals != null)
-                return s.KuwaitiTotals.FinalPercentage.ToString("0.##");
+                return s.KuwaitiTotals.FinalPercentage.ToString("0.##") + "%";
             if (s.QatariTotals != null)
-                return s.QatariTotals.Percentage.ToString("0.##");
+                return s.QatariTotals.Percentage.ToString("0.##") + "%";
             if (s.OmaniTotals != null)
-                return s.OmaniTotals.Percentage.ToString("0.##");
+                return s.OmaniTotals.Percentage.ToString("0.##") + "%";
             if (s.YemeniTotals != null)
-                return s.YemeniTotals.Percentage.ToString("0.##");
+                return s.YemeniTotals.Percentage.ToString("0.##") + "%";
             if (s.BahrainiTotals != null)
-                return s.BahrainiTotals.Percentage.ToString("0.##");
+                return s.BahrainiTotals.Percentage.ToString("0.##") + "%";
             if (s.PalestinianTotals != null)
-                return s.PalestinianTotals.Percentage.ToString("0.##");
+                return s.PalestinianTotals.Percentage.ToString("0.##") + "%";
             if (s.AzharTotals != null)
-                return s.AzharTotals.Percentage.ToString("0.##");
+                return s.AzharTotals.Percentage.ToString("0.##") + "%";
             if (s.EmiratiTotals != null)
-                return s.EmiratiTotals.Percentage.ToString("0.##");
+                return s.EmiratiTotals.Percentage.ToString("0.##") + "%";
             if (s.OtherTotals != null)
-                return s.OtherTotals.Percentage.ToString("0.##");
+                return s.OtherTotals.Percentage.ToString("0.##") + "%";
             if (s.AmericanDiplomaTotals != null)
-                return s.AmericanDiplomaTotals.BasePercentage.ToString("0.##");
+                return s.AmericanDiplomaTotals.EquivalentPercentage.ToString("0.##") + "%";
             if (s.IgGrades != null)
-                return s.IgGrades.ScorePercentage.ToString("0.##");
+                return s.IgGrades.ScorePercentage.ToString("0.##") + "%";
             if (s.StandardGrades != null && s.StandardGrades.Any())
-                return s.StandardGrades.Average(g => g.WeightedPercentage).ToString("0.##");
+                return s.StandardGrades.Average(g => g.WeightedPercentage).ToString("0.##") + "%";
 
             return string.Empty;
         }

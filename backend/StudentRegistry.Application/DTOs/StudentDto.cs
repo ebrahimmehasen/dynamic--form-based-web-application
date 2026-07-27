@@ -242,6 +242,9 @@ namespace StudentRegistry.Application.DTOs
         public string Track { get; set; } = string.Empty;
         public int GraduationYear { get; set; }
         public DateTime SubmittedAt { get; set; }
+        // Set by StudentService.SearchStudentsAsync (not AutoMapper) — true if this student has any
+        // review note on any field, so the Viewer's main table row can be highlighted yellow.
+        public bool HasReviewNotes { get; set; }
     }
 
     public class StudentResponseDto

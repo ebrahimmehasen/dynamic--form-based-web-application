@@ -5,7 +5,8 @@ var reviewState = {
   currentStudentId: null,
   notesByField: new Map(), // fieldName -> ReviewNoteResponseDto[]
   currentFieldName: null,
-  currentFieldSnapshot: null
+  currentFieldSnapshot: null,
+  currentQuery: ''
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -65,6 +66,8 @@ async function loadStudents(query) {
   const emptyState = document.getElementById('review-empty-state');
   if (!tbody) return;
 
+  reviewState.currentQuery = query || '';
+
   try {
     const response = await fetch('/api/students/search?q=' + encodeURIComponent(query || ''));
     const payload = await response.json();
@@ -91,7 +94,7 @@ async function loadStudents(query) {
 
 function renderStudentRow(student) {
   return `
-    <tr data-student-id="${student.id}">
+    <tr data-student-id="${student.id}" class="${student.hasReviewNotes ? 'row-has-comment' : ''}">
       <td>${displayValue(student.studentName)}</td>
       <td>${displayValue(student.studentNameEn)}</td>
       <td>${displayValue(student.nationalId)}</td>
@@ -509,6 +512,11 @@ async function saveFieldNote() {
 
     document.querySelectorAll(`.review-clickable-field[data-field-name="${cssEscape(fieldName)}"]`)
       .forEach(el => el.classList.add('field-reviewed'));
+
+    // Live-update the main table row's yellow highlight — this student now has at least one
+    // review note, regardless of which field it was added to.
+    const row = document.querySelector(`#review-table-body tr[data-student-id="${reviewState.currentStudentId}"]`);
+    if (row) row.classList.add('row-has-comment');
 
     showToast('تم حفظ الملاحظة بنجاح.', 'success');
     closeFieldModal();

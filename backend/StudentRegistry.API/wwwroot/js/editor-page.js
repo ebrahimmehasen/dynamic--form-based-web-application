@@ -93,12 +93,17 @@ async function loadStudents(query, page) {
 }
 
 function renderStudentRow(student) {
-  const flagged = student.hasFieldEdits || student.hasFieldComments || student.hasPendingDeleteRequest;
+  // Blue left-border: any edit activity or a pending delete request. Yellow background: reuses
+  // the same highlight as an individually-commented field, and is driven purely by whether ANY
+  // field on this student has a comment — independent of the edit/pending-delete indicator.
+  const flagged = student.hasFieldEdits || student.hasPendingDeleteRequest;
+  const commented = student.hasFieldComments;
+  const rowClasses = [flagged ? 'editor-row-flagged' : '', commented ? 'row-has-comment' : ''].filter(Boolean).join(' ');
   const pendingBadge = student.hasPendingDeleteRequest
     ? '<span class="editor-pending-badge">حذف معلق</span>'
     : '';
   return `
-    <tr data-student-id="${student.id}" class="${flagged ? 'editor-row-flagged' : ''}">
+    <tr data-student-id="${student.id}" class="${rowClasses}">
       <td>${displayValue(student.studentName)}</td>
       <td>${displayValue(student.studentNameEn)}</td>
       <td>${displayValue(student.nationalId)}</td>
