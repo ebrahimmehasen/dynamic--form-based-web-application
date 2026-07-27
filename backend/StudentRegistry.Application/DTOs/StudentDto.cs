@@ -36,6 +36,9 @@ namespace StudentRegistry.Application.DTOs
         // Base64 encoded image string from frontend
         public string Photo { get; set; } = string.Empty;
 
+        // Client-generated UUID (stable across retries of the same submit) used for idempotency.
+        public string? SubmissionToken { get; set; }
+
         // Saudi specific fields
         public string? YearsCount { get; set; }
         public List<SaudiGradeCreateDto>? SaudiGrades { get; set; }

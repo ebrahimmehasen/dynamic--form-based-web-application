@@ -4,7 +4,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   initAdminTabs();
-  loadDeleteRequests();
+  // Dashboard is the default-active tab; it loads itself (admin-dashboard.js).
 
   const statusFilter = document.getElementById('admin-delete-status-filter');
   if (statusFilter) statusFilter.addEventListener('change', loadDeleteRequests);
@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function initAdminTabs() {
   const tabs = {
+    dashboard: { btn: 'admin-tab-btn-dashboard', panel: 'admin-tab-dashboard', load: typeof loadDashboard === 'function' ? loadDashboard : () => {} },
     delete: { btn: 'admin-tab-btn-delete', panel: 'admin-tab-delete', load: loadDeleteRequests },
     edits: { btn: 'admin-tab-btn-edits', panel: 'admin-tab-edits', load: loadFieldEdits },
     comments: { btn: 'admin-tab-btn-comments', panel: 'admin-tab-comments', load: loadFieldComments },

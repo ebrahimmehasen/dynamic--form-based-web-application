@@ -126,6 +126,13 @@ namespace StudentRegistry.Data.Configurations
             builder.Property(s => s.SubmittedAt)
                 .IsRequired()
                 .HasDefaultValueSql("SYSUTCDATETIME()");
+
+            builder.Property(s => s.SubmissionToken)
+                .HasMaxLength(64);
+
+            builder.HasIndex(s => s.SubmissionToken)
+                .IsUnique()
+                .HasFilter("[SubmissionToken] IS NOT NULL");
         }
     }
 }

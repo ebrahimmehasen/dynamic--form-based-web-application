@@ -12,13 +12,56 @@
 
   <div class="form-section">
     <div class="editor-tabs">
-      <button type="button" class="editor-tab-btn editor-tab-active" id="admin-tab-btn-delete">طلبات الحذف</button>
+      <button type="button" class="editor-tab-btn editor-tab-active" id="admin-tab-btn-dashboard">لوحة الإحصائيات</button>
+      <button type="button" class="editor-tab-btn" id="admin-tab-btn-delete">طلبات الحذف</button>
       <button type="button" class="editor-tab-btn" id="admin-tab-btn-edits">التعديلات</button>
       <button type="button" class="editor-tab-btn" id="admin-tab-btn-comments">التعليقات</button>
       <button type="button" class="editor-tab-btn" id="admin-tab-btn-users">إدارة المستخدمين</button>
     </div>
 
-    <div id="admin-tab-delete">
+    <div id="admin-tab-dashboard">
+      <div class="dashboard-filters">
+        <div class="dashboard-filter-group">
+          <label class="review-field-label" for="dashboard-start-date">من تاريخ</label>
+          <input type="date" id="dashboard-start-date" class="table-input">
+        </div>
+        <div class="dashboard-filter-group">
+          <label class="review-field-label" for="dashboard-end-date">إلى تاريخ</label>
+          <input type="date" id="dashboard-end-date" class="table-input">
+        </div>
+        <div class="dashboard-filter-group">
+          <label class="review-field-label" for="dashboard-cert-filter">الشهادة</label>
+          <select id="dashboard-cert-filter" class="table-input">
+            <option value="">كل الشهادات</option>
+          </select>
+        </div>
+        <div class="dashboard-filter-actions">
+          <button type="button" class="btn btn-primary" id="dashboard-apply-filters" style="width:auto;">تطبيق الفلاتر</button>
+          <button type="button" class="btn btn-secondary" id="dashboard-reset-filters" style="width:auto;">إعادة تعيين</button>
+        </div>
+      </div>
+
+      <div class="dashboard-kpi-grid" id="dashboard-kpi-grid"></div>
+
+      <div class="dashboard-widgets-grid">
+        <div class="dashboard-widget">
+          <h3 class="dashboard-widget-title">الطلاب حسب الشهادة</h3>
+          <div id="dashboard-students-per-cert"></div>
+        </div>
+        <div class="dashboard-widget">
+          <h3 class="dashboard-widget-title">التعليقات حسب الشهادة</h3>
+          <div id="dashboard-comments-per-cert"></div>
+        </div>
+      </div>
+
+      <div class="dashboard-widget">
+        <h3 class="dashboard-widget-title">الشهادات الخارجية (أخرى)</h3>
+        <p class="field-hint">شهادات محددة سجّلها الطلاب ضمن خيار "أخرى" وليست من ضمن القائمة الرئيسية المعروضة.</p>
+        <div id="dashboard-other-certs"></div>
+      </div>
+    </div>
+
+    <div id="admin-tab-delete" style="display:none;">
       <div class="editor-audit-filters">
         <select id="admin-delete-status-filter" class="table-input">
           <option value="pending">قيد المراجعة</option>
@@ -84,4 +127,5 @@
   <script src="~/js/editor-shared.js" asp-append-version="true"></script>
   <script src="~/js/admin-review.js" asp-append-version="true"></script>
   <script src="~/js/admin-users.js" asp-append-version="true"></script>
+  <script src="~/js/admin-dashboard.js" asp-append-version="true"></script>
 }

@@ -10,7 +10,7 @@ namespace StudentRegistry.Infrastructure.Storage
     public class FileStorageService : IFileStorageService
     {
         private readonly IWebHostEnvironment _env;
-        private const long MaxFileSizeInBytes = 5 * 1024 * 1024; // 5MB
+        private const long MaxFileSizeInBytes = 2 * 1024 * 1024; // 2MB
 
         public FileStorageService(IWebHostEnvironment env)
         {
@@ -51,9 +51,9 @@ namespace StudentRegistry.Infrastructure.Storage
             if (!IsValidImageSignature(imageBytes, fileType))
                 throw new ArgumentException("محتوى الصورة غير صالح أو لا يتطابق مع الصيغة المحددة.");
 
-            // 5. Validate image file size (max 5MB)
+            // 5. Validate image file size (max 2MB)
             if (imageBytes.Length > MaxFileSizeInBytes)
-                throw new ArgumentException("حجم الصورة كبير جداً. الحد الأقصى هو 5 ميجابايت.");
+                throw new ArgumentException("حجم الصورة كبير جداً. الحد الأقصى هو 2 ميجابايت.");
 
             // 6. Generate secure unique filename
             // Clean national ID for filesystem safety
