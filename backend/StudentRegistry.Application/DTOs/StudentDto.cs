@@ -23,6 +23,7 @@ namespace StudentRegistry.Application.DTOs
         public string GuardianNationalId { get; set; } = string.Empty;
         public string GuardianOccupation { get; set; } = string.Empty;
         public string GuardianPhone { get; set; } = string.Empty;
+        public string? GuardianLandlinePhone { get; set; }
         public string GuardianRelation { get; set; } = string.Empty;
         public string AddressGov { get; set; } = string.Empty;
         public string AddressCenter { get; set; } = string.Empty;
@@ -244,6 +245,9 @@ namespace StudentRegistry.Application.DTOs
         public string Track { get; set; } = string.Empty;
         public int GraduationYear { get; set; }
         public DateTime SubmittedAt { get; set; }
+        // Set by StudentService.SearchStudentsAsync (not AutoMapper) — true if this student has any
+        // review note on any field, so the Viewer's main table row can be highlighted yellow.
+        public bool HasReviewNotes { get; set; }
     }
 
     public class StudentResponseDto
@@ -267,6 +271,7 @@ namespace StudentRegistry.Application.DTOs
         public string GuardianNationalId { get; set; } = string.Empty;
         public string GuardianOccupation { get; set; } = string.Empty;
         public string GuardianPhone { get; set; } = string.Empty;
+        public string? GuardianLandlinePhone { get; set; }
         public string GuardianRelation { get; set; } = string.Empty;
         public string AddressGov { get; set; } = string.Empty;
         public string AddressCenter { get; set; } = string.Empty;
@@ -429,6 +434,8 @@ namespace StudentRegistry.Application.DTOs
         public bool StudiedAdvancedMath { get; set; }
         public bool SatIBelowMinimum { get; set; }
         public bool SatIIBelowMinimum { get; set; }
+        // النسبة النهائية المعادلة وفق معادلة الجامعات الحكومية والمعاهد العليا (رقم إضافي، لا يستبدل ما سبق).
+        public decimal EquivalentPercentage { get; set; }
         public string AdmissionNote { get; set; } = string.Empty;
         public string Disclaimer { get; set; } = string.Empty;
     }

@@ -14,6 +14,7 @@ namespace StudentRegistry.Data.Configurations
 
             builder.Property(t => t.AverageScore).HasPrecision(5, 2);
             builder.Property(t => t.BasePercentage).HasPrecision(5, 2);
+            builder.Property(t => t.EquivalentPercentage).HasPrecision(6, 2);
             builder.Property(t => t.SatIISubject1).HasMaxLength(50);
             builder.Property(t => t.SatIISubject2).HasMaxLength(50);
             builder.Property(t => t.TestType1).HasMaxLength(10).IsRequired();

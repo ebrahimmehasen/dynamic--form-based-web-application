@@ -24,6 +24,7 @@ namespace StudentRegistry.Domain.Entities
         public string GuardianNationalId { get; set; } = string.Empty;
         public string GuardianOccupation { get; set; } = string.Empty;
         public string GuardianPhone { get; set; } = string.Empty;
+        public string? GuardianLandlinePhone { get; set; }   // رقم الهاتف الأرضي — اختياري
         public string GuardianRelation { get; set; } = string.Empty;
         public string AddressGov { get; set; } = string.Empty;
         public string AddressCenter { get; set; } = string.Empty;

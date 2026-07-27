@@ -5,7 +5,8 @@ var reviewState = {
   currentStudentId: null,
   notesByField: new Map(), // fieldName -> ReviewNoteResponseDto[]
   currentFieldName: null,
-  currentFieldSnapshot: null
+  currentFieldSnapshot: null,
+  currentQuery: ''
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -65,6 +66,8 @@ async function loadStudents(query) {
   const emptyState = document.getElementById('review-empty-state');
   if (!tbody) return;
 
+  reviewState.currentQuery = query || '';
+
   try {
     const response = await fetch('/api/students/search?q=' + encodeURIComponent(query || ''));
     const payload = await response.json();
@@ -91,7 +94,7 @@ async function loadStudents(query) {
 
 function renderStudentRow(student) {
   return `
-    <tr data-student-id="${student.id}">
+    <tr data-student-id="${student.id}" class="${student.hasReviewNotes ? 'row-has-comment' : ''}">
       <td>${displayValue(student.studentName)}</td>
       <td>${displayValue(student.studentNameEn)}</td>
       <td>${displayValue(student.nationalId)}</td>
@@ -158,6 +161,7 @@ function renderStudentDetail(student) {
       ['Student.GuardianName', 'اسم ولي الأمر', student.guardianName],
       ['Student.GuardianNationalId', 'الرقم القومي لولي الأمر', student.guardianNationalId],
       ['Student.GuardianPhone', 'هاتف ولي الأمر', student.guardianPhone],
+      ['Student.GuardianLandlinePhone', 'رقم الهاتف الأرضي', student.guardianLandlinePhone],
       ['Student.GuardianRelation', 'صلة القرابة', student.guardianRelation],
       ['Student.GuardianOccupation', 'مهنة ولي الأمر', student.guardianOccupation]
     ]),
@@ -303,11 +307,16 @@ function renderCertificateSection(student) {
     body = renderCertTotalsAndGrades(student.americanDiplomaTotals, student.americanDiplomaGrades, 'AmericanDiplomaTotals', [
       ['AverageScore', 'متوسط الدرجات'],
       ['BasePercentage', 'النسبة الأساسية'],
-      ['SatI', 'SAT I'],
-      ['SatII', 'SAT II'],
+      ['TestType1', 'نوع اختبار المستوى الأول'],
+      ['SatI', 'SAT I (معادل)'],
+      ['ActComposite', 'ACT (الكلية، خام)'],
+      ['TestType2', 'نوع اختبار المستوى الثاني'],
+      ['SatII', 'SAT II (معادل)'],
+      ['ActMath', 'ACT Math (خام)'],
       ['SatIISubject1', 'مادة SAT II الأولى'],
       ['SatIISubject2', 'مادة SAT II الثانية'],
-      ['StudiedAdvancedMath', 'درس رياضيات متقدمة']
+      ['StudiedAdvancedMath', 'درس رياضيات متقدمة'],
+      ['EquivalentPercentage', 'النسبة النهائية المعادلة']
     ], (g) => `${g.subjectName}: ${g.mark}`);
   }
 
@@ -503,6 +512,11 @@ async function saveFieldNote() {
 
     document.querySelectorAll(`.review-clickable-field[data-field-name="${cssEscape(fieldName)}"]`)
       .forEach(el => el.classList.add('field-reviewed'));
+
+    // Live-update the main table row's yellow highlight — this student now has at least one
+    // review note, regardless of which field it was added to.
+    const row = document.querySelector(`#review-table-body tr[data-student-id="${reviewState.currentStudentId}"]`);
+    if (row) row.classList.add('row-has-comment');
 
     showToast('تم حفظ الملاحظة بنجاح.', 'success');
     closeFieldModal();

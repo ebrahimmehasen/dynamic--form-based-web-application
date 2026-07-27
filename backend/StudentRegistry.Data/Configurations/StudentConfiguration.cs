@@ -85,6 +85,9 @@ namespace StudentRegistry.Data.Configurations
                 .IsRequired()
                 .HasMaxLength(20);
 
+            builder.Property(s => s.GuardianLandlinePhone)
+                .HasMaxLength(20);
+
             builder.Property(s => s.GuardianRelation)
                 .IsRequired()
                 .HasMaxLength(100);

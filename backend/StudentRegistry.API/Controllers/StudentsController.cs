@@ -19,11 +19,13 @@ namespace StudentRegistry.API.Controllers
     {
         private readonly IStudentService _studentService;
         private readonly IValidator<StudentCreateDto> _validator;
+        private readonly IStudentExcelExportService _excelExportService;
 
-        public StudentsController(IStudentService studentService, IValidator<StudentCreateDto> validator)
+        public StudentsController(IStudentService studentService, IValidator<StudentCreateDto> validator, IStudentExcelExportService excelExportService)
         {
             _studentService = studentService;
             _validator = validator;
+            _excelExportService = excelExportService;
         }
 
         [HttpPost("register")]
@@ -93,6 +95,43 @@ namespace StudentRegistry.API.Controllers
         {
             var result = await _studentService.SearchStudentsAsync(q);
             return Ok(new { status = "success", data = result });
+        }
+
+        [HttpGet("{id:int}/export")]
+        public async Task<IActionResult> ExportStudent(int id)
+        {
+            var student = await _studentService.GetStudentByIdAsync(id);
+            if (student == null)
+            {
+                return NotFound(new { status = "error", message = "الطالب غير موجود." });
+            }
+
+            var fileBytes = await _excelExportService.ExportStudentAsync(id);
+            string fileName = $"{student.NationalId}.xlsx";
+            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+        }
+
+        // Public, anonymous download for the student who just registered — gated by requiring the
+        // caller to also supply the matching national ID (known only to the registrant/owner),
+        // not just the numeric id, since this bypasses the Viewer-role auth on the rest of this controller.
+        [HttpGet("{id:int}/export/pdf")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ExportStudentPdf(int id, [FromQuery] string nationalId)
+        {
+            if (string.IsNullOrWhiteSpace(nationalId))
+            {
+                return BadRequest(new { status = "error", message = "الرقم القومي مطلوب." });
+            }
+
+            var student = await _studentService.GetStudentByIdAsync(id);
+            if (student == null || !string.Equals(student.NationalId, nationalId, StringComparison.Ordinal))
+            {
+                return NotFound(new { status = "error", message = "الطالب غير موجود." });
+            }
+
+            var fileBytes = await _excelExportService.ExportStudentPdfAsync(id);
+            string fileName = $"{student.NationalId}.pdf";
+            return File(fileBytes, "application/pdf", fileName);
         }
     }
 }

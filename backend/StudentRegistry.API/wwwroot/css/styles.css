@@ -1117,6 +1117,17 @@ body {
   font-size: 0.85rem;
 }
 
+/* Shared row-level highlight — reused by the Viewer's review table and the Editor's table alike:
+   the whole row turns the same yellow as an individually-commented field/cell whenever ANY field
+   belonging to that row has a comment attached to it. */
+.data-table tbody tr.row-has-comment {
+  background: var(--review-highlight-bg) !important;
+}
+
+.data-table tbody tr.row-has-comment:hover {
+  background: var(--review-highlight-border) !important;
+}
+
 /* Large centered profile modal — reuses .app-modal-overlay/.app-modal-box, wider variant */
 #review-detail-overlay {
   z-index: 1000;
