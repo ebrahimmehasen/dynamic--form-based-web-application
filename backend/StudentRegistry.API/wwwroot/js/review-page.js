@@ -320,10 +320,20 @@ function renderCertificateSection(student) {
     ], (g) => `${g.subjectName}: ${g.mark}`);
   }
 
+  const hasCertData = body !== '<p class="field-hint">لا توجد بيانات شهادة مسجلة.</p>';
+  const editHintSection = hasCertData ? `
+    <div class="editor-recalc-bar">
+      <button type="button" class="btn btn-secondary" id="review-edit-grades-btn">تعديل درجات الطالب</button>
+      <div class="editor-recalc-panel" id="review-edit-grades-panel" style="display:none;">
+        <p class="field-hint">هذه الصفحة للعرض فقط ولا تسمح بتعديل الدرجات. اضغط على أي درجة أو نتيجة أعلاه لإضافة ملاحظة مراجعة عليها.</p>
+      </div>
+    </div>` : '';
+
   return `
     <div class="review-section">
       <div class="review-section-title">تفاصيل الشهادة</div>
       ${body}
+      ${editHintSection}
     </div>`;
 }
 
@@ -387,6 +397,14 @@ function wireClickableFields(container) {
       });
     });
   });
+
+  const editGradesBtn = container.querySelector('#review-edit-grades-btn');
+  if (editGradesBtn) {
+    editGradesBtn.addEventListener('click', () => {
+      const panel = container.querySelector('#review-edit-grades-panel');
+      if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    });
+  }
 }
 
 function initReviewModals() {

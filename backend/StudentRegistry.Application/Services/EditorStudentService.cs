@@ -59,6 +59,9 @@ namespace StudentRegistry.Application.Services
 
         public Task<StudentResponseDto?> GetByIdAsync(int id) => _studentService.GetStudentByIdAsync(id);
 
+        public Task<StudentResponseDto> RecalculateAsync(int studentId, string editorUsername) =>
+            _studentService.RecalculateStudentTotalsAsync(studentId, editorUsername);
+
         public async Task<IEnumerable<AuditLogEntryDto>> GetAuditLogAsync(int studentId)
         {
             var edits = await _unitOfWork.FieldEdits.GetByStudentIdAsync(studentId);

@@ -8,7 +8,7 @@ namespace StudentRegistry.Application.Interfaces
     {
         // Throws KeyNotFoundException when the student/row doesn't exist, ArgumentException on an
         // unknown/non-whitelisted field or an unconvertible value.
-        Task<FieldEditResponseDto> ApplyEditAsync(FieldEditCreateDto createDto);
+        Task<FieldEditResponseDto> ApplyEditAsync(FieldEditCreateDto createDto, string editorUsername);
         Task<IEnumerable<FieldEditResponseDto>> GetForStudentAsync(int studentId);
     }
 }

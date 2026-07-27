@@ -22,7 +22,7 @@ namespace StudentRegistry.Application.Services
             _mapper = mapper;
         }
 
-        public async Task<FieldEditResponseDto> ApplyEditAsync(FieldEditCreateDto createDto)
+        public async Task<FieldEditResponseDto> ApplyEditAsync(FieldEditCreateDto createDto, string editorUsername)
         {
             var student = await _unitOfWork.Students.GetByIdAsync(createDto.StudentId);
             if (student == null)
@@ -82,6 +82,7 @@ namespace StudentRegistry.Application.Services
                 OldValue = oldValue,
                 NewValue = newValueObj?.ToString(),
                 Note = createDto.Note,
+                Editor = string.IsNullOrWhiteSpace(editorUsername) ? "Editor" : editorUsername,
                 Source = isFromComment ? "from_comment" : "manual",
                 SourceCommentId = isFromComment ? createDto.TriggeringCommentId : null,
                 EditedAt = DateTime.UtcNow

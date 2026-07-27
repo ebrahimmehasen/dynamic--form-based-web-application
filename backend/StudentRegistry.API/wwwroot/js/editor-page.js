@@ -4,6 +4,7 @@
 
 var editorState = {
   currentStudentId: null,
+  currentNationalId: null,
   editedFieldPaths: new Set(),      // fieldPath -> has at least one FieldEdit
   commentedFieldPaths: new Set(),   // fieldPath -> has at least one *unreviewed* FieldComment
   commentsByField: new Map(),       // fieldPath -> FieldCommentResponseDto[]
@@ -143,6 +144,7 @@ async function openStudentDetail(studentId) {
     ]);
 
     editorState.currentStudentId = studentId;
+    editorState.currentNationalId = student.nationalId;
     editorState.editedFieldPaths = new Set(edits.map(e => e.fieldName));
     editorState.commentsByField = new Map();
     comments.forEach(c => {
@@ -360,10 +362,21 @@ function renderCertificateSection(student) {
     ]) + renderGradeTable('StandardGrades', student.americanDiplomaGrades, standardGradeColumns());
   }
 
+  const hasCertData = body !== '<p class="field-hint">لا توجد بيانات شهادة مسجلة.</p>';
+  const recalcSection = hasCertData ? `
+    <div class="editor-recalc-bar" id="editor-recalc-bar">
+      <button type="button" class="btn btn-secondary" id="editor-edit-grades-btn">تعديل درجات الطالب</button>
+      <div class="editor-recalc-panel" id="editor-recalc-panel" style="display:none;">
+        <p class="field-hint">عدّل أي درجة لأي مادة أعلاه بالضغط عليها، ثم اضغط الزر التالي لإعادة حساب النتيجة النهائية بنفس طريقة الحساب المستخدمة في الصفحة الرئيسية.</p>
+        <button type="button" class="btn btn-primary" id="editor-recalculate-btn">إعادة حساب النتيجة النهائية</button>
+      </div>
+    </div>` : '';
+
   return `
     <div class="review-section">
       <div class="review-section-title">تفاصيل الشهادة</div>
       ${body}
+      ${recalcSection}
     </div>`;
 }
 
@@ -431,6 +444,53 @@ function wireEditableFields(container) {
       });
     });
   });
+
+  const editGradesBtn = container.querySelector('#editor-edit-grades-btn');
+  if (editGradesBtn) {
+    editGradesBtn.addEventListener('click', () => {
+      const panel = container.querySelector('#editor-recalc-panel');
+      if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    });
+  }
+  const recalcBtn = container.querySelector('#editor-recalculate-btn');
+  if (recalcBtn) {
+    recalcBtn.addEventListener('click', recalculateCurrentStudentGrades);
+  }
+}
+
+// Same PDF the student downloads right after registering (GET /api/students/{id}/export/pdf) —
+// reused as-is here so the Editor always gets the current, up-to-date record (including any edits
+// or recalculations applied since registration), not a stale copy from the student's own download.
+function downloadCurrentStudentPdf() {
+  if (!editorState.currentStudentId || !editorState.currentNationalId) return;
+  const url = `/api/students/${editorState.currentStudentId}/export/pdf?nationalId=${encodeURIComponent(editorState.currentNationalId)}`;
+  window.location.href = url;
+}
+
+// Triggers the server-side recalculation (POST /api/editor/students/{id}/recalculate), which
+// re-derives the certificate's totals from whatever raw grade rows currently exist — the same rows
+// the inline edits above just changed — using the exact same formula as the main registration page,
+// and logs every changed total field in the edits sheet under this editor's own username.
+async function recalculateCurrentStudentGrades() {
+  if (!editorState.currentStudentId) return;
+  const btn = document.getElementById('editor-recalculate-btn');
+  const originalText = btn ? btn.textContent : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'جاري إعادة الحساب...';
+  }
+  try {
+    await fetchJson(`/api/editor/students/${editorState.currentStudentId}/recalculate`, { method: 'POST' });
+    showToast('تم إعادة حساب النتيجة النهائية بنجاح.', 'success');
+    await refreshCurrentStudentDetail();
+  } catch (err) {
+    showToast(err.message || 'حدث خطأ أثناء إعادة الحساب.', 'danger');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
 }
 
 function startInlineEdit(el) {
@@ -793,6 +853,9 @@ function initEditorModals() {
 
   const requestDeleteBtn = document.getElementById('editor-request-delete-btn');
   if (requestDeleteBtn) requestDeleteBtn.addEventListener('click', handleRequestDeletion);
+
+  const downloadPdfBtn = document.getElementById('editor-download-pdf-btn');
+  if (downloadPdfBtn) downloadPdfBtn.addEventListener('click', downloadCurrentStudentPdf);
 
   const fieldClose = document.getElementById('editor-field-close');
   const fieldCancel = document.getElementById('editor-field-cancel');

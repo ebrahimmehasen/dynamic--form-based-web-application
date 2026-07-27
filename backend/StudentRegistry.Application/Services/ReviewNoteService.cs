@@ -26,7 +26,7 @@ namespace StudentRegistry.Application.Services
             return _mapper.Map<IEnumerable<ReviewNoteResponseDto>>(notes);
         }
 
-        public async Task<ReviewNoteResponseDto?> AddNoteAsync(ReviewNoteCreateDto createDto)
+        public async Task<ReviewNoteResponseDto?> AddNoteAsync(ReviewNoteCreateDto createDto, string authorUsername)
         {
             var student = await _unitOfWork.Students.GetByIdAsync(createDto.StudentId);
             if (student == null)
@@ -40,7 +40,7 @@ namespace StudentRegistry.Application.Services
                 FieldName = createDto.FieldName,
                 FieldValueSnapshot = createDto.FieldValueSnapshot,
                 ReviewerNote = createDto.ReviewerNote,
-                Author = "User",
+                Author = string.IsNullOrWhiteSpace(authorUsername) ? "User" : authorUsername,
                 CreatedAt = DateTime.UtcNow
             };
 

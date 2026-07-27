@@ -7,7 +7,7 @@ namespace StudentRegistry.Application.Interfaces
     public interface IFieldCommentService
     {
         // Throws KeyNotFoundException when the student doesn't exist.
-        Task<FieldCommentResponseDto> AddCommentAsync(FieldCommentCreateDto createDto);
+        Task<FieldCommentResponseDto> AddCommentAsync(FieldCommentCreateDto createDto, string authorUsername);
         Task<IEnumerable<FieldCommentResponseDto>> GetForStudentAsync(int studentId);
         Task<IEnumerable<FieldCommentResponseDto>> GetUnreviewedAsync();
         Task<IEnumerable<FieldCommentResponseDto>> GetResolvedAsync();

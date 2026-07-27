@@ -60,7 +60,8 @@ namespace StudentRegistry.API.Controllers
 
             try
             {
-                var result = await _fieldCommentService.AddCommentAsync(createDto);
+                var authorUsername = User.Identity?.Name ?? "Editor";
+                var result = await _fieldCommentService.AddCommentAsync(createDto, authorUsername);
                 return Ok(new { status = "success", data = result });
             }
             catch (KeyNotFoundException)

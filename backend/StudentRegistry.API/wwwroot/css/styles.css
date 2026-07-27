@@ -1265,6 +1265,34 @@ body {
   gap: 0.85rem;
 }
 
+.editor-recalc-bar {
+  margin-top: 1.25rem;
+  padding-top: 1.1rem;
+  border-top: 1px dashed var(--primary-border);
+}
+
+.editor-recalc-bar > .btn {
+  width: auto;
+  padding: 0.55rem 1.25rem;
+}
+
+.editor-recalc-panel {
+  margin-top: 0.85rem;
+  background: var(--primary-light);
+  border: 1px solid var(--primary-border);
+  border-radius: var(--radius-md, 8px);
+  padding: 1rem;
+}
+
+.editor-recalc-panel .field-hint {
+  margin: 0 0 0.75rem 0;
+}
+
+.editor-recalc-panel > .btn {
+  width: auto;
+  padding: 0.55rem 1.25rem;
+}
+
 .review-field-item {
   display: flex;
   flex-direction: column;

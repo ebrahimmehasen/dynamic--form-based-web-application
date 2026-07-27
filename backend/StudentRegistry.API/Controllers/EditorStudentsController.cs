@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudentRegistry.Application.Constants;
 using StudentRegistry.Application.Interfaces;
+using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace StudentRegistry.API.Controllers
@@ -44,6 +46,28 @@ namespace StudentRegistry.API.Controllers
         {
             var result = await _editorStudentService.GetAuditLogAsync(id);
             return Ok(new { status = "success", data = result });
+        }
+
+        // Re-runs the same per-certificate formulas used at registration against the student's
+        // current (possibly Editor-edited) raw grade rows, and overwrites the totals accordingly.
+        // Every changed total field is logged in the edits sheet under this editor's own username.
+        [HttpPost("{id:int}/recalculate")]
+        public async Task<IActionResult> Recalculate(int id)
+        {
+            var editorUsername = User.Identity?.Name ?? "Editor";
+            try
+            {
+                var result = await _editorStudentService.RecalculateAsync(id, editorUsername);
+                return Ok(new { status = "success", data = result });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { status = "error", message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { status = "error", message = ex.Message });
+            }
         }
     }
 }

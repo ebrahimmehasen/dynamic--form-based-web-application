@@ -36,7 +36,8 @@ namespace StudentRegistry.API.Controllers
                 return BadRequest(new { status = "error", message = "اسم الحقل ونص الملاحظة مطلوبان." });
             }
 
-            var result = await _reviewNoteService.AddNoteAsync(createDto);
+            var authorUsername = User.Identity?.Name ?? "User";
+            var result = await _reviewNoteService.AddNoteAsync(createDto, authorUsername);
             if (result == null)
             {
                 return NotFound(new { status = "error", message = "الطالب غير موجود." });
