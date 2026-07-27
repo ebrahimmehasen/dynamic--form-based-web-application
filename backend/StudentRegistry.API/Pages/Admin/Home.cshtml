@@ -15,6 +15,7 @@
       <button type="button" class="editor-tab-btn editor-tab-active" id="admin-tab-btn-delete">طلبات الحذف</button>
       <button type="button" class="editor-tab-btn" id="admin-tab-btn-edits">التعديلات</button>
       <button type="button" class="editor-tab-btn" id="admin-tab-btn-comments">التعليقات</button>
+      <button type="button" class="editor-tab-btn" id="admin-tab-btn-users">إدارة المستخدمين</button>
     </div>
 
     <div id="admin-tab-delete">
@@ -42,9 +43,16 @@
     <div id="admin-tab-comments" style="display:none;">
       <div id="admin-comments-body"></div>
     </div>
+
+    <div id="admin-tab-users" style="display:none;">
+      <div class="editor-audit-filters">
+        <button type="button" class="btn btn-primary admin-add-user-btn" id="admin-add-user-btn" style="width:auto;">+ إضافة مستخدم</button>
+      </div>
+      <div id="admin-users-body"></div>
+    </div>
   </div>
 
-  <!-- Generic confirmation modal (used by Approve/Reject) -->
+  <!-- Generic confirmation modal (used by Approve/Reject/Request Deletion) -->
   <div class="app-modal-overlay" id="app-modal-overlay">
     <div class="app-modal-box" id="app-modal-box">
       <h3 class="app-modal-title" id="app-modal-title"></h3>
@@ -56,6 +64,18 @@
     </div>
   </div>
 
+  <!-- User add/edit/change-password modal -->
+  <div class="app-modal-overlay" id="admin-user-modal-overlay">
+    <div class="app-modal-box" id="admin-user-modal-box">
+      <h3 class="app-modal-title" id="admin-user-modal-title"></h3>
+      <div class="app-modal-body" id="admin-user-modal-body"></div>
+      <div class="app-modal-footer">
+        <button type="button" class="btn btn-secondary" id="admin-user-modal-cancel" style="flex:1;">إلغاء</button>
+        <button type="button" class="btn btn-primary" id="admin-user-modal-save" style="flex:1;">حفظ</button>
+      </div>
+    </div>
+  </div>
+
   <div class="app-toast-container" id="app-toast-container"></div>
 </div>
 
@@ -63,4 +83,5 @@
   <script src="~/js/app-modal.js" asp-append-version="true"></script>
   <script src="~/js/editor-shared.js" asp-append-version="true"></script>
   <script src="~/js/admin-review.js" asp-append-version="true"></script>
+  <script src="~/js/admin-users.js" asp-append-version="true"></script>
 }
