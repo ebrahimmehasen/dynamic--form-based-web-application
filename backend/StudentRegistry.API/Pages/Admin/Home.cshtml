@@ -90,6 +90,12 @@
     <div id="admin-tab-users" style="display:none;">
       <div class="editor-audit-filters">
         <button type="button" class="btn btn-primary admin-add-user-btn" id="admin-add-user-btn" style="width:auto;">+ إضافة مستخدم</button>
+        <input type="text" id="admin-users-search-input" class="table-input" placeholder="ابحث بالاسم...">
+        <select id="admin-users-status-filter" class="table-input">
+          <option value="">كل الحالات</option>
+          <option value="active">نشط</option>
+          <option value="disabled">معطّل</option>
+        </select>
       </div>
       <div id="admin-users-body"></div>
     </div>

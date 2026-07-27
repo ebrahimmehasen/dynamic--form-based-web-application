@@ -19,6 +19,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (cancelBtn) cancelBtn.addEventListener('click', closeUserModal);
   if (overlay) overlay.addEventListener('click', (e) => { if (e.target === overlay) closeUserModal(); });
   if (saveBtn) saveBtn.addEventListener('click', submitUserModal);
+
+  const searchInput = document.getElementById('admin-users-search-input');
+  const statusFilter = document.getElementById('admin-users-status-filter');
+  if (searchInput) searchInput.addEventListener('input', renderUsers);
+  if (statusFilter) statusFilter.addEventListener('change', renderUsers);
 });
 
 async function loadUsers() {
@@ -45,6 +50,22 @@ function renderUsers() {
     return;
   }
 
+  const searchInput = document.getElementById('admin-users-search-input');
+  const statusFilter = document.getElementById('admin-users-status-filter');
+  const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : '';
+  const statusVal = statusFilter ? statusFilter.value : '';
+
+  const filtered = adminUsersState.users.filter(user => {
+    const matchesSearch = !searchVal || user.username.toLowerCase().includes(searchVal);
+    const matchesStatus = !statusVal || (statusVal === 'active' ? user.isActive : !user.isActive);
+    return matchesSearch && matchesStatus;
+  });
+
+  if (filtered.length === 0) {
+    body.innerHTML = '<p class="field-hint">لا يوجد مستخدمون مطابقون لبحثك.</p>';
+    return;
+  }
+
   body.innerHTML = `
     <div class="table-responsive">
       <table class="grades-table data-table">
@@ -52,7 +73,7 @@ function renderUsers() {
           <tr><th>اسم المستخدم</th><th>الصلاحية</th><th>تاريخ الإنشاء</th><th>الحالة</th><th></th></tr>
         </thead>
         <tbody>
-          ${adminUsersState.users.map(renderUserRow).join('')}
+          ${filtered.map(renderUserRow).join('')}
         </tbody>
       </table>
     </div>`;
