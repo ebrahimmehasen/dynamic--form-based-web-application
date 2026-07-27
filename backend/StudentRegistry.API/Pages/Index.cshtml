@@ -1128,6 +1128,13 @@
       </div>
     </section>
 
+    <!-- Retry Banner (shown only after a failed submit; form data stays in memory, never cached) -->
+    <div class="alert alert-danger" id="submit-retry-banner" role="alert" style="display:none;">
+      <div id="submit-retry-message">لم يتم الإرسال. تأكد من الاتصال بالإنترنت ثم اضغط إعادة المحاولة.</div>
+      <div id="submit-retry-countdown" style="margin-top:0.5rem; font-size:0.9rem;"></div>
+      <button type="button" class="btn btn-primary" id="btn-retry-submit" style="margin-top:0.75rem;">إعادة المحاولة</button>
+    </div>
+
     <!-- Form Action Buttons -->
     <div class="form-actions">
       <button type="submit" class="btn btn-primary" id="btn-submit">حفظ وإرسال البيانات 💾</button>

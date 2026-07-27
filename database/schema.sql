@@ -384,6 +384,9 @@ CREATE TABLE dbo.Users (
     Role NVARCHAR(30) NOT NULL,
     CreatedAt DATETIME2 NOT NULL CONSTRAINT DF_Users_CreatedAt DEFAULT (SYSUTCDATETIME()),
     IsActive BIT NOT NULL CONSTRAINT DF_Users_IsActive DEFAULT (1),
+    -- Set only on the seeded root admin ("Mohamed") — its username/password/role can never be
+    -- edited or deleted through the Admin UI, by anyone, including itself.
+    IsProtected BIT NOT NULL CONSTRAINT DF_Users_IsProtected DEFAULT (0),
     CONSTRAINT PK_Users PRIMARY KEY CLUSTERED (Id ASC)
 );
 GO

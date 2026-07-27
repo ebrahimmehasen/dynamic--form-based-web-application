@@ -54,6 +54,8 @@ builder.Services.AddScoped<IFieldCommentService, FieldCommentService>();
 builder.Services.AddScoped<IDeleteRequestService, DeleteRequestService>();
 builder.Services.AddScoped<IEditorStudentService, EditorStudentService>();
 builder.Services.AddScoped<IAdminReviewService, AdminReviewService>();
+builder.Services.AddScoped<IUserManagementService, UserManagementService>();
+builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 
 // Register AutoMapper
@@ -177,6 +179,23 @@ using (var seedScope = app.Services.CreateScope())
             await unitOfWork.Users.AddAsync(seedUser);
         }
 
+        await unitOfWork.CompleteAsync();
+    }
+
+    // Root admin account, seeded independently of the block above (so it's created even on a
+    // database that already has the viewer/editor/admin test users). Protected: its username,
+    // password and role can never be changed through the Admin UI (see UserManagementService).
+    const string rootAdminUsername = "Mohamed";
+    if (await unitOfWork.Users.GetByUsernameAsync(rootAdminUsername) == null)
+    {
+        var rootAdmin = new User
+        {
+            Username = rootAdminUsername,
+            Role = AuthConstants.RoleAdmin,
+            IsProtected = true
+        };
+        rootAdmin.PasswordHash = passwordHasher.HashPassword(rootAdmin, "MohamedHosni_2026");
+        await unitOfWork.Users.AddAsync(rootAdmin);
         await unitOfWork.CompleteAsync();
     }
 }

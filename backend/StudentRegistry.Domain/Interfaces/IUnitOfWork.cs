@@ -11,6 +11,7 @@ namespace StudentRegistry.Domain.Interfaces
         IFieldEditRepository FieldEdits { get; }
         IFieldCommentRepository FieldComments { get; }
         IDeleteRequestRepository DeleteRequests { get; }
+        IDashboardRepository Dashboard { get; }
         Task<int> CompleteAsync();
     }
 }

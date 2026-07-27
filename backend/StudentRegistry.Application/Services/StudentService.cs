@@ -61,6 +61,18 @@ namespace StudentRegistry.Application.Services
 
         public async Task<StudentResponseDto> RegisterStudentAsync(StudentCreateDto createDto)
         {
+            // 0. Idempotency: if this exact submission attempt already succeeded (e.g. the client
+            // retried after a dropped connection but the original request actually landed), return
+            // the existing record instead of inserting a duplicate.
+            if (!string.IsNullOrWhiteSpace(createDto.SubmissionToken))
+            {
+                var existingByToken = await _unitOfWork.Students.GetBySubmissionTokenAsync(createDto.SubmissionToken);
+                if (existingByToken != null)
+                {
+                    return _mapper.Map<StudentResponseDto>(existingByToken);
+                }
+            }
+
             // 1. Verify uniqueness of NationalId
             var existingStudent = await _unitOfWork.Students.GetByNationalIdAsync(createDto.NationalId);
             if (existingStudent != null)
@@ -75,6 +87,7 @@ namespace StudentRegistry.Application.Services
             var student = _mapper.Map<Student>(createDto);
             student.PhotoPath = relativePhotoPath;
             student.SubmittedAt = DateTime.UtcNow;
+            student.SubmissionToken = string.IsNullOrWhiteSpace(createDto.SubmissionToken) ? null : createDto.SubmissionToken;
 
             // 4. Handle Sub-calculations and structures based on Cert Type
             string cert = createDto.Certification;

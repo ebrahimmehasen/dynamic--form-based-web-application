@@ -62,6 +62,28 @@ namespace StudentRegistry.Repository.Implementations
                 .FirstOrDefaultAsync(s => s.NationalId == nationalId);
         }
 
+        public async Task<Student?> GetBySubmissionTokenAsync(string submissionToken)
+        {
+            return await _context.Students
+                .Include(s => s.SaudiTotals)
+                .Include(s => s.SaudiGrades)
+                .Include(s => s.IgGrades)
+                .Include(s => s.IgGradeCounts)
+                .Include(s => s.StandardGrades)
+                .Include(s => s.KuwaitiTotals)
+                .Include(s => s.QatariTotals)
+                .Include(s => s.OmaniTotals)
+                .Include(s => s.YemeniTotals)
+                .Include(s => s.BahrainiTotals)
+                .Include(s => s.PalestinianTotals)
+                .Include(s => s.OtherTotals)
+                .Include(s => s.EgyptianTotals)
+                .Include(s => s.AzharTotals)
+                .Include(s => s.EmiratiTotals)
+                .Include(s => s.AmericanDiplomaTotals)
+                .FirstOrDefaultAsync(s => s.SubmissionToken == submissionToken);
+        }
+
         public async Task<IEnumerable<Student>> GetAllAsync()
         {
             return await _context.Students

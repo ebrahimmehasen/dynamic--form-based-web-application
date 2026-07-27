@@ -33,6 +33,10 @@ namespace StudentRegistry.Data.Configurations
             builder.Property(u => u.IsActive)
                 .IsRequired()
                 .HasDefaultValue(true);
+
+            builder.Property(u => u.IsProtected)
+                .IsRequired()
+                .HasDefaultValue(false);
         }
     }
 }

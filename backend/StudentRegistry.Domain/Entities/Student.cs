@@ -37,6 +37,10 @@ namespace StudentRegistry.Domain.Entities
         public string PhotoPath { get; set; } = string.Empty;
         public DateTime SubmittedAt { get; set; } = DateTime.UtcNow;
 
+        // Client-generated UUID, sent with every submit attempt, so a retried POST after a
+        // dropped connection resolves to the existing record instead of inserting a duplicate.
+        public string? SubmissionToken { get; set; }
+
         // Navigation properties
         public virtual SaudiStudentTotals? SaudiTotals { get; set; }
         public virtual ICollection<SaudiStudentGrades> SaudiGrades { get; set; } = new List<SaudiStudentGrades>();

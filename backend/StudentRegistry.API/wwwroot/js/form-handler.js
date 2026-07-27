@@ -1,6 +1,16 @@
 // Global state to store form inputs and base64 photo
 let uploadedPhotoBase64 = '';
 
+// Generated once per page load, kept in memory only (never persisted) — sent with every submit
+// attempt so a retried POST after a dropped connection resolves to the same DB record instead of
+// creating a duplicate. A page refresh during retry loses this and the form resets, by design.
+const currentSubmissionToken = (crypto && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+// Holds the last compiled+submitted payload and its API shape so "إعادة المحاولة" can resend the
+// exact same request without recompiling from (possibly since-edited) form fields.
+let pendingSubmission = null;
+let autoRetryTimer = null;
+
 // Initialize Form Handlers
 function initFormHandlers() {
   initImageUpload();
@@ -69,10 +79,10 @@ function initImageUpload() {
       return;
     }
 
-    // Check size (Max 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    // Check size (Max 2MB)
+    const maxSize = 2 * 1024 * 1024; // 2MB
     if (file.size > maxSize) {
-      showPhotoError('حجم الصورة كبير جداً. الحد الأقصى هو 5 ميجابايت.');
+      showPhotoError('حجم الصورة كبير جداً. الحد الأقصى هو 2 ميجابايت.');
       return;
     }
 
@@ -1721,10 +1731,12 @@ function setupAmericanDiplomaCalculatorListeners() {
 function setupSubmissionHandler() {
   const mainForm = document.getElementById('student-reg-form');
   const submitBtn = document.getElementById('btn-submit');
+  const retryBtn = document.getElementById('btn-retry-submit');
 
   mainForm.addEventListener('submit', function(e) {
     e.preventDefault();
     hideAlert('form-alert');
+    hideRetryBanner();
 
     // Perform validation
     const validationResult = validateForm();
@@ -1737,17 +1749,70 @@ function setupSubmissionHandler() {
       return;
     }
 
-    // Prepare payload
+    // Prepare payload — kept in React-less "memory" (a plain JS variable) only; never written to
+    // localStorage/sessionStorage at any point, on success or failure.
     const payload = compilePayload();
+    pendingSubmission = payload;
 
-    // Show loading state
-    submitBtn.disabled = true;
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = 'جاري الحفظ وإرسال البيانات...';
-
-    // Submit payload
-    sendData(payload, submitBtn, originalText);
+    submitAttempt(payload, submitBtn);
   });
+
+  retryBtn.addEventListener('click', function() {
+    if (!pendingSubmission) return;
+    cancelAutoRetry();
+    submitAttempt(pendingSubmission, submitBtn);
+  });
+}
+
+function hideRetryBanner() {
+  cancelAutoRetry();
+  const banner = document.getElementById('submit-retry-banner');
+  banner.style.display = 'none';
+}
+
+function cancelAutoRetry() {
+  if (autoRetryTimer) {
+    clearInterval(autoRetryTimer);
+    autoRetryTimer = null;
+  }
+}
+
+function showRetryBanner() {
+  const banner = document.getElementById('submit-retry-banner');
+  banner.style.display = 'block';
+  banner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  // Auto-retry every 30s with a visible countdown, on top of the manual "إعادة المحاولة" button.
+  cancelAutoRetry();
+  let secondsLeft = 30;
+  const countdownEl = document.getElementById('submit-retry-countdown');
+  countdownEl.textContent = `إعادة المحاولة تلقائياً خلال ${secondsLeft} ثانية...`;
+
+  autoRetryTimer = setInterval(() => {
+    secondsLeft -= 1;
+    if (secondsLeft <= 0) {
+      cancelAutoRetry();
+      countdownEl.textContent = '';
+      if (pendingSubmission) {
+        submitAttempt(pendingSubmission, document.getElementById('btn-submit'));
+      }
+      return;
+    }
+    countdownEl.textContent = `إعادة المحاولة تلقائياً خلال ${secondsLeft} ثانية...`;
+  }, 1000);
+}
+
+// Disables the submit button immediately (prevents double submit), POSTs to the server, and only
+// ever shows the success/PDF screen on a confirmed 2xx DB write. On any failure the form data stays
+// exactly as-is in `pendingSubmission` (in memory) and the retry banner is shown — nothing is ever
+// cached to localStorage/sessionStorage, so a page refresh here loses the in-progress submission.
+function submitAttempt(payload, submitBtn) {
+  hideRetryBanner();
+  submitBtn.disabled = true;
+  const originalText = submitBtn.innerHTML;
+  submitBtn.innerHTML = 'جاري الحفظ وإرسال البيانات...';
+
+  sendData(payload, submitBtn, originalText);
 }
 
 // Full Form Fields Validation
@@ -2496,7 +2561,8 @@ function compilePayload() {
     addressVillage: document.getElementById('address-village').value.trim(),
     addressStreet: document.getElementById('address-street').value.trim(),
     addressBuilding: document.getElementById('address-building').value.trim(),
-    addressFloor: document.getElementById('address-floor').value.trim()
+    addressFloor: document.getElementById('address-floor').value.trim(),
+    submissionToken: currentSubmissionToken
   };
 
   if (certSelect.value === 'qatari') {
@@ -3030,7 +3096,8 @@ function sendData(payload, submitBtn, originalText) {
     addressFloor: payload.addressFloor,
     certification: payload.certification === 'شهادة سعودية' ? 'Saudi Certificate' : (payload.certification.includes('IG') ? 'IG' : payload.certification),
     track: payload.track,
-    photo: payload.photo
+    photo: payload.photo,
+    submissionToken: payload.submissionToken
   };
 
   if (payload.yearsCount) {
@@ -3159,37 +3226,28 @@ function sendData(payload, submitBtn, originalText) {
       result = await response.json();
     } catch(e) {}
 
-    if (response.ok && result.status === 'success') {
-      const studentId = result.data && result.data.id ? result.data.id : null;
-      showSuccessScreen(payload, 'server', result.file_path || '', studentId, result.data);
+    // Success screen (and PDF/receipt) is only ever shown here, gated on a confirmed 2xx DB write
+    // that returns the saved record — never from local state alone.
+    if (response.ok && result.status === 'success' && result.data && result.data.id) {
+      pendingSubmission = null;
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+      showSuccessScreen(payload, result.data.id, result.data);
     } else {
       throw new Error(result.message || 'Server error occurred');
     }
   })
   .catch(error => {
-    console.warn('Backend submission failed. Storing in localStorage instead.', error);
-
-    // Save to localStorage as secondary backup
-    try {
-      const existingSubmissions = JSON.parse(localStorage.getItem('student_submissions') || '[]');
-      existingSubmissions.push(payload);
-      localStorage.setItem('student_submissions', JSON.stringify(existingSubmissions));
-
-      showSuccessScreen(payload, 'local');
-    } catch(storageError) {
-      console.error('Failed to store in localStorage', storageError);
-      showAlert('form-alert', 'حدث خطأ أثناء الاتصال بالخادم ولم نتمكن من الحفظ محلياً. يرجى تنزيل الملف لحفظ بياناتك.', 'danger');
-      showSuccessScreen(payload, 'local_failed');
-    }
-  })
-  .finally(() => {
+    console.warn('Submission failed, keeping form data in memory for retry.', error);
     submitBtn.disabled = false;
     submitBtn.innerHTML = originalText;
+    showAlert('form-alert', 'فشل الإرسال - تحقق من اتصالك بالإنترنت', 'danger');
+    showRetryBanner();
   });
 }
 
 // Show Success Receipt Screen
-function showSuccessScreen(payload, mode, serverPath = '', studentId = null, serverData = null) {
+function showSuccessScreen(payload, studentId, serverData = null) {
   document.getElementById('student-reg-form').style.display = 'none';
   document.getElementById('step-bar-container').style.display = 'none';
 
@@ -3397,14 +3455,11 @@ function showSuccessScreen(payload, mode, serverPath = '', studentId = null, ser
     if (saudiGpaRow) saudiGpaRow.style.display = 'none';
   }
 
+  // Reached only after a confirmed server-side DB write (see sendData's success branch), so the
+  // badge never needs to distinguish a "local" save mode anymore.
   const modeBadge = document.getElementById('receipt-mode');
-  if (mode === 'server') {
-    modeBadge.textContent = 'تم الحفظ على الخادم بنجاح';
-    modeBadge.style.color = 'var(--success-color)';
-  } else {
-    modeBadge.textContent = 'تم الحفظ محلياً في المتصفح (الخادم غير متصل)';
-    modeBadge.style.color = 'var(--accent-color)';
-  }
+  modeBadge.textContent = `تم الحفظ على الخادم بنجاح (رقم الاستمارة: ${studentId})`;
+  modeBadge.style.color = 'var(--success-color)';
 
   // Setup Actions
   const btnDownloadPdf = document.getElementById('btn-download-pdf');

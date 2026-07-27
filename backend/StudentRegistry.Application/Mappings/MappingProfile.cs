@@ -99,6 +99,9 @@ namespace StudentRegistry.Application.Mappings
             CreateMap<DeleteRequest, DeleteRequestResponseDto>()
                 .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.Student != null ? src.Student.StudentName : null));
 
+            // Deliberately no mapping to/from PasswordHash — UserResponseDto has no such property.
+            CreateMap<User, UserResponseDto>();
+
             // CreateDTO -> Entity mapping
             CreateMap<StudentCreateDto, Student>()
                 .ForMember(dest => dest.PhotoPath, opt => opt.Ignore()) // Managed by storage service

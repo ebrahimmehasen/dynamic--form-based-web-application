@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using StudentRegistry.Data.DbContext;
 
@@ -11,9 +12,11 @@ using StudentRegistry.Data.DbContext;
 namespace StudentRegistry.Data.Migrations
 {
     [DbContext(typeof(StudentRegistryDbContext))]
-    partial class StudentRegistryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260727134709_AddUserIsProtected")]
+    partial class AddUserIsProtected
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -40,10 +43,6 @@ namespace StudentRegistry.Data.Migrations
                     b.Property<decimal>("BasePercentage")
                         .HasPrecision(5, 2)
                         .HasColumnType("decimal(5,2)");
-
-                    b.Property<decimal>("EquivalentPercentage")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("decimal(6,2)");
 
                     b.Property<int>("SatI")
                         .HasColumnType("int");
@@ -804,10 +803,6 @@ namespace StudentRegistry.Data.Migrations
                     b.Property<int>("GraduationYear")
                         .HasColumnType("int");
 
-                    b.Property<string>("GuardianLandlinePhone")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
                     b.Property<string>("GuardianName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -863,10 +858,6 @@ namespace StudentRegistry.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("SubmissionToken")
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
                     b.Property<DateTime>("SubmittedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -890,10 +881,6 @@ namespace StudentRegistry.Data.Migrations
 
                     b.HasIndex("NationalId")
                         .IsUnique();
-
-                    b.HasIndex("SubmissionToken")
-                        .IsUnique()
-                        .HasFilter("[SubmissionToken] IS NOT NULL");
 
                     b.ToTable("Students", "dbo");
                 });
