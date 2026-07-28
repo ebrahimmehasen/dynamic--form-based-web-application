@@ -11,7 +11,7 @@ namespace StudentRegistry.API.Controllers
 {
     [ApiController]
     [Route("api/editor/fieldedits")]
-    [Authorize(Roles = AuthConstants.RoleEditor)]
+    [Authorize(Roles = AuthConstants.RoleEditor + "," + AuthConstants.RoleAdmin)]
     public class FieldEditsController : ControllerBase
     {
         private readonly IFieldEditService _fieldEditService;
@@ -33,7 +33,8 @@ namespace StudentRegistry.API.Controllers
 
             try
             {
-                var result = await _fieldEditService.ApplyEditAsync(createDto);
+                var editorUsername = User.Identity?.Name ?? "Editor";
+                var result = await _fieldEditService.ApplyEditAsync(createDto, editorUsername);
                 return Ok(new { status = "success", data = result });
             }
             catch (KeyNotFoundException ex)

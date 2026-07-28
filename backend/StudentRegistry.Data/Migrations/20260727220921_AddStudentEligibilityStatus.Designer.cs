@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using StudentRegistry.Data.DbContext;
 
@@ -11,9 +12,11 @@ using StudentRegistry.Data.DbContext;
 namespace StudentRegistry.Data.Migrations
 {
     [DbContext(typeof(StudentRegistryDbContext))]
-    partial class StudentRegistryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260727220921_AddStudentEligibilityStatus")]
+    partial class AddStudentEligibilityStatus
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -843,10 +846,6 @@ namespace StudentRegistry.Data.Migrations
                     b.Property<string>("EligibilityConfirmedBy")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("EligibilityNote")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<string>("EligibilityStatus")
                         .HasMaxLength(20)

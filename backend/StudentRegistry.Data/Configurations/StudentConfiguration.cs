@@ -136,6 +136,15 @@ namespace StudentRegistry.Data.Configurations
             builder.HasIndex(s => s.SubmissionToken)
                 .IsUnique()
                 .HasFilter("[SubmissionToken] IS NOT NULL");
+
+            builder.Property(s => s.EligibilityStatus)
+                .HasMaxLength(20);
+
+            builder.Property(s => s.EligibilityConfirmedBy)
+                .HasMaxLength(100);
+
+            builder.Property(s => s.EligibilityNote)
+                .HasMaxLength(1000);
         }
     }
 }

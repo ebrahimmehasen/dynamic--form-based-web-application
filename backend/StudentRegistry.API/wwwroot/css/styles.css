@@ -1128,6 +1128,62 @@ body {
   background: var(--review-highlight-border) !important;
 }
 
+/* "قيد المراجعة" — a Viewer flagged this student for review and no Editor has resolved it yet.
+   Distinct from .row-has-comment (which means "has a field comment"), but same light-yellow shade
+   for visual consistency between the Viewer's and Editor's tables. */
+.data-table tbody tr.row-pending-review {
+  background: #fffbeb !important;
+}
+
+.data-table tbody tr.row-pending-review:hover {
+  background: var(--review-highlight-bg) !important;
+}
+
+.pending-review-badge {
+  display: inline-block;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  border-radius: 999px;
+  padding: 0.15rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.eligibility-badge {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.15rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.eligibility-badge.eligible {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.eligibility-badge.not-eligible {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.eligibility-btn-eligible.active {
+  background: #16a34a;
+  color: #fff;
+  border-color: #16a34a;
+}
+
+.eligibility-btn-not-eligible.active {
+  background: #dc2626;
+  color: #fff;
+  border-color: #dc2626;
+}
+
 /* Large centered profile modal — reuses .app-modal-overlay/.app-modal-box, wider variant */
 #review-detail-overlay {
   z-index: 1000;
@@ -1263,6 +1319,34 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 0.85rem;
+}
+
+.editor-recalc-bar {
+  margin-top: 1.25rem;
+  padding-top: 1.1rem;
+  border-top: 1px dashed var(--primary-border);
+}
+
+.editor-recalc-bar > .btn {
+  width: auto;
+  padding: 0.55rem 1.25rem;
+}
+
+.editor-recalc-panel {
+  margin-top: 0.85rem;
+  background: var(--primary-light);
+  border: 1px solid var(--primary-border);
+  border-radius: var(--radius-md, 8px);
+  padding: 1rem;
+}
+
+.editor-recalc-panel .field-hint {
+  margin: 0 0 0.75rem 0;
+}
+
+.editor-recalc-panel > .btn {
+  width: auto;
+  padding: 0.55rem 1.25rem;
 }
 
 .review-field-item {

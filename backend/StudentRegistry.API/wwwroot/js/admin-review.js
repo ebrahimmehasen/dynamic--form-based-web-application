@@ -19,7 +19,10 @@ function initAdminTabs() {
     delete: { btn: 'admin-tab-btn-delete', panel: 'admin-tab-delete', load: loadDeleteRequests },
     edits: { btn: 'admin-tab-btn-edits', panel: 'admin-tab-edits', load: loadFieldEdits },
     comments: { btn: 'admin-tab-btn-comments', panel: 'admin-tab-comments', load: loadFieldComments },
-    users: { btn: 'admin-tab-btn-users', panel: 'admin-tab-users', load: typeof loadUsers === 'function' ? loadUsers : () => {} }
+    users: { btn: 'admin-tab-btn-users', panel: 'admin-tab-users', load: typeof loadUsers === 'function' ? loadUsers : () => {} },
+    // editor-page.js already loads itself and its data on DOMContentLoaded (same as the Editor's
+    // own page) — nothing to (re)load when switching to this tab.
+    records: { btn: 'admin-tab-btn-records', panel: 'admin-tab-records', load: () => {} }
   };
 
   Object.entries(tabs).forEach(([key, cfg]) => {

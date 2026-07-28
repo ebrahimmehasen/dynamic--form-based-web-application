@@ -3464,7 +3464,7 @@ function showSuccessScreen(payload, studentId, serverData = null) {
   // Setup Actions
   const btnDownloadPdf = document.getElementById('btn-download-pdf');
   if (btnDownloadPdf) {
-    if (mode === 'server' && studentId) {
+    if (studentId) {
       const pdfUrl = `/api/students/${studentId}/export/pdf?nationalId=${encodeURIComponent(payload.nationalId)}`;
       btnDownloadPdf.style.display = 'block';
       btnDownloadPdf.onclick = () => {

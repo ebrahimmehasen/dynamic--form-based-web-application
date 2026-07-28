@@ -98,6 +98,8 @@ namespace StudentRegistry.Application.Mappings
                 .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.Student != null ? src.Student.StudentName : null));
             CreateMap<DeleteRequest, DeleteRequestResponseDto>()
                 .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.Student != null ? src.Student.StudentName : null));
+            CreateMap<PendingReview, PendingReviewResponseDto>()
+                .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.Student != null ? src.Student.StudentName : null));
 
             // Deliberately no mapping to/from PasswordHash — UserResponseDto has no such property.
             CreateMap<User, UserResponseDto>();

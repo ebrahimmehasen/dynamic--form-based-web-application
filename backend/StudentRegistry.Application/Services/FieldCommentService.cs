@@ -21,7 +21,7 @@ namespace StudentRegistry.Application.Services
             _mapper = mapper;
         }
 
-        public async Task<FieldCommentResponseDto> AddCommentAsync(FieldCommentCreateDto createDto)
+        public async Task<FieldCommentResponseDto> AddCommentAsync(FieldCommentCreateDto createDto, string authorUsername)
         {
             var student = await _unitOfWork.Students.GetByIdAsync(createDto.StudentId);
             if (student == null)
@@ -42,6 +42,7 @@ namespace StudentRegistry.Application.Services
                 FieldName = fieldName,
                 FieldSnapshot = createDto.FieldSnapshot,
                 CommentText = createDto.CommentText,
+                Author = string.IsNullOrWhiteSpace(authorUsername) ? "Editor" : authorUsername,
                 Status = "unreviewed",
                 CreatedAt = DateTime.UtcNow
             };

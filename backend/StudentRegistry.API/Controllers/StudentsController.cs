@@ -5,6 +5,7 @@ using StudentRegistry.Application.Constants;
 using StudentRegistry.Application.DTOs;
 using StudentRegistry.Application.Interfaces;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace StudentRegistry.API.Controllers
@@ -20,12 +21,18 @@ namespace StudentRegistry.API.Controllers
         private readonly IStudentService _studentService;
         private readonly IValidator<StudentCreateDto> _validator;
         private readonly IStudentExcelExportService _excelExportService;
+        private readonly IPendingReviewService _pendingReviewService;
 
-        public StudentsController(IStudentService studentService, IValidator<StudentCreateDto> validator, IStudentExcelExportService excelExportService)
+        public StudentsController(
+            IStudentService studentService,
+            IValidator<StudentCreateDto> validator,
+            IStudentExcelExportService excelExportService,
+            IPendingReviewService pendingReviewService)
         {
             _studentService = studentService;
             _validator = validator;
             _excelExportService = excelExportService;
+            _pendingReviewService = pendingReviewService;
         }
 
         [HttpPost("register")]
@@ -132,6 +139,27 @@ namespace StudentRegistry.API.Controllers
             var fileBytes = await _excelExportService.ExportStudentPdfAsync(id);
             string fileName = $"{student.NationalId}.pdf";
             return File(fileBytes, "application/pdf", fileName);
+        }
+
+        // Viewer-only: flags a student "قيد المراجعة" so both the Viewer's and Editor's tables
+        // highlight the row until an Editor resolves it (see EditorStudentsController.ResolvePendingReview).
+        [HttpPost("{id:int}/pending-review")]
+        public async Task<IActionResult> MarkPendingReview(int id)
+        {
+            try
+            {
+                var flaggedBy = User.Identity?.Name ?? "User";
+                var result = await _pendingReviewService.FlagAsync(id, flaggedBy);
+                return Ok(new { status = "success", data = result });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { status = "error", message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { status = "error", message = ex.Message });
+            }
         }
     }
 }

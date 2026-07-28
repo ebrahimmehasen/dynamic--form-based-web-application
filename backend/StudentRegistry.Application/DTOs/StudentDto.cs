@@ -248,6 +248,24 @@ namespace StudentRegistry.Application.DTOs
         // Set by StudentService.SearchStudentsAsync (not AutoMapper) — true if this student has any
         // review note on any field, so the Viewer's main table row can be highlighted yellow.
         public bool HasReviewNotes { get; set; }
+
+        // Set by StudentService.SearchStudentsAsync / EditorStudentService.SearchAsync (not
+        // AutoMapper) — true while a Viewer has flagged this student "قيد المراجعة" and no Editor
+        // has resolved it yet, so both the Viewer's and Editor's tables can highlight the row.
+        public bool HasPendingReview { get; set; }
+
+        // "Eligible" | "NotEligible" | null (not yet confirmed) — set only by an Editor via the
+        // Student Records Editor page's "مستوفي" / "غير مستوفي" buttons.
+        public string? EligibilityStatus { get; set; }
+
+        // Required reason the Editor gave when marking "غير مستوفي" — null/empty once "Eligible".
+        public string? EligibilityNote { get; set; }
+    }
+
+    public class SetEligibilityDto
+    {
+        public string Status { get; set; } = string.Empty; // "Eligible" | "NotEligible"
+        public string? Note { get; set; } // required when Status == "NotEligible"
     }
 
     public class StudentResponseDto
@@ -283,6 +301,17 @@ namespace StudentRegistry.Application.DTOs
         public string Track { get; set; } = string.Empty;
         public string PhotoPath { get; set; } = string.Empty;
         public DateTime SubmittedAt { get; set; }
+
+        // Set by StudentService.GetStudentByIdAsync (not AutoMapper) — true while a Viewer has
+        // flagged this student "قيد المراجعة" and no Editor has resolved it yet.
+        public bool HasPendingReview { get; set; }
+
+        // "Eligible" | "NotEligible" | null (not yet confirmed) — set only by an Editor via the
+        // Student Records Editor page's "مستوفي" / "غير مستوفي" buttons.
+        public string? EligibilityStatus { get; set; }
+        public string? EligibilityConfirmedBy { get; set; }
+        public DateTime? EligibilityConfirmedAt { get; set; }
+        public string? EligibilityNote { get; set; }
 
         // Associated records depending on certificate type
         public SaudiTotalsResponseDto? SaudiTotals { get; set; }

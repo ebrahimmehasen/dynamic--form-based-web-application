@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using StudentRegistry.Domain.Entities;
 
 namespace StudentRegistry.Domain.Interfaces
 {
@@ -20,5 +21,12 @@ namespace StudentRegistry.Domain.Interfaces
         Task<List<CertificateCount>> GetReviewNotesPerCertificateAsync(DateTime? startDate, DateTime? endDate, string? certification);
         Task<List<CertificateCount>> GetFieldCommentsPerCertificateAsync(DateTime? startDate, DateTime? endDate, string? certification);
         Task<List<string>> GetDistinctCertificationsAsync();
+
+        // "Eligible"/"NotEligible" match Student.EligibilityStatus exactly; students with a null
+        // status (not yet confirmed by an Editor) are excluded from both counts.
+        Task<int> GetEligibleCountAsync(DateTime? startDate, DateTime? endDate, string? certification);
+        Task<int> GetNotEligibleCountAsync(DateTime? startDate, DateTime? endDate, string? certification);
+        Task<List<Student>> GetStudentsByEligibilityAsync(string eligibilityStatus, DateTime? startDate, DateTime? endDate, string? certification);
+        Task<List<Student>> GetAllStudentsFilteredAsync(DateTime? startDate, DateTime? endDate, string? certification);
     }
 }

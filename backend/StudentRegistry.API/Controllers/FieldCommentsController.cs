@@ -11,7 +11,7 @@ namespace StudentRegistry.API.Controllers
 {
     [ApiController]
     [Route("api/editor/fieldcomments")]
-    [Authorize(Roles = AuthConstants.RoleEditor)]
+    [Authorize(Roles = AuthConstants.RoleEditor + "," + AuthConstants.RoleAdmin)]
     public class FieldCommentsController : ControllerBase
     {
         private readonly IFieldCommentService _fieldCommentService;
@@ -60,7 +60,8 @@ namespace StudentRegistry.API.Controllers
 
             try
             {
-                var result = await _fieldCommentService.AddCommentAsync(createDto);
+                var authorUsername = User.Identity?.Name ?? "Editor";
+                var result = await _fieldCommentService.AddCommentAsync(createDto, authorUsername);
                 return Ok(new { status = "success", data = result });
             }
             catch (KeyNotFoundException)

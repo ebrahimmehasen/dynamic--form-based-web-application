@@ -13,7 +13,7 @@ namespace StudentRegistry.API.Controllers
     // approving/rejecting is exclusively an Admin action (see AdminReviewController).
     [ApiController]
     [Route("api/editor/deleterequests")]
-    [Authorize(Roles = AuthConstants.RoleEditor)]
+    [Authorize(Roles = AuthConstants.RoleEditor + "," + AuthConstants.RoleAdmin)]
     public class DeleteRequestsController : ControllerBase
     {
         private readonly IDeleteRequestService _deleteRequestService;

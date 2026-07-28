@@ -13,6 +13,7 @@ namespace StudentRegistry.Repository.Implementations
         private IFieldEditRepository? _fieldEdits;
         private IFieldCommentRepository? _fieldComments;
         private IDeleteRequestRepository? _deleteRequests;
+        private IPendingReviewRepository? _pendingReviews;
         private IDashboardRepository? _dashboard;
 
         public UnitOfWork(StudentRegistryDbContext context)
@@ -26,6 +27,7 @@ namespace StudentRegistry.Repository.Implementations
         public IFieldEditRepository FieldEdits => _fieldEdits ??= new FieldEditRepository(_context);
         public IFieldCommentRepository FieldComments => _fieldComments ??= new FieldCommentRepository(_context);
         public IDeleteRequestRepository DeleteRequests => _deleteRequests ??= new DeleteRequestRepository(_context);
+        public IPendingReviewRepository PendingReviews => _pendingReviews ??= new PendingReviewRepository(_context);
         public IDashboardRepository Dashboard => _dashboard ??= new DashboardRepository(_context);
 
         public async Task<int> CompleteAsync()

@@ -1,6 +1,7 @@
 using AutoMapper;
 using StudentRegistry.Application.Constants;
 using StudentRegistry.Application.DTOs;
+using StudentRegistry.Application.Editor;
 using StudentRegistry.Application.Interfaces;
 using StudentRegistry.Domain.Entities;
 using StudentRegistry.Domain.Interfaces;
@@ -27,7 +28,15 @@ namespace StudentRegistry.Application.Services
         public async Task<StudentResponseDto?> GetStudentByIdAsync(int id)
         {
             var student = await _unitOfWork.Students.GetByIdAsync(id);
-            return _mapper.Map<StudentResponseDto>(student);
+            if (student == null)
+            {
+                return null;
+            }
+
+            var dto = _mapper.Map<StudentResponseDto>(student);
+            var pendingReview = await _unitOfWork.PendingReviews.GetPendingForStudentAsync(id);
+            dto.HasPendingReview = pendingReview != null;
+            return dto;
         }
 
         public async Task<StudentResponseDto?> GetStudentByNationalIdAsync(string nationalId)
@@ -50,10 +59,13 @@ namespace StudentRegistry.Application.Services
             var studentIds = mapped.Select(m => m.Id).ToList();
             var notes = await _unitOfWork.ReviewNotes.GetByStudentIdsAsync(studentIds);
             var notedIds = notes.Select(n => n.StudentId).ToHashSet();
+            var pendingReviews = await _unitOfWork.PendingReviews.GetPendingByStudentIdsAsync(studentIds);
+            var pendingIds = pendingReviews.Select(p => p.StudentId).ToHashSet();
 
             foreach (var item in mapped)
             {
                 item.HasReviewNotes = notedIds.Contains(item.Id);
+                item.HasPendingReview = pendingIds.Contains(item.Id);
             }
 
             return mapped;
@@ -154,6 +166,408 @@ namespace StudentRegistry.Application.Services
 
             // 6. Return mapped response
             return _mapper.Map<StudentResponseDto>(student);
+        }
+
+        // Dispatches to the one recompute routine matching this student's certificate type, re-deriving
+        // its totals from whatever raw grade rows are currently in the DB — the same rows the Editor's
+        // per-cell inline edit (FieldEditService) may have just changed. Each changed total field is
+        // recorded as its own FieldEdit row (Source = "recalculate") so the edits sheet shows exactly
+        // what the recalculation changed, under the real editor's username.
+        public async Task<StudentResponseDto> RecalculateStudentTotalsAsync(int studentId, string editorUsername)
+        {
+            var student = await _unitOfWork.Students.GetByIdAsync(studentId);
+            if (student == null)
+            {
+                throw new KeyNotFoundException("الطالب غير موجود.");
+            }
+
+            var changes = new List<(string Group, string Property, string? OldValue, string? NewValue)>();
+
+            if (student.SaudiTotals != null)
+            {
+                RecalculateSaudiTotals(student, changes);
+            }
+            else if (student.IgGrades != null)
+            {
+                RecalculateIgTotals(student, changes);
+            }
+            else if (student.KuwaitiTotals != null)
+            {
+                RecalculateKuwaitiTotals(student, changes);
+            }
+            else if (student.QatariTotals != null)
+            {
+                var (finalTotal, percentage) = RecalculateFlatFixedSubjectTotal(student.StandardGrades);
+                TrackChange(changes, "QatariTotals", "FinalTotal", student.QatariTotals.FinalTotal, finalTotal);
+                TrackChange(changes, "QatariTotals", "Percentage", student.QatariTotals.Percentage, percentage);
+                var equivalentTotal = CalculateEquivalentTotal(percentage);
+                TrackChange(changes, "QatariTotals", "EquivalentTotal", student.QatariTotals.EquivalentTotal, equivalentTotal);
+                student.QatariTotals.FinalTotal = finalTotal;
+                student.QatariTotals.Percentage = percentage;
+                student.QatariTotals.EquivalentTotal = equivalentTotal;
+            }
+            else if (student.OmaniTotals != null)
+            {
+                var (finalTotal, percentage) = RecalculateFlatFixedSubjectTotal(student.StandardGrades);
+                TrackChange(changes, "OmaniTotals", "FinalTotal", student.OmaniTotals.FinalTotal, finalTotal);
+                TrackChange(changes, "OmaniTotals", "Percentage", student.OmaniTotals.Percentage, percentage);
+                var equivalentTotal = CalculateEquivalentTotal(percentage);
+                TrackChange(changes, "OmaniTotals", "EquivalentTotal", student.OmaniTotals.EquivalentTotal, equivalentTotal);
+                student.OmaniTotals.FinalTotal = finalTotal;
+                student.OmaniTotals.Percentage = percentage;
+                student.OmaniTotals.EquivalentTotal = equivalentTotal;
+            }
+            else if (student.YemeniTotals != null)
+            {
+                var (finalTotal, percentage) = RecalculateFlatFixedSubjectTotal(student.StandardGrades);
+                TrackChange(changes, "YemeniTotals", "FinalTotal", student.YemeniTotals.FinalTotal, finalTotal);
+                TrackChange(changes, "YemeniTotals", "Percentage", student.YemeniTotals.Percentage, percentage);
+                var equivalentTotal = CalculateEquivalentTotal(percentage);
+                TrackChange(changes, "YemeniTotals", "EquivalentTotal", student.YemeniTotals.EquivalentTotal, equivalentTotal);
+                student.YemeniTotals.FinalTotal = finalTotal;
+                student.YemeniTotals.Percentage = percentage;
+                student.YemeniTotals.EquivalentTotal = equivalentTotal;
+            }
+            else if (student.BahrainiTotals != null)
+            {
+                var finalTotal = Math.Round(student.StandardGrades.Sum(g => g.Grade), 2);
+                var percentage = student.BahrainiTotals.TotalMax > 0
+                    ? Math.Round((finalTotal / student.BahrainiTotals.TotalMax) * 100, 2)
+                    : 0;
+                TrackChange(changes, "BahrainiTotals", "FinalTotal", student.BahrainiTotals.FinalTotal, finalTotal);
+                TrackChange(changes, "BahrainiTotals", "Percentage", student.BahrainiTotals.Percentage, percentage);
+                var equivalentTotal = CalculateEquivalentTotal(percentage);
+                TrackChange(changes, "BahrainiTotals", "EquivalentTotal", student.BahrainiTotals.EquivalentTotal, equivalentTotal);
+                student.BahrainiTotals.FinalTotal = finalTotal;
+                student.BahrainiTotals.Percentage = percentage;
+                student.BahrainiTotals.EquivalentTotal = equivalentTotal;
+            }
+            else if (student.EgyptianTotals != null)
+            {
+                // Denominator is a fixed constant by design (never derived from the rows' own max
+                // marks — see ProcessEgyptianCertificate) so it's read back as-is, never recomputed.
+                var finalTotal = Math.Round(student.StandardGrades.Sum(g => g.Grade), 2);
+                var percentage = student.EgyptianTotals.Denominator > 0
+                    ? Math.Round((finalTotal / student.EgyptianTotals.Denominator) * 100, 2)
+                    : 0;
+                TrackChange(changes, "EgyptianTotals", "FinalTotal", student.EgyptianTotals.FinalTotal, finalTotal);
+                TrackChange(changes, "EgyptianTotals", "Percentage", student.EgyptianTotals.Percentage, percentage);
+                student.EgyptianTotals.FinalTotal = finalTotal;
+                student.EgyptianTotals.Percentage = percentage;
+            }
+            else if (student.AzharTotals != null)
+            {
+                var finalTotal = Math.Round(student.StandardGrades.Sum(g => g.Grade), 2);
+                var percentage = student.AzharTotals.Denominator > 0
+                    ? Math.Round((finalTotal / student.AzharTotals.Denominator) * 100, 2)
+                    : 0;
+                TrackChange(changes, "AzharTotals", "FinalTotal", student.AzharTotals.FinalTotal, finalTotal);
+                TrackChange(changes, "AzharTotals", "Percentage", student.AzharTotals.Percentage, percentage);
+                var equivalentTotal = CalculateEquivalentTotal(percentage);
+                TrackChange(changes, "AzharTotals", "EquivalentTotal", student.AzharTotals.EquivalentTotal, equivalentTotal);
+                student.AzharTotals.FinalTotal = finalTotal;
+                student.AzharTotals.Percentage = percentage;
+                student.AzharTotals.EquivalentTotal = equivalentTotal;
+            }
+            else if (student.EmiratiTotals != null)
+            {
+                var finalTotal = Math.Round(student.StandardGrades.Sum(g => g.Grade), 2);
+                var percentage = student.EmiratiTotals.Denominator > 0
+                    ? Math.Round((finalTotal / student.EmiratiTotals.Denominator) * 100, 2)
+                    : 0;
+                TrackChange(changes, "EmiratiTotals", "FinalTotal", student.EmiratiTotals.FinalTotal, finalTotal);
+                TrackChange(changes, "EmiratiTotals", "Percentage", student.EmiratiTotals.Percentage, percentage);
+                var equivalentTotal = CalculateEquivalentTotal(percentage);
+                TrackChange(changes, "EmiratiTotals", "EquivalentTotal", student.EmiratiTotals.EquivalentTotal, equivalentTotal);
+                student.EmiratiTotals.FinalTotal = finalTotal;
+                student.EmiratiTotals.Percentage = percentage;
+                student.EmiratiTotals.EquivalentTotal = equivalentTotal;
+            }
+            else if (student.AmericanDiplomaTotals != null)
+            {
+                RecalculateAmericanDiplomaTotals(student, changes);
+            }
+            else if (student.PalestinianTotals != null)
+            {
+                var percentage = Math.Round(student.PalestinianTotals.Percentage, 2);
+                var equivalentTotal = CalculateEquivalentTotal(percentage);
+                TrackChange(changes, "PalestinianTotals", "EquivalentTotal", student.PalestinianTotals.EquivalentTotal, equivalentTotal);
+                student.PalestinianTotals.EquivalentTotal = equivalentTotal;
+            }
+            else
+            {
+                throw new ArgumentException("لا توجد درجات مواد يمكن إعادة حسابها لهذا النوع من الشهادات.");
+            }
+
+            if (changes.Count == 0)
+            {
+                return _mapper.Map<StudentResponseDto>(student);
+            }
+
+            var now = DateTime.UtcNow;
+            foreach (var change in changes)
+            {
+                await _unitOfWork.FieldEdits.AddAsync(new FieldEdit
+                {
+                    StudentId = studentId,
+                    FieldName = FieldPath.Format(change.Group, null, change.Property),
+                    OldValue = change.OldValue,
+                    NewValue = change.NewValue,
+                    Editor = editorUsername,
+                    Source = "recalculate",
+                    EditedAt = now
+                });
+            }
+
+            await _unitOfWork.CompleteAsync();
+            return _mapper.Map<StudentResponseDto>(student);
+        }
+
+        private static void TrackChange(
+            List<(string Group, string Property, string? OldValue, string? NewValue)> changes,
+            string group, string property, object? oldValue, object? newValue)
+        {
+            var oldStr = oldValue?.ToString();
+            var newStr = newValue?.ToString();
+            if (oldStr != newStr)
+            {
+                changes.Add((group, property, oldStr, newStr));
+            }
+        }
+
+        // Mirrors ProcessSaudiCertificate's math exactly, but reads Achieved/Weighted back from the
+        // already-persisted SaudiStudentGrades rows (possibly edited) instead of the registration DTO,
+        // and re-derives Coefficient the same authoritative way rather than trusting any hand-edited
+        // value — an edited Achieved/Weighted pair that no longer divides evenly is still rejected,
+        // exactly as it would be at registration time.
+        private void RecalculateSaudiTotals(Student student, List<(string, string, string?, string?)> changes)
+        {
+            var totals = student.SaudiTotals!;
+            var yearWeights = GetSaudiYearWeights(totals.YearsCount);
+
+            decimal overallAchieved = 0, overallWeighted = 0, schoolPercentage = 0;
+            int overallCoefficients = 0;
+
+            foreach (var yearGroup in student.SaudiGrades.GroupBy(g => g.YearLabel))
+            {
+                decimal yearWeightedSum = 0;
+                int yearCoefficientSum = 0;
+
+                foreach (var row in yearGroup)
+                {
+                    if (row.Achieved <= 0)
+                        throw new ArgumentException($"الدرجة المتحصلة لمادة \"{row.SubjectName}\" يجب أن تكون أكبر من الصفر.");
+
+                    decimal rawCoefficient = row.Weighted / row.Achieved;
+                    int coefficient = (int)Math.Round(rawCoefficient, MidpointRounding.AwayFromZero);
+                    if (Math.Abs(rawCoefficient - coefficient) > 0.001m)
+                        throw new ArgumentException($"درجات مادة \"{row.SubjectName}\" غير صحيحة: المعامل الناتج (الموزونة ÷ المتحصلة) ليس رقماً صحيحاً.");
+
+                    row.Coefficient = coefficient;
+
+                    overallAchieved += row.Achieved;
+                    overallWeighted += row.Weighted;
+                    overallCoefficients += coefficient;
+                    yearWeightedSum += row.Weighted;
+                    yearCoefficientSum += coefficient;
+                }
+
+                if (yearCoefficientSum <= 0)
+                    throw new ArgumentException($"لا يمكن حساب نسبة السنة \"{yearGroup.Key}\" — مجموع المعاملات صفر.");
+                if (!yearWeights.TryGetValue(yearGroup.Key, out decimal weightPercent))
+                    throw new ArgumentException($"لا يوجد وزن معرف للسنة \"{yearGroup.Key}\" مع عدد سنوات الدراسة \"{totals.YearsCount}\".");
+
+                decimal yearPercentage = yearWeightedSum / yearCoefficientSum;
+                schoolPercentage += yearPercentage * (weightPercent / 100m);
+            }
+
+            decimal finalPercentage = Math.Round((Math.Round(schoolPercentage, 2) + totals.AptitudeScore) / 2, 2);
+            decimal equivalentTotal = Math.Round((finalPercentage / 100m) * EquivalencyConstants.EgyptianScientificTrackTotal, 2);
+
+            TrackChange(changes, "SaudiTotals", "TotalAchieved", totals.TotalAchieved, Math.Round(overallAchieved, 2));
+            TrackChange(changes, "SaudiTotals", "TotalWeighted", totals.TotalWeighted, Math.Round(overallWeighted, 2));
+            TrackChange(changes, "SaudiTotals", "TotalCoefficients", totals.TotalCoefficients, overallCoefficients);
+            TrackChange(changes, "SaudiTotals", "SchoolPercentage", totals.SchoolPercentage, Math.Round(schoolPercentage, 2));
+            TrackChange(changes, "SaudiTotals", "FinalPercentage", totals.FinalPercentage, finalPercentage);
+            TrackChange(changes, "SaudiTotals", "EquivalentTotal", totals.EquivalentTotal, equivalentTotal);
+
+            totals.TotalAchieved = Math.Round(overallAchieved, 2);
+            totals.TotalWeighted = Math.Round(overallWeighted, 2);
+            totals.TotalCoefficients = overallCoefficients;
+            totals.SchoolPercentage = Math.Round(schoolPercentage, 2);
+            totals.FinalPercentage = finalPercentage;
+            totals.EquivalentTotal = equivalentTotal;
+        }
+
+        // Mirrors ProcessIgCertificate's math, reading IgProgram/Factor/SportsBonus back from the
+        // already-persisted IgStudentGrades row (possibly edited) and the subject counts from
+        // IgStudentGradeCounts, instead of the registration DTO.
+        private void RecalculateIgTotals(Student student, List<(string, string, string?, string?)> changes)
+        {
+            var totals = student.IgGrades!;
+            int maxPointVal = totals.IgProgram switch
+            {
+                "IGCSE" => 8,
+                "AS-Levels" => 5,
+                "A-Levels" => 6,
+                _ => 8
+            };
+
+            int totalPoints = 0, totalSubjects = 0;
+            foreach (var count in student.IgGradeCounts)
+            {
+                totalPoints += count.Count * GetIgPoints(count.GradeType, count.Grade);
+                totalSubjects += count.Count;
+            }
+
+            int maxPoints = totalSubjects * maxPointVal;
+            decimal scorePercentage = maxPoints > 0 ? ((decimal)totalPoints / maxPoints) * 100 : 0m;
+
+            if (totals.Factor > 0)
+            {
+                scorePercentage *= totals.Factor;
+            }
+            scorePercentage += totals.SportsBonus;
+            scorePercentage = Math.Round(scorePercentage, 2);
+            decimal governmentScore = Math.Round((scorePercentage / 100) * EquivalencyConstants.EgyptianScientificTrackTotal, 2);
+
+            TrackChange(changes, "IgGrades", "ScorePercentage", totals.ScorePercentage, scorePercentage);
+            TrackChange(changes, "IgGrades", "GovernmentScore", totals.GovernmentScore, governmentScore);
+
+            totals.ScorePercentage = scorePercentage;
+            totals.GovernmentScore = governmentScore;
+        }
+
+        // Mirrors ProcessKuwaitiCertificate's math, reading each grade-level's obtained/max marks back
+        // from the already-persisted StandardStudentGrades rows (filtered by GradeLevel) and the
+        // per-level weights back from KuwaitiStudentTotals (both possibly edited), instead of the
+        // registration DTO.
+        private void RecalculateKuwaitiTotals(Student student, List<(string, string, string?, string?)> changes)
+        {
+            var totals = student.KuwaitiTotals!;
+            bool isOneYear = totals.YearsCount == KuwaitiConstants.OneYear;
+            bool isThreeYears = totals.YearsCount == KuwaitiConstants.ThreeYears;
+
+            decimal? grade10Percentage = isThreeYears ? CalculateGradeLevelPercentage(student, 10) : null;
+            decimal? grade11Percentage = !isOneYear ? CalculateGradeLevelPercentage(student, 11) : null;
+            decimal grade12Percentage = CalculateGradeLevelPercentage(student, 12) ?? 0;
+
+            decimal grade12Weight = isOneYear ? 100m : totals.Grade12Weight;
+            decimal finalPercentage;
+            if (isOneYear)
+            {
+                finalPercentage = grade12Percentage;
+            }
+            else
+            {
+                finalPercentage = (grade11Percentage!.Value * (totals.Grade11Weight ?? 0) / 100)
+                                 + (grade12Percentage * grade12Weight / 100);
+                if (isThreeYears)
+                    finalPercentage += grade10Percentage!.Value * (totals.Grade10Weight ?? 0) / 100;
+            }
+
+            finalPercentage = Math.Round(finalPercentage, 2);
+            decimal equivalentTotal = Math.Round((finalPercentage / 100) * EquivalencyConstants.EgyptianScientificTrackTotal, 2);
+
+            var newGrade10 = grade10Percentage.HasValue ? Math.Round(grade10Percentage.Value, 2) : (decimal?)null;
+            var newGrade11 = grade11Percentage.HasValue ? Math.Round(grade11Percentage.Value, 2) : (decimal?)null;
+            var newGrade12 = Math.Round(grade12Percentage, 2);
+
+            TrackChange(changes, "KuwaitiTotals", "Grade10Percentage", totals.Grade10Percentage, newGrade10);
+            TrackChange(changes, "KuwaitiTotals", "Grade11Percentage", totals.Grade11Percentage, newGrade11);
+            TrackChange(changes, "KuwaitiTotals", "Grade12Percentage", totals.Grade12Percentage, newGrade12);
+            TrackChange(changes, "KuwaitiTotals", "FinalPercentage", totals.FinalPercentage, finalPercentage);
+            TrackChange(changes, "KuwaitiTotals", "EquivalentTotal", totals.EquivalentTotal, equivalentTotal);
+
+            totals.Grade10Percentage = newGrade10;
+            totals.Grade11Percentage = newGrade11;
+            totals.Grade12Percentage = newGrade12;
+            totals.FinalPercentage = finalPercentage;
+            totals.EquivalentTotal = equivalentTotal;
+        }
+
+        private static decimal? CalculateGradeLevelPercentage(Student student, int gradeLevel)
+        {
+            var rows = student.StandardGrades.Where(g => g.GradeLevel == gradeLevel).ToList();
+            if (rows.Count == 0) return null;
+
+            decimal totalObtained = rows.Sum(r => r.Grade);
+            decimal totalMax = rows.Sum(r => r.MaxMark ?? 0);
+            return totalMax > 0 ? (totalObtained / totalMax) * 100 : 0;
+        }
+
+        // Shared by Qatari/Omani/Yemeni recalculation: unlike Bahraini/Egyptian/Azhar/Emirati, these
+        // three don't persist their own denominator field, so it's re-derived from the sum of each row's
+        // own (possibly-edited) MaxMark — which defaults to the certificate's fixed 100-per-subject at
+        // registration time, matching ProcessSingleYearFixedTotalCertificate's fixed denominator unless
+        // an editor has deliberately changed a row's MaxMark too.
+        private static (decimal finalTotal, decimal percentage) RecalculateFlatFixedSubjectTotal(IEnumerable<StandardStudentGrades> rows)
+        {
+            var list = rows.ToList();
+            decimal finalTotal = Math.Round(list.Sum(r => r.Grade), 2);
+            decimal totalMax = list.Sum(r => r.MaxMark ?? SingleYearFixedTotalConstants.MaxMarkPerSubject);
+            decimal percentage = totalMax > 0 ? Math.Round((finalTotal / totalMax) * 100, 2) : 0;
+            return (finalTotal, percentage);
+        }
+
+        // Mirrors ProcessAmericanDiplomaCertificate's math, reading the 8 best-subject scores back from
+        // the already-persisted StandardStudentGrades rows and the SAT/ACT test info back from
+        // AmericanDiplomaStudentTotals (both possibly edited), instead of the registration DTO.
+        private void RecalculateAmericanDiplomaTotals(Student student, List<(string, string, string?, string?)> changes)
+        {
+            var totals = student.AmericanDiplomaTotals!;
+            var rows = student.StandardGrades.ToList();
+            if (rows.Count == 0)
+                throw new ArgumentException($"يجب وجود {AmericanDiplomaConstants.BestSubjectsCount} مواد على الأقل لإعادة الحساب.");
+
+            decimal sum = rows.Sum(r => r.Grade);
+            decimal average = sum / rows.Count;
+            decimal basePercentage = Math.Round(average * AmericanDiplomaConstants.BasePercentageWeight / 100m, 2);
+
+            bool isAct1 = totals.TestType1 == AmericanDiplomaConstants.TestTypeAct;
+            int satI = isAct1 && totals.ActComposite.HasValue
+                ? AmericanDiplomaConstants.ConvertActToSat(totals.ActComposite.Value)
+                : totals.SatI;
+
+            bool satIIApplicable = AmericanDiplomaConstants.IsSatIIApplicable(student.WishCollege);
+            bool isAct2 = totals.TestType2 == AmericanDiplomaConstants.TestTypeAct;
+            bool satIIProvided = satIIApplicable && (isAct2 ? totals.ActMath.HasValue : totals.SatII.HasValue);
+            int? satII = satIIProvided
+                ? (isAct2 ? AmericanDiplomaConstants.ConvertActMathToSatMath(totals.ActMath!.Value) : totals.SatII)
+                : null;
+
+            int equivalentWeight = satI >= AmericanDiplomaConstants.EquivalentFormulaBonusThreshold
+                ? AmericanDiplomaConstants.EquivalentFormulaWeightWithBonus
+                : AmericanDiplomaConstants.EquivalentFormulaWeightBase;
+
+            decimal testIContribution = (decimal)satI / AmericanDiplomaConstants.SatMax * equivalentWeight;
+            decimal testIIContribution = (satIIProvided && satII!.Value >= AmericanDiplomaConstants.EquivalentFormulaSatIICountThreshold)
+                ? (decimal)satII.Value / AmericanDiplomaConstants.SatMax * AmericanDiplomaConstants.EquivalentFormulaSatIIWeight
+                : 0m;
+
+            decimal equivalentPercentage = Math.Round(testIContribution + testIIContribution + average, 2);
+            bool satIBelowMinimum = satI < AmericanDiplomaConstants.SatIMinimumThreshold;
+            bool satIIBelowMinimum = satIIProvided && satII!.Value < AmericanDiplomaConstants.SatIIMinimumThreshold;
+
+            var newAverage = Math.Round(average, 2);
+
+            TrackChange(changes, "AmericanDiplomaTotals", "AverageScore", totals.AverageScore, newAverage);
+            TrackChange(changes, "AmericanDiplomaTotals", "BasePercentage", totals.BasePercentage, basePercentage);
+            TrackChange(changes, "AmericanDiplomaTotals", "SatI", totals.SatI, satI);
+            TrackChange(changes, "AmericanDiplomaTotals", "SatII", totals.SatII, satII);
+            TrackChange(changes, "AmericanDiplomaTotals", "SatIBelowMinimum", totals.SatIBelowMinimum, satIBelowMinimum);
+            TrackChange(changes, "AmericanDiplomaTotals", "SatIIBelowMinimum", totals.SatIIBelowMinimum, satIIBelowMinimum);
+
+            totals.AverageScore = newAverage;
+            totals.BasePercentage = basePercentage;
+            totals.SatI = satI;
+            totals.SatII = satII;
+            totals.SatIBelowMinimum = satIBelowMinimum;
+            totals.SatIIBelowMinimum = satIIBelowMinimum;
+            // EquivalentPercentage isn't in EditableFieldRegistry (display-only downstream value), so
+            // it's kept in sync here without a FieldEdit entry of its own — same treatment as every
+            // other non-whitelisted derived field.
+            totals.EquivalentPercentage = equivalentPercentage;
         }
 
         // Official Saudi weighted-grade formula (source: the registrar's spreadsheet).

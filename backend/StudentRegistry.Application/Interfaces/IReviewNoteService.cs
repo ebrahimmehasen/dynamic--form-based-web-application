@@ -9,6 +9,6 @@ namespace StudentRegistry.Application.Interfaces
         Task<IEnumerable<ReviewNoteResponseDto>> GetNotesForStudentAsync(int studentId);
 
         // Returns null if the referenced student doesn't exist.
-        Task<ReviewNoteResponseDto?> AddNoteAsync(ReviewNoteCreateDto createDto);
+        Task<ReviewNoteResponseDto?> AddNoteAsync(ReviewNoteCreateDto createDto, string authorUsername);
     }
 }

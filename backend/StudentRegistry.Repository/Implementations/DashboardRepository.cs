@@ -92,6 +92,50 @@ namespace StudentRegistry.Repository.Implementations
                 .ToListAsync();
         }
 
+        public async Task<int> GetEligibleCountAsync(DateTime? startDate, DateTime? endDate, string? certification)
+        {
+            var query = FilterStudents(_context.Students.AsNoTracking(), startDate, endDate, certification);
+            return await query.CountAsync(s => s.EligibilityStatus == "Eligible");
+        }
+
+        public async Task<int> GetNotEligibleCountAsync(DateTime? startDate, DateTime? endDate, string? certification)
+        {
+            var query = FilterStudents(_context.Students.AsNoTracking(), startDate, endDate, certification);
+            return await query.CountAsync(s => s.EligibilityStatus == "NotEligible");
+        }
+
+        public async Task<List<Student>> GetStudentsByEligibilityAsync(string eligibilityStatus, DateTime? startDate, DateTime? endDate, string? certification)
+        {
+            var query = FilterStudents(WithTotals(_context.Students.AsNoTracking()), startDate, endDate, certification)
+                .Where(s => s.EligibilityStatus == eligibilityStatus);
+            return await query.OrderBy(s => s.StudentName).ToListAsync();
+        }
+
+        public async Task<List<Student>> GetAllStudentsFilteredAsync(DateTime? startDate, DateTime? endDate, string? certification)
+        {
+            var query = FilterStudents(WithTotals(_context.Students.AsNoTracking()), startDate, endDate, certification);
+            return await query.OrderBy(s => s.StudentName).ToListAsync();
+        }
+
+        // Same navigation set as StudentRepository's single-student loads — every per-certification
+        // totals table, needed here so the bulk exports can show the "المجموع الاعتباري"/percentage
+        // columns without an extra round-trip per student.
+        private static IQueryable<Student> WithTotals(IQueryable<Student> query) => query
+            .Include(s => s.SaudiTotals)
+            .Include(s => s.IgGrades)
+            .Include(s => s.StandardGrades)
+            .Include(s => s.KuwaitiTotals)
+            .Include(s => s.QatariTotals)
+            .Include(s => s.OmaniTotals)
+            .Include(s => s.YemeniTotals)
+            .Include(s => s.BahrainiTotals)
+            .Include(s => s.PalestinianTotals)
+            .Include(s => s.OtherTotals)
+            .Include(s => s.EgyptianTotals)
+            .Include(s => s.AzharTotals)
+            .Include(s => s.EmiratiTotals)
+            .Include(s => s.AmericanDiplomaTotals);
+
         private static IQueryable<Student> FilterStudents(IQueryable<Student> query, DateTime? startDate, DateTime? endDate, string? certification)
         {
             if (startDate.HasValue) query = query.Where(s => s.SubmittedAt >= startDate.Value);

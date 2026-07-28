@@ -41,6 +41,14 @@ namespace StudentRegistry.Domain.Entities
         // dropped connection resolves to the existing record instead of inserting a duplicate.
         public string? SubmissionToken { get; set; }
 
+        // Editor-only eligibility confirmation ("مستوفي" / "غير مستوفي") — null until an Editor
+        // explicitly confirms it via the button on the Student Records Editor page.
+        public string? EligibilityStatus { get; set; } // "Eligible" | "NotEligible" | null
+        public string? EligibilityConfirmedBy { get; set; }
+        public DateTime? EligibilityConfirmedAt { get; set; }
+        // Required reason when EligibilityStatus is "NotEligible" — cleared when marked "Eligible".
+        public string? EligibilityNote { get; set; }
+
         // Navigation properties
         public virtual SaudiStudentTotals? SaudiTotals { get; set; }
         public virtual ICollection<SaudiStudentGrades> SaudiGrades { get; set; } = new List<SaudiStudentGrades>();
