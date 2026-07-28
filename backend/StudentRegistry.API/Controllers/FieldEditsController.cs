@@ -11,7 +11,7 @@ namespace StudentRegistry.API.Controllers
 {
     [ApiController]
     [Route("api/editor/fieldedits")]
-    [Authorize(Roles = AuthConstants.RoleEditor)]
+    [Authorize(Roles = AuthConstants.RoleEditor + "," + AuthConstants.RoleAdmin)]
     public class FieldEditsController : ControllerBase
     {
         private readonly IFieldEditService _fieldEditService;

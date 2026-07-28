@@ -13,10 +13,12 @@ namespace StudentRegistry.API.Controllers
     public class AdminDashboardController : ControllerBase
     {
         private readonly IAdminDashboardService _dashboardService;
+        private readonly IEligibilityExportService _eligibilityExportService;
 
-        public AdminDashboardController(IAdminDashboardService dashboardService)
+        public AdminDashboardController(IAdminDashboardService dashboardService, IEligibilityExportService eligibilityExportService)
         {
             _dashboardService = dashboardService;
+            _eligibilityExportService = eligibilityExportService;
         }
 
         [HttpGet("stats")]
@@ -24,6 +26,27 @@ namespace StudentRegistry.API.Controllers
         {
             var result = await _dashboardService.GetStatsAsync(startDate, endDate, certification);
             return Ok(new { status = "success", data = result });
+        }
+
+        [HttpGet("export/eligible")]
+        public async Task<IActionResult> ExportEligible([FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate, [FromQuery] string? certification)
+        {
+            var fileBytes = await _eligibilityExportService.ExportByEligibilityAsync("Eligible", startDate, endDate, certification);
+            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "الطلاب_المستوفين.xlsx");
+        }
+
+        [HttpGet("export/not-eligible")]
+        public async Task<IActionResult> ExportNotEligible([FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate, [FromQuery] string? certification)
+        {
+            var fileBytes = await _eligibilityExportService.ExportByEligibilityAsync("NotEligible", startDate, endDate, certification);
+            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "الطلاب_غير_المستوفين.xlsx");
+        }
+
+        [HttpGet("export/all")]
+        public async Task<IActionResult> ExportAll([FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate, [FromQuery] string? certification)
+        {
+            var fileBytes = await _eligibilityExportService.ExportAllAsync(startDate, endDate, certification);
+            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "كل_الطلاب.xlsx");
         }
     }
 }

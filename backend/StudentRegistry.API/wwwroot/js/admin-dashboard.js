@@ -16,7 +16,30 @@ document.addEventListener('DOMContentLoaded', () => {
       loadDashboard();
     });
   }
+
+  const exportEligibleBtn = document.getElementById('dashboard-export-eligible');
+  const exportNotEligibleBtn = document.getElementById('dashboard-export-not-eligible');
+  const exportAllBtn = document.getElementById('dashboard-export-all');
+  if (exportEligibleBtn) exportEligibleBtn.addEventListener('click', () => downloadEligibilityList('eligible'));
+  if (exportNotEligibleBtn) exportNotEligibleBtn.addEventListener('click', () => downloadEligibilityList('not-eligible'));
+  if (exportAllBtn) exportAllBtn.addEventListener('click', () => downloadEligibilityList('all'));
 });
+
+// Reuses the current date/certification filters, so the downloaded sheet matches whatever the
+// admin is currently looking at on screen. A plain navigation (not fetch+blob) since this is an
+// authenticated same-origin GET returning a file — the browser handles the download directly.
+function downloadEligibilityList(kind) {
+  const startDate = document.getElementById('dashboard-start-date').value;
+  const endDate = document.getElementById('dashboard-end-date').value;
+  const certification = document.getElementById('dashboard-cert-filter').value;
+
+  const params = new URLSearchParams();
+  if (startDate) params.set('startDate', startDate);
+  if (endDate) params.set('endDate', endDate);
+  if (certification) params.set('certification', certification);
+
+  window.location.href = `/api/admin/dashboard/export/${kind}?${params.toString()}`;
+}
 
 async function loadDashboard() {
   const kpiGrid = document.getElementById('dashboard-kpi-grid');
@@ -76,7 +99,9 @@ function renderKpiCards(stats) {
       sub: `${stats.reviewNotesCount} ملاحظة مراجعة + ${stats.fieldCommentsCount} تعليق محرر`
     },
     { label: 'طلاب الشهادات الخارجية ("أخرى")', value: stats.totalOtherCertificateStudents },
-    { label: 'عدد الشهادات الخارجية المختلفة', value: stats.distinctOtherCertificates }
+    { label: 'عدد الشهادات الخارجية المختلفة', value: stats.distinctOtherCertificates },
+    { label: 'الطلاب المستوفين', value: stats.eligibleCount },
+    { label: 'الطلاب غير المستوفين', value: stats.notEligibleCount }
   ];
 
   grid.innerHTML = cards.map(c => `

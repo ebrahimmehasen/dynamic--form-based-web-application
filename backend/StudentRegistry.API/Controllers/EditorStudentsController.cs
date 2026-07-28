@@ -14,7 +14,7 @@ namespace StudentRegistry.API.Controllers
     // [Authorize] roles, so the read-only Student Records Review page's API surface never changes.
     [ApiController]
     [Route("api/editor/students")]
-    [Authorize(Roles = AuthConstants.RoleEditor)]
+    [Authorize(Roles = AuthConstants.RoleEditor + "," + AuthConstants.RoleAdmin)]
     public class EditorStudentsController : ControllerBase
     {
         private readonly IEditorStudentService _editorStudentService;

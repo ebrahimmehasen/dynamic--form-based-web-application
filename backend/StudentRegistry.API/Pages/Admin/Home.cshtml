@@ -17,6 +17,7 @@
       <button type="button" class="editor-tab-btn" id="admin-tab-btn-edits">التعديلات</button>
       <button type="button" class="editor-tab-btn" id="admin-tab-btn-comments">التعليقات</button>
       <button type="button" class="editor-tab-btn" id="admin-tab-btn-users">إدارة المستخدمين</button>
+      <button type="button" class="editor-tab-btn" id="admin-tab-btn-records">سجلات الطلاب</button>
     </div>
 
     <div id="admin-tab-dashboard">
@@ -43,6 +44,11 @@
 
       <div class="dashboard-kpi-grid" id="dashboard-kpi-grid"></div>
 
+      <div class="dashboard-filter-actions" style="margin-bottom:16px;">
+        <button type="button" class="btn btn-primary" id="dashboard-export-eligible" style="width:auto;">تحميل الطلاب المستوفين (Excel)</button>
+        <button type="button" class="btn btn-secondary" id="dashboard-export-not-eligible" style="width:auto;">تحميل الطلاب غير المستوفين (Excel)</button>
+      </div>
+
       <div class="dashboard-widgets-grid">
         <div class="dashboard-widget">
           <h3 class="dashboard-widget-title">الطلاب حسب الشهادة</h3>
@@ -58,6 +64,10 @@
         <h3 class="dashboard-widget-title">الشهادات الخارجية (أخرى)</h3>
         <p class="field-hint">شهادات محددة سجّلها الطلاب ضمن خيار "أخرى" وليست من ضمن القائمة الرئيسية المعروضة.</p>
         <div id="dashboard-other-certs"></div>
+      </div>
+
+      <div class="dashboard-filter-actions" style="margin-top:16px;">
+        <button type="button" class="btn btn-primary" id="dashboard-export-all" style="width:auto;">تحميل كل البيانات (Excel)</button>
       </div>
     </div>
 
@@ -99,6 +109,113 @@
       </div>
       <div id="admin-users-body"></div>
     </div>
+
+    <!-- Same UI/data as the Editor's Student Records Editor page (/editor) — reuses editor-page.js
+         unmodified against these identical element ids so Admins get the exact same search/edit/
+         comment/eligibility/PDF experience Editors have, without duplicating any logic. -->
+    <div id="admin-tab-records" style="display:none;">
+      <div class="form-section">
+        <div class="review-search-row">
+          <input type="text" id="editor-search-input" class="table-input review-search-input"
+                 placeholder="ابحث بالاسم، الرقم القومي، الهاتف، البريد الإلكتروني، الشهادة، المحافظة...">
+        </div>
+        <p class="field-hint" id="editor-results-banner"></p>
+      </div>
+
+      <div class="form-section">
+        <div class="table-responsive">
+          <table class="grades-table data-table">
+            <thead>
+              <tr>
+                <th>اسم الطالب</th>
+                <th>الاسم بالإنجليزية</th>
+                <th>الرقم القومي</th>
+                <th>الهاتف</th>
+                <th>البريد الإلكتروني</th>
+                <th>المحافظة</th>
+                <th>الشهادة</th>
+                <th>المسار</th>
+                <th>سنة التخرج</th>
+                <th>تاريخ التقديم</th>
+                <th>الحالة</th>
+                <th>الاستيفاء</th>
+                <th>سبب عدم الاستيفاء</th>
+              </tr>
+            </thead>
+            <tbody id="editor-table-body">
+            </tbody>
+          </table>
+        </div>
+        <p class="field-hint" id="editor-empty-state" style="display:none;">لا توجد نتائج مطابقة لبحثك.</p>
+        <div class="editor-pagination" id="editor-pagination"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Large student profile modal (Student Records Editor parity — see admin-tab-records above) -->
+  <div class="app-modal-overlay" id="editor-detail-overlay">
+    <div class="app-modal-box review-modal-lg" id="editor-detail-box">
+      <div class="review-modal-header">
+        <h3 class="app-modal-title" id="editor-detail-title"></h3>
+        <div class="editor-modal-header-actions">
+          <span id="editor-delete-badge" class="editor-pending-badge" style="display:none;">حذف معلق — بانتظار مراجعة المسؤول</span>
+          <span id="editor-pending-review-badge" class="pending-review-badge" style="display:none;">قيد المراجعة</span>
+          <button type="button" class="btn btn-secondary" id="editor-resolve-pending-review-btn" style="display:none;">إزالة علامة قيد المراجعة</button>
+          <span id="editor-eligibility-badge" class="eligibility-badge" style="display:none;"></span>
+          <button type="button" class="btn btn-secondary eligibility-btn-eligible" id="editor-mark-eligible-btn">مستوفي ✓</button>
+          <button type="button" class="btn btn-secondary eligibility-btn-not-eligible" id="editor-mark-not-eligible-btn">غير مستوفي ✗</button>
+          <button type="button" class="btn btn-secondary" id="editor-download-pdf-btn">تنزيل PDF 📄</button>
+          <button type="button" class="btn btn-secondary editor-request-delete-btn" id="editor-request-delete-btn">طلب حذف الطالب</button>
+          <button type="button" class="review-modal-close" id="editor-detail-close" aria-label="إغلاق">&times;</button>
+        </div>
+      </div>
+      <div class="editor-tabs">
+        <button type="button" class="editor-tab-btn editor-tab-active" id="editor-tab-btn-details">البيانات</button>
+        <button type="button" class="editor-tab-btn" id="editor-tab-btn-audit">سجل التعديلات</button>
+      </div>
+      <div class="app-modal-body editor-detail-tab active" id="editor-detail-tab-details">
+        <div id="editor-detail-body"></div>
+      </div>
+      <div class="app-modal-body editor-detail-tab" id="editor-detail-tab-audit" style="display:none;">
+        <div class="editor-audit-filters">
+          <select id="editor-audit-type-filter" class="table-input">
+            <option value="">كل الأنواع</option>
+            <option value="Edit">تعديل</option>
+            <option value="Comment">تعليق</option>
+            <option value="DeleteRequest">طلب حذف</option>
+          </select>
+          <input type="text" id="editor-audit-field-filter" class="table-input" placeholder="تصفية حسب اسم الحقل...">
+        </div>
+        <div id="editor-audit-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Small field-comment modal, stacked above the profile modal -->
+  <div class="app-modal-overlay" id="editor-field-overlay">
+    <div class="app-modal-box" id="editor-field-box">
+      <div class="review-modal-header">
+        <h3 class="app-modal-title" id="editor-field-title">تعليق على الحقل</h3>
+        <button type="button" class="review-modal-close" id="editor-field-close" aria-label="إغلاق">&times;</button>
+      </div>
+      <div class="app-modal-body">
+        <label class="review-field-label">القيمة الحالية</label>
+        <div class="review-field-current" id="editor-field-current"></div>
+
+        <div id="editor-field-history-wrap" style="display:none;">
+          <label class="review-field-label">التعليقات السابقة</label>
+          <div class="review-field-history" id="editor-field-history"></div>
+        </div>
+
+        <label class="review-field-label" for="editor-field-comment-input">تعليق جديد</label>
+        <textarea id="editor-field-comment-input" class="table-input review-field-textarea" rows="3"
+                  placeholder="اكتب تعليقك هنا..."></textarea>
+      </div>
+      <div class="app-modal-footer">
+        <button type="button" class="btn btn-secondary" id="editor-field-cancel" style="flex:1;">إلغاء</button>
+        <button type="button" class="btn btn-primary" id="editor-field-save" style="flex:1;">حفظ التعليق</button>
+      </div>
+    </div>
   </div>
 
   <!-- Generic confirmation modal (used by Approve/Reject/Request Deletion) -->
@@ -134,4 +251,5 @@
   <script src="~/js/admin-review.js" asp-append-version="true"></script>
   <script src="~/js/admin-users.js" asp-append-version="true"></script>
   <script src="~/js/admin-dashboard.js" asp-append-version="true"></script>
+  <script src="~/js/editor-page.js" asp-append-version="true"></script>
 }

@@ -33,6 +33,9 @@ namespace StudentRegistry.Application.Services
             var reviewNotesPerCert = await dashboard.GetReviewNotesPerCertificateAsync(startDate, endDate, certification);
             var fieldCommentsPerCert = await dashboard.GetFieldCommentsPerCertificateAsync(startDate, endDate, certification);
 
+            var eligibleCount = await dashboard.GetEligibleCountAsync(startDate, endDate, certification);
+            var notEligibleCount = await dashboard.GetNotEligibleCountAsync(startDate, endDate, certification);
+
             var combinedComments = new Dictionary<string, int>();
             foreach (var item in reviewNotesPerCert)
             {
@@ -62,7 +65,10 @@ namespace StudentRegistry.Application.Services
                 CommentsPerCertificate = combinedComments
                     .OrderByDescending(kv => kv.Value)
                     .Select(kv => new CertificateCountDto { Certification = kv.Key, Count = kv.Value })
-                    .ToList()
+                    .ToList(),
+
+                EligibleCount = eligibleCount,
+                NotEligibleCount = notEligibleCount
             };
 
             // Always the full, unfiltered list (independent of the current filters) so the dropdown

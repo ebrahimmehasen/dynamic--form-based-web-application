@@ -11,7 +11,7 @@ namespace StudentRegistry.API.Controllers
 {
     [ApiController]
     [Route("api/editor/fieldcomments")]
-    [Authorize(Roles = AuthConstants.RoleEditor)]
+    [Authorize(Roles = AuthConstants.RoleEditor + "," + AuthConstants.RoleAdmin)]
     public class FieldCommentsController : ControllerBase
     {
         private readonly IFieldCommentService _fieldCommentService;

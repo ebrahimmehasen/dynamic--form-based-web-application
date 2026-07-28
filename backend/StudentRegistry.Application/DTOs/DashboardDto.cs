@@ -28,6 +28,9 @@ namespace StudentRegistry.Application.DTOs
         public int FieldCommentsCount { get; set; }
         public List<CertificateCountDto> CommentsPerCertificate { get; set; } = new();
 
+        public int EligibleCount { get; set; }
+        public int NotEligibleCount { get; set; }
+
         // Populated only on the initial, unfiltered load — used to build the certificate filter dropdown.
         public List<string>? AvailableCertifications { get; set; }
     }
