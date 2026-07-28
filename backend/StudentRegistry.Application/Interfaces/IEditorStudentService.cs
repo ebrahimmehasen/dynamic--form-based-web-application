@@ -15,7 +15,7 @@ namespace StudentRegistry.Application.Interfaces
         Task<StudentResponseDto> RecalculateAsync(int studentId, string editorUsername);
 
         // Throws KeyNotFoundException if the student doesn't exist, ArgumentException if status
-        // isn't "Eligible"/"NotEligible".
-        Task<StudentResponseDto> SetEligibilityAsync(int studentId, string status, string confirmedBy);
+        // isn't "Eligible"/"NotEligible", or if status is "NotEligible" and note is empty.
+        Task<StudentResponseDto> SetEligibilityAsync(int studentId, string status, string? note, string confirmedBy);
     }
 }

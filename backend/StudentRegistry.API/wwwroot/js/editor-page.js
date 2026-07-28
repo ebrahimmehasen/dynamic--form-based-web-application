@@ -123,6 +123,7 @@ function renderStudentRow(student) {
       <td>${formatDate(student.submittedAt)} ${pendingBadge}</td>
       <td class="col-pending-review">${reviewBadge}</td>
       <td class="col-eligibility">${eligibilityBadge}</td>
+      <td class="col-eligibility-note">${displayValue(student.eligibilityNote)}</td>
     </tr>`;
 }
 
@@ -175,7 +176,7 @@ async function openStudentDetail(studentId) {
     renderStudentDetail(student);
     renderDeleteRequestBadge();
     updatePendingReviewUi(student.hasPendingReview);
-    updateEligibilityUi(student.eligibilityStatus);
+    updateEligibilityUi(student.eligibilityStatus, student.eligibilityNote);
     showDetailTab('details');
 
     const overlay = document.getElementById('editor-detail-overlay');
@@ -204,7 +205,7 @@ async function refreshCurrentStudentDetail() {
   );
   renderStudentDetail(student);
   updatePendingReviewUi(student.hasPendingReview);
-  updateEligibilityUi(student.eligibilityStatus);
+  updateEligibilityUi(student.eligibilityStatus, student.eligibilityNote);
   if (document.getElementById('editor-detail-tab-audit').classList.contains('active')) {
     loadAuditLog(studentId);
   }
@@ -229,15 +230,18 @@ function setRowPendingReviewState(studentId, isPending) {
   }
 }
 
-// Same live-patch approach as setRowPendingReviewState, for the "مستوفي/غير مستوفي" column.
-function setRowEligibilityState(studentId, status) {
+// Same live-patch approach as setRowPendingReviewState, for the "مستوفي/غير مستوفي" column and its
+// adjoining reason column.
+function setRowEligibilityState(studentId, status, note) {
   const row = document.querySelector(`#editor-table-body tr[data-student-id="${studentId}"]`);
   if (!row) return;
   const cell = row.querySelector('.col-eligibility');
   if (cell) cell.innerHTML = eligibilityBadgeHtml(status);
+  const noteCell = row.querySelector('.col-eligibility-note');
+  if (noteCell) noteCell.textContent = status === 'NotEligible' ? displayValue(note) : '—';
 }
 
-function updateEligibilityUi(status) {
+function updateEligibilityUi(status, note) {
   const badge = document.getElementById('editor-eligibility-badge');
   const eligibleBtn = document.getElementById('editor-mark-eligible-btn');
   const notEligibleBtn = document.getElementById('editor-mark-not-eligible-btn');
@@ -247,10 +251,12 @@ function updateEligibilityUi(status) {
       badge.textContent = 'مستوفي';
       badge.className = 'eligibility-badge eligible';
       badge.style.display = 'inline-block';
+      badge.title = '';
     } else if (status === 'NotEligible') {
       badge.textContent = 'غير مستوفي';
       badge.className = 'eligibility-badge not-eligible';
       badge.style.display = 'inline-block';
+      badge.title = note || '';
     } else {
       badge.style.display = 'none';
     }
@@ -262,6 +268,28 @@ function updateEligibilityUi(status) {
 
 async function setCurrentStudentEligibility(status) {
   if (!editorState.currentStudentId) return;
+
+  // "غير مستوفي" always requires a reason — prompted here, before the request, and re-shown if
+  // left empty, since the server rejects a missing note for this status too.
+  let note = null;
+  if (status === 'NotEligible') {
+    const { confirmed, value } = await showAppModal({
+      title: 'تأكيد أن الطالب غير مستوفي',
+      bodyHtml: `<label class="review-field-label" for="editor-eligibility-note">سبب عدم الاستيفاء (مطلوب)</label>
+        <textarea id="editor-eligibility-note" class="table-input review-field-textarea" rows="3"></textarea>`,
+      confirmText: 'تأكيد',
+      cancelText: 'إلغاء',
+      variant: 'danger',
+      focusInputId: 'editor-eligibility-note'
+    });
+    if (!confirmed) return;
+    if (!value || !value.trim()) {
+      showToast('يجب إدخال سبب عدم الاستيفاء.', 'danger');
+      return;
+    }
+    note = value.trim();
+  }
+
   const eligibleBtn = document.getElementById('editor-mark-eligible-btn');
   const notEligibleBtn = document.getElementById('editor-mark-not-eligible-btn');
   if (eligibleBtn) eligibleBtn.disabled = true;
@@ -270,10 +298,10 @@ async function setCurrentStudentEligibility(status) {
     await fetchJson(`/api/editor/students/${editorState.currentStudentId}/eligibility`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status })
+      body: JSON.stringify({ status, note })
     });
-    updateEligibilityUi(status);
-    setRowEligibilityState(editorState.currentStudentId, status);
+    updateEligibilityUi(status, note);
+    setRowEligibilityState(editorState.currentStudentId, status, note);
     showToast(status === 'Eligible' ? 'تم تأكيد أن الطالب مستوفي.' : 'تم تأكيد أن الطالب غير مستوفي.', 'success');
   } catch (err) {
     showToast(err.message || 'حدث خطأ أثناء تحديث حالة الاستيفاء.', 'danger');

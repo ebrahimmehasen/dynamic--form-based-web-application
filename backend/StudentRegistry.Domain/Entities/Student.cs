@@ -46,6 +46,8 @@ namespace StudentRegistry.Domain.Entities
         public string? EligibilityStatus { get; set; } // "Eligible" | "NotEligible" | null
         public string? EligibilityConfirmedBy { get; set; }
         public DateTime? EligibilityConfirmedAt { get; set; }
+        // Required reason when EligibilityStatus is "NotEligible" — cleared when marked "Eligible".
+        public string? EligibilityNote { get; set; }
 
         // Navigation properties
         public virtual SaudiStudentTotals? SaudiTotals { get; set; }

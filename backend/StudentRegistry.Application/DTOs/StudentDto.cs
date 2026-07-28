@@ -257,11 +257,15 @@ namespace StudentRegistry.Application.DTOs
         // "Eligible" | "NotEligible" | null (not yet confirmed) — set only by an Editor via the
         // Student Records Editor page's "مستوفي" / "غير مستوفي" buttons.
         public string? EligibilityStatus { get; set; }
+
+        // Required reason the Editor gave when marking "غير مستوفي" — null/empty once "Eligible".
+        public string? EligibilityNote { get; set; }
     }
 
     public class SetEligibilityDto
     {
         public string Status { get; set; } = string.Empty; // "Eligible" | "NotEligible"
+        public string? Note { get; set; } // required when Status == "NotEligible"
     }
 
     public class StudentResponseDto
@@ -307,6 +311,7 @@ namespace StudentRegistry.Application.DTOs
         public string? EligibilityStatus { get; set; }
         public string? EligibilityConfirmedBy { get; set; }
         public DateTime? EligibilityConfirmedAt { get; set; }
+        public string? EligibilityNote { get; set; }
 
         // Associated records depending on certificate type
         public SaudiTotalsResponseDto? SaudiTotals { get; set; }

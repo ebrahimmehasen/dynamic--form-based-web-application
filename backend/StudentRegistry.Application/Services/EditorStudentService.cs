@@ -67,11 +67,16 @@ namespace StudentRegistry.Application.Services
         public Task<StudentResponseDto> RecalculateAsync(int studentId, string editorUsername) =>
             _studentService.RecalculateStudentTotalsAsync(studentId, editorUsername);
 
-        public async Task<StudentResponseDto> SetEligibilityAsync(int studentId, string status, string confirmedBy)
+        public async Task<StudentResponseDto> SetEligibilityAsync(int studentId, string status, string? note, string confirmedBy)
         {
             if (status != "Eligible" && status != "NotEligible")
             {
                 throw new ArgumentException("حالة الاستيفاء غير صالحة.");
+            }
+
+            if (status == "NotEligible" && string.IsNullOrWhiteSpace(note))
+            {
+                throw new ArgumentException("يجب إدخال سبب عدم الاستيفاء.");
             }
 
             var student = await _unitOfWork.Students.GetByIdAsync(studentId);
@@ -81,9 +86,13 @@ namespace StudentRegistry.Application.Services
             }
 
             var oldStatus = student.EligibilityStatus;
+            var oldNote = student.EligibilityNote;
             student.EligibilityStatus = status;
             student.EligibilityConfirmedBy = confirmedBy;
             student.EligibilityConfirmedAt = DateTime.UtcNow;
+            // Only "NotEligible" carries a reason — clearing it back out once marked "Eligible"
+            // again avoids showing a stale rejection reason next to a now-approved student.
+            student.EligibilityNote = status == "NotEligible" ? note!.Trim() : null;
 
             // Logged in the same edits sheet as every other Editor write, so who confirmed
             // eligibility (and when/what it changed from) shows up in the audit log too.
@@ -97,6 +106,20 @@ namespace StudentRegistry.Application.Services
                 Source = "manual",
                 EditedAt = DateTime.UtcNow
             });
+
+            if (student.EligibilityNote != oldNote)
+            {
+                await _unitOfWork.FieldEdits.AddAsync(new FieldEdit
+                {
+                    StudentId = studentId,
+                    FieldName = "Student.EligibilityNote",
+                    OldValue = oldNote,
+                    NewValue = student.EligibilityNote,
+                    Editor = confirmedBy,
+                    Source = "manual",
+                    EditedAt = DateTime.UtcNow
+                });
+            }
 
             await _unitOfWork.CompleteAsync();
 

@@ -142,6 +142,9 @@ namespace StudentRegistry.Data.Configurations
 
             builder.Property(s => s.EligibilityConfirmedBy)
                 .HasMaxLength(100);
+
+            builder.Property(s => s.EligibilityNote)
+                .HasMaxLength(1000);
         }
     }
 }

@@ -98,7 +98,7 @@ namespace StudentRegistry.API.Controllers
             try
             {
                 var confirmedBy = User.Identity?.Name ?? "Editor";
-                var result = await _editorStudentService.SetEligibilityAsync(id, dto.Status, confirmedBy);
+                var result = await _editorStudentService.SetEligibilityAsync(id, dto.Status, dto.Note, confirmedBy);
                 return Ok(new { status = "success", data = result });
             }
             catch (KeyNotFoundException ex)
