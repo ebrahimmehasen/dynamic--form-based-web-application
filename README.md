@@ -1,8 +1,8 @@
-# استمارة تسجيل درجات الطلاب والشهادات المعادلة (Student Registration Form)
+# استمارة تسجيل درجات الطلاب والشهادات المعادلة
 
-تطبيق **ASP.NET Core 8** واحد (API + واجهة Razor Pages) لتسجيل بيانات الطلاب وحساب درجاتهم المعادلة (سعودية / IG / قطرية / بحرينية / كويتية)، مع حفظ البيانات في **SQL Server**.
+تطبيق **ASP.NET Core 8** واحد (API + واجهة Razor Pages) لتسجيل بيانات الطلاب المتقدمين بشهادات معادلة، حساب درجاتهم النهائية آليًا حسب نوع الشهادة، ومراجعتها وتعديلها من خلال لوحات داخلية بثلاث صلاحيات (مُراجع Viewer / محرر Editor / مسؤول Admin)، مع حفظ كل البيانات في **SQL Server**.
 
-> لا يوجد أي كود PHP أو Angular في هذا المشروع — التطبيق بالكامل داخل مشروع `backend/StudentRegistry.API` الواحد.
+> لا يوجد أي كود PHP أو Angular في هذا المشروع — التطبيق بالكامل داخل حل (solution) واحد من مشاريع .NET، وواجهة المستخدم بالكامل HTML/CSS/JS عادي (بدون أي إطار عمل frontend) مقدَّمة من خلال Razor Pages.
 
 ---
 
@@ -10,30 +10,34 @@
 
 ```
 backend/
-  StudentRegistry.API/            ← نقطة الدخول: يضم الواجهة (Pages/) والـ API (Controllers/) معاً
-    Pages/Index.cshtml            ← صفحة الاستمارة (Razor Page واحدة على المسار /)
-    Pages/Shared/_Layout.cshtml   ← القالب العام (head/body، خط Tajawal، RTL)
-    wwwroot/css/styles.css        ← التنسيقات
-    wwwroot/js/{app,conditional,form-handler}.js ← منطق العميل بالكامل (تحقق، حساب الدرجات، إرسال)
-    wwwroot/uploads/              ← صور الطلاب المرفوعة
-    Controllers/StudentsController.cs ← POST /api/students/register وقراءة بيانات الطلاب
-    Controllers/ConfigController.cs   ← مصدر الحقيقة الوحيد للشهادات/المسارات/المواد
-    Program.cs                    ← تسجيل الخدمات وخط أنابيب الـ Middleware
-  StudentRegistry.Application/    ← DTOs، FluentValidation، منطق حساب الدرجات (StudentService)
-  StudentRegistry.Domain/         ← الكيانات (Student وكيانات الدرجات الفرعية)
-  StudentRegistry.Data/           ← DbContext + EF Core Migrations
-  StudentRegistry.Repository/     ← تنفيذ الاستعلامات (UnitOfWork)
-  StudentRegistry.Infrastructure/ ← حفظ الصور (FileStorageService)
-database/schema.sql                ← نسخة SQL مرجعية من نفس المخطط (اختيارية، المصدر الحقيقي هو EF Migrations)
+  StudentRegistry.API/              ← نقطة الدخول: الواجهات (Pages/) والـ API (Controllers/) معًا
+    Pages/Index.cshtml              ← استمارة تسجيل الطالب العامة (Razor Page على المسار /)
+    Pages/Login.cshtml              ← تسجيل دخول الموظفين (Viewer/Editor/Admin)
+    Pages/Admin/StudentRecordsReview.cshtml  ← صفحة المُراجع (عرض + ملاحظات، بدون تعديل)
+    Pages/Admin/Home.cshtml         ← لوحة تحكم المسؤول (إحصائيات، طلبات حذف، تعديلات، تعليقات، مستخدمين)
+    Pages/Editor/StudentRecordsEditor.cshtml ← صفحة المحرر (بحث، تعديل مباشر، إعادة حساب، تصدير)
+    Pages/Editor/Notifications.cshtml        ← إشعارات التعليقات غير المراجَعة للمحرر
+    Pages/Shared/_Layout.cshtml     ← القالب العام (خط Tajawal، RTL)
+    wwwroot/css/styles.css          ← كل تنسيقات الموقع
+    wwwroot/js/                     ← منطق العميل بالكامل (بدون بناء/bundler — ملفات JS عادية)
+    wwwroot/uploads/                ← صور الطلاب المرفوعة
+    Controllers/                    ← كل نقاط الـ API (تسجيل، إدارة، تحرير، مصادقة، تصدير...)
+    Program.cs                      ← تسجيل الخدمات، المصادقة بالكوكيز، وخط أنابيب الـ Middleware
+  StudentRegistry.Application/      ← DTOs، FluentValidation، منطق حساب الدرجات لكل شهادة (StudentService)
+  StudentRegistry.Domain/           ← الكيانات (Student، الدرجات الفرعية لكل شهادة، المستخدمون، سجلات التدقيق)
+  StudentRegistry.Data/             ← DbContext + EF Core Migrations
+  StudentRegistry.Repository/       ← تنفيذ الاستعلامات (Repository + UnitOfWork)
+  StudentRegistry.Infrastructure/   ← تخزين الصور، وتصدير Excel/PDF
+database/schema.sql                 ← نسخة SQL مرجعية من نفس المخطط (المصدر الحقيقي هو EF Migrations)
 ```
 
 راجع [ARCHITECTURE.md](ARCHITECTURE.md) لتفاصيل تدفّق البيانات الكامل وكيفية إضافة ميزات جديدة بأمان.
 
 ---
 
-## 🚀 التشغيل محلياً
+## 🚀 التشغيل محليًا
 
-المتطلبات: **.NET 8 SDK**، **SQL Server** (أي إصدار محلي)، أداة `dotnet-ef` (`dotnet tool install -g dotnet-ef`).
+المتطلبات: **.NET 8 SDK**، **SQL Server** (أي إصدار محلي أو LocalDB)، أداة `dotnet-ef` (`dotnet tool install -g dotnet-ef`).
 
 ```bash
 cd backend
@@ -42,29 +46,66 @@ dotnet ef database update --project StudentRegistry.Data --startup-project Stude
 dotnet run --project StudentRegistry.API
 ```
 
-افتح المتصفح على `http://localhost:5000/` — ستجد الاستمارة كاملة. الـ API نفسه متاح على نفس العنوان (`/api/students/register`, `/api/config/subjects`, `/api/config/subjects-saudi`, `/health`, و`/swagger` في بيئة التطوير فقط).
+افتح المتصفح على العنوان الظاهر في الطرفية (عادة `http://localhost:5289/` أو `http://localhost:5000/`):
 
-راجع [MIGRATION_DEPLOYMENT_GUIDE.md](MIGRATION_DEPLOYMENT_GUIDE.md) لخطوات النشر الكاملة على IIS.
+- `/` — استمارة تسجيل الطالب العامة (لا تحتاج تسجيل دخول).
+- `/login` — تسجيل دخول الموظفين.
+- `/admin/student-records-review` — صفحة المُراجع (Viewer).
+- `/editor` — صفحة المحرر (Editor).
+- `/admin` — لوحة تحكم المسؤول (Admin).
+- `/health` — فحص صحة الخادم.
+- `/swagger` — توثيق الـ API التفاعلي (بيئة التطوير فقط).
 
----
-
-## ⚙️ آلية عمل الاستمارة
-
-الاستمارة صفحة واحدة تعرض كل الأقسام معاً (رفع صورة، بيانات شخصية، ولي أمر، عنوان، الشهادة والمسار، السنة الدراسية، جدول الدرجات)، مع شريط تقدّم بصري يعكس اكتمال الحقول. عند الإرسال:
-
-1. يتم التحقق من كل الحقول في المتصفح (`wwwroot/js/form-handler.js`).
-2. تُرسل البيانات كـ JSON (تشمل الصورة كـ base64) عبر `POST /api/students/register` — نفس الأصل (same-origin)، بدون الحاجة لـ CORS.
-3. الخادم يتحقق مرة أخرى (FluentValidation)، يحفظ الصورة في `wwwroot/uploads/`، ويحسب الدرجات النهائية من جديد بشكل موثوق (الخادم هو المرجع الأخير للحساب)، ثم يحفظ كل شيء في SQL Server.
-4. عند فشل الاتصال بالخادم فقط، تُحفظ البيانات مؤقتاً في `localStorage` كخطة احتياطية، مع إتاحة تنزيل الاستمارة كملف **JSON** أو **CSV** (بترميز UTF-8 BOM لدعم العربية في Excel).
+راجع [MIGRATION_DEPLOYMENT_GUIDE.md](MIGRATION_DEPLOYMENT_GUIDE.md) و[SERVER_DEPLOYMENT_STEPS_AR.md](SERVER_DEPLOYMENT_STEPS_AR.md) لخطوات النشر الكاملة على IIS، و[CICD_GITHUB_ACTIONS_DEPLOYMENT_AR.md](CICD_GITHUB_ACTIONS_DEPLOYMENT_AR.md) لإعداد نشر تلقائي عبر GitHub Actions.
 
 ---
 
-## 📊 أنواع الشهادات المدعومة وطرق الحساب
+## 👥 الصلاحيات الثلاث
 
-| الشهادة | طريقة الحساب |
+| الدور | الوصول | أبرز الإمكانيات |
+|---|---|---|
+| **Viewer (مُراجع)** | `/admin/student-records-review` | تصفّح استمارات الطلاب وعرض كل بياناتهم ودرجاتهم كما أدخلها الطالب بالضبط، وإضافة **ملاحظات مراجعة** على أي حقل، ووضع طالب "**قيد المراجعة**" (تمييز الصف باللون الأصفر حتى يراجعه محرر) |
+| **Editor (محرر)** | `/editor` | كل ما سبق، بالإضافة إلى: تعديل أي حقل أو درجة مباشرة (Inline Edit)، **إعادة حساب النتيجة النهائية تلقائيًا** فور تعديل أي درجة خام (بنفس صيغ الحساب المستخدمة في الاستمارة الأصلية)، تأكيد الطالب **"مستوفي"/"غير مستوفي"** (مع سبب إلزامي عند الرفض)، تنزيل PDF/Excel، طلب حذف طالب من المسؤول، وإزالة علامة "قيد المراجعة" بعد التأكد من صحة البيانات |
+| **Admin (مسؤول)** | `/admin` | لوحة إحصائيات شاملة، مراجعة/الموافقة على طلبات حذف الطلاب، تصفح كل التعديلات والتعليقات عبر الموقع (Audit Log)، وإدارة حسابات المستخدمين (إضافة/تعديل/تعطيل/حذف/تغيير كلمة مرور)، مع بحث بالاسم وفلترة بالحالة |
+
+كل تعديل أو تعليق أو تأكيد حالة يُسجَّل في **"شيت التعديلات"** (سجل تدقيق كامل) باسم المستخدم الفعلي المسجّل دخوله وقت التنفيذ — لا يوجد أي إجراء مجهول المصدر.
+
+---
+
+## ⚙️ آلية تسجيل الطالب
+
+الاستمارة صفحة واحدة تعرض كل الأقسام معًا (رفع صورة، بيانات شخصية، بيانات ولي الأمر، العنوان، الشهادة والمسار، جدول الدرجات)، مع شريط تقدّم بصري يعكس اكتمال الحقول. عند الإرسال:
+
+1. التحقق الكامل من كل الحقول في المتصفح (`wwwroot/js/form-handler.js`).
+2. **إرسال موثوق (server-first) مع إعادة محاولة**: البيانات تُرسل مباشرة للخادم عبر `POST /api/students/register` مع رمز إرسال فريد (`submission_token`) يضمن عدم تكرار التسجيل حتى لو أعاد المتصفح المحاولة بعد انقطاع الاتصال. **لا يتم تخزين أي بيانات محليًا في المتصفح** — عند فشل الإرسال تظهر رسالة خطأ وزر "إعادة المحاولة" فقط، والبيانات تبقى في الذاكرة حتى ينجح الإرسال أو يُعاد تحميل الصفحة.
+3. الخادم يتحقق مرة أخرى (FluentValidation)، يحفظ الصورة في `wwwroot/uploads/`، ويحسب الدرجة النهائية من جديد بشكل موثوق (الخادم هو المرجع الأخير للحساب)، ثم يحفظ كل شيء في SQL Server.
+4. عند النجاح فقط تظهر شاشة التأكيد مع إمكانية تنزيل الإيصال/الشهادة كملف **PDF**.
+
+---
+
+## 📊 أنواع الشهادات المدعومة
+
+| الشهادة | ملخص طريقة الحساب |
 |---|---|
-| **سعودية** | معدل تراكمي موزون بالمعامل: `(مجموع الدرجة×المعامل) / (100 × مجموع المعاملات) × 100` |
-| **IG** (IGCSE/AS/A-Levels) | نقاط لكل تقدير، معامل نسبي اختياري، حافز رياضي، ثم مجموع حكومي معادل من 410 |
-| **قطرية / بحرينية / كويتية** | لكل مادة: `الدرجة × الوزن النسبي ÷ 100` |
+| **سعودية** | معامل لكل مادة (الموزون ÷ المتحصل)، نسبة كل سنة = مجموع الموزون ÷ مجموع المعاملات، ثم توزيع حسب عدد سنوات الدراسة، والنتيجة النهائية متوسط مع درجة القدرات |
+| **IG** (IGCSE/O-Level/AS/A-Levels) | نقاط لكل تقدير، معامل نسبي اختياري، حافز رياضي، ثم مجموع حكومي معادل من 410 |
+| **كويتية** | نسبة كل صف دراسي (10/11/12) منفصلة، ثم توزيع بالوزن المدوَّن في شهادة الطالب نفسها |
+| **قطرية / عمانية / يمنية / بحرينية / إماراتية** | مجموع الدرجات مقابل مجموع أقصى ثابت لكل مادة (100 لكل مادة)، مع استثناءات حسب كل شهادة |
+| **الثانوية العامة المصرية / الثانوية الأزهرية** | مجموع الدرجات مقابل مجموع كلي ثابت حسب المسار/نظام المواد |
+| **فلسطينية (توجيهي) / أخرى** | النسبة المئوية تُدخل مباشرة من الطالب |
+| **الدبلومة الأمريكية** | متوسط أفضل 8 مواد + معادلة SAT/ACT وفق معادلة مكتب تنسيق الجامعات الحكومية |
 
-التفاصيل الكاملة للصيغ (بما فيها جدول تحويل نقاط الـ IG) موجودة في [ARCHITECTURE.md](ARCHITECTURE.md).
+كل الصيغ مطبَّقة **مرتين** بشكل متطابق: مرة عند التسجيل، ومرة أخرى عند أي إعادة حساب من صفحة المحرر — بنفس الثوابت والقواعد. التفاصيل الكاملة موجودة في [ARCHITECTURE.md](ARCHITECTURE.md).
+
+---
+
+## 🛠️ أهم التقنيات المستخدمة
+
+- **ASP.NET Core 8** (Razor Pages + Web API في نفس المشروع)
+- **Entity Framework Core 8** مع **SQL Server**
+- **FluentValidation** للتحقق من صحة البيانات على الخادم
+- **AutoMapper** لتحويل الكيانات إلى DTOs
+- مصادقة بالكوكيز (Cookie Authentication) بأدوار (Roles) لكل مستخدم
+- تصدير **Excel** (ClosedXML) و**PDF** (تحويل من قالب Excel)
+- **Swashbuckle/Swagger** لتوثيق الـ API في بيئة التطوير
+- واجهة أمامية بـ **HTML/CSS/JavaScript خام** بدون أي إطار عمل أو أداة بناء (no build step)
