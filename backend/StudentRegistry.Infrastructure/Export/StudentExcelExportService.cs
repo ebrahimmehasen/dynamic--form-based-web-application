@@ -3,6 +3,7 @@ using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using StudentRegistry.Application.DTOs;
 using StudentRegistry.Application.Interfaces;
 using System;
@@ -43,12 +44,14 @@ namespace StudentRegistry.Infrastructure.Export
         private readonly IStudentService _studentService;
         private readonly IWebHostEnvironment _env;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<StudentExcelExportService> _logger;
 
-        public StudentExcelExportService(IStudentService studentService, IWebHostEnvironment env, IConfiguration configuration)
+        public StudentExcelExportService(IStudentService studentService, IWebHostEnvironment env, IConfiguration configuration, ILogger<StudentExcelExportService> logger)
         {
             _studentService = studentService;
             _env = env;
             _configuration = configuration;
+            _logger = logger;
         }
 
         public async Task<byte[]> ExportStudentAsync(int studentId)
@@ -127,25 +130,49 @@ namespace StudentRegistry.Infrastructure.Export
                 psi.ArgumentList.Add(workDir);
                 psi.ArgumentList.Add(inputPath);
 
-                using var process = Process.Start(psi)
-                    ?? throw new InvalidOperationException("تعذر تشغيل LibreOffice لتحويل الملف إلى PDF.");
+                Process? process;
+                try
+                {
+                    process = Process.Start(psi);
+                }
+                catch (Exception startEx)
+                {
+                    // The most common production failure for this feature: LibreOffice isn't
+                    // installed on the host, or the resolved path is wrong (Win32Exception "the
+                    // system cannot find the file specified" on Windows, or ENOENT on Linux).
+                    _logger.LogError(startEx, "تعذر تشغيل عملية LibreOffice لتحويل ملف الطالب (الرقم القومي: {NationalId}) إلى PDF. المسار المستخدم: {SofficePath}.", nationalId, sofficePath);
+                    throw new InvalidOperationException("تعذر تشغيل LibreOffice لتحويل الملف إلى PDF.", startEx);
+                }
 
+                if (process == null)
+                {
+                    _logger.LogError("فشل بدء عملية LibreOffice للطالب (الرقم القومي: {NationalId}) بدون استثناء واضح. المسار: {SofficePath}.", nationalId, sofficePath);
+                    throw new InvalidOperationException("تعذر تشغيل LibreOffice لتحويل الملف إلى PDF.");
+                }
+
+                using var _ = process;
                 string stderr = process.StandardError.ReadToEnd();
                 bool exited = process.WaitForExit(60_000);
                 if (!exited)
                 {
                     process.Kill(true);
+                    _logger.LogError("انتهت مهلة تحويل ملف الطالب (الرقم القومي: {NationalId}) إلى PDF بعد 60 ثانية — تم إيقاف عملية LibreOffice.", nationalId);
                     throw new TimeoutException("انتهت المهلة أثناء تحويل الملف إلى PDF.");
                 }
                 if (process.ExitCode != 0)
                 {
+                    _logger.LogError("فشل تحويل ملف الطالب (الرقم القومي: {NationalId}) إلى PDF — كود الخروج {ExitCode}. مخرجات الخطأ: {Stderr}", nationalId, process.ExitCode, stderr);
                     throw new InvalidOperationException($"فشل تحويل الملف إلى PDF (كود الخروج {process.ExitCode}): {stderr}");
                 }
 
                 string outputPath = Path.Combine(workDir, $"{nationalId}.pdf");
                 if (!File.Exists(outputPath))
+                {
+                    _logger.LogError("انتهت عملية LibreOffice بنجاح (كود خروج 0) لكن ملف PDF الناتج غير موجود للطالب (الرقم القومي: {NationalId}). المسار المتوقع: {OutputPath}", nationalId, outputPath);
                     throw new InvalidOperationException("لم يتم إنشاء ملف PDF.");
+                }
 
+                _logger.LogInformation("تم تحويل ملف الطالب (الرقم القومي: {NationalId}) إلى PDF بنجاح.", nationalId);
                 return File.ReadAllBytes(outputPath);
             }
             finally

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Logging;
 using StudentRegistry.Application.Interfaces;
 using System;
 using System.IO;
@@ -10,11 +11,13 @@ namespace StudentRegistry.Infrastructure.Storage
     public class FileStorageService : IFileStorageService
     {
         private readonly IWebHostEnvironment _env;
+        private readonly ILogger<FileStorageService> _logger;
         private const long MaxFileSizeInBytes = 2 * 1024 * 1024; // 2MB
 
-        public FileStorageService(IWebHostEnvironment env)
+        public FileStorageService(IWebHostEnvironment env, ILogger<FileStorageService> logger)
         {
             _env = env;
+            _logger = logger;
         }
 
         public async Task<string> SaveBase64ImageAsync(string base64String, string nationalId)
@@ -70,7 +73,20 @@ namespace StudentRegistry.Infrastructure.Storage
             string absolutePath = Path.Combine(uploadsFolder, uniqueFilename);
 
             // 8. Write files asynchronously to disk
-            await File.WriteAllBytesAsync(absolutePath, imageBytes);
+            try
+            {
+                await File.WriteAllBytesAsync(absolutePath, imageBytes);
+            }
+            catch (Exception ex)
+            {
+                // Disk full, permission denied, path too long, the uploads folder was deleted after
+                // the existence check above... logged with the exact path and size attempted, since
+                // the generic exception message alone rarely says which of those it was.
+                _logger.LogError(ex, "فشل حفظ صورة الطالب على القرص. المسار: {Path}، الحجم: {SizeBytes} بايت.", absolutePath, imageBytes.Length);
+                throw;
+            }
+
+            _logger.LogInformation("تم حفظ صورة الطالب بنجاح: {RelativePath} ({SizeBytes} بايت).", $"uploads/{uniqueFilename}", imageBytes.Length);
 
             // 9. Return relative path for database storage
             return $"uploads/{uniqueFilename}";

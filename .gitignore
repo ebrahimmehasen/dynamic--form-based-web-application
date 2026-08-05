@@ -15,6 +15,9 @@ dist/
 *.log
 appsettings.Development.json
 
+# Application log files (Serilog rolling file sink — may contain national IDs/usernames)
+backend/StudentRegistry.API/Logs/
+
 # Runtime-uploaded student photos (not source)
 backend/StudentRegistry.API/wwwroot/uploads/*
 !backend/StudentRegistry.API/wwwroot/uploads/.gitkeep

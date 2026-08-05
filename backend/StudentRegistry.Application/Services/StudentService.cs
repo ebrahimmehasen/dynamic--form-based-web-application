@@ -1,4 +1,5 @@
 using AutoMapper;
+using Microsoft.Extensions.Logging;
 using StudentRegistry.Application.Constants;
 using StudentRegistry.Application.DTOs;
 using StudentRegistry.Application.Editor;
@@ -17,12 +18,14 @@ namespace StudentRegistry.Application.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly IFileStorageService _fileStorageService;
+        private readonly ILogger<StudentService> _logger;
 
-        public StudentService(IUnitOfWork unitOfWork, IMapper mapper, IFileStorageService fileStorageService)
+        public StudentService(IUnitOfWork unitOfWork, IMapper mapper, IFileStorageService fileStorageService, ILogger<StudentService> logger)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _fileStorageService = fileStorageService;
+            _logger = logger;
         }
 
         public async Task<StudentResponseDto?> GetStudentByIdAsync(int id)
@@ -73,6 +76,8 @@ namespace StudentRegistry.Application.Services
 
         public async Task<StudentResponseDto> RegisterStudentAsync(StudentCreateDto createDto)
         {
+            _logger.LogInformation("بدء تسجيل استمارة جديدة. الرقم القومي: {NationalId}، الشهادة: {Certification}.", createDto.NationalId, createDto.Certification);
+
             // 0. Idempotency: if this exact submission attempt already succeeded (e.g. the client
             // retried after a dropped connection but the original request actually landed), return
             // the existing record instead of inserting a duplicate.
@@ -81,6 +86,7 @@ namespace StudentRegistry.Application.Services
                 var existingByToken = await _unitOfWork.Students.GetBySubmissionTokenAsync(createDto.SubmissionToken);
                 if (existingByToken != null)
                 {
+                    _logger.LogInformation("طلب تسجيل مكرر (نفس رمز الإرسال) للرقم القومي {NationalId} — تم إرجاع السجل الموجود بدلاً من الإدخال مرة أخرى.", createDto.NationalId);
                     return _mapper.Map<StudentResponseDto>(existingByToken);
                 }
             }
@@ -89,6 +95,7 @@ namespace StudentRegistry.Application.Services
             var existingStudent = await _unitOfWork.Students.GetByNationalIdAsync(createDto.NationalId);
             if (existingStudent != null)
             {
+                _logger.LogWarning("محاولة تسجيل مرفوضة: الرقم القومي {NationalId} مسجل مسبقاً.", createDto.NationalId);
                 throw new InvalidOperationException("رقم قومي مسجل مسبقاً. لا يمكن إدخال نفس الرقم القومي مرتين.");
             }
 
@@ -161,8 +168,22 @@ namespace StudentRegistry.Application.Services
             }
 
             // 5. Commit unit of work
-            await _unitOfWork.Students.AddAsync(student);
-            await _unitOfWork.CompleteAsync();
+            try
+            {
+                await _unitOfWork.Students.AddAsync(student);
+                await _unitOfWork.CompleteAsync();
+            }
+            catch (Exception ex)
+            {
+                // The photo was already written to disk at this point (step 2) — if the DB write
+                // fails, that file is now orphaned on disk with no matching row. Logged so an
+                // orphaned-uploads cleanup can find it later; the exception itself still propagates
+                // to ExceptionMiddleware for the HTTP response as before.
+                _logger.LogError(ex, "فشل حفظ بيانات الطالب في قاعدة البيانات. الرقم القومي: {NationalId}. الصورة المرفوعة (قد تكون يتيمة الآن): {PhotoPath}", createDto.NationalId, relativePhotoPath);
+                throw;
+            }
+
+            _logger.LogInformation("تم تسجيل استمارة الطالب بنجاح. المعرف: {StudentId}، الرقم القومي: {NationalId}.", student.Id, createDto.NationalId);
 
             // 6. Return mapped response
             return _mapper.Map<StudentResponseDto>(student);

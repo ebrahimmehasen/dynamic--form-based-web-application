@@ -7,6 +7,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Serilog;
+using Serilog.Events;
 using StudentRegistry.API.Middleware;
 using StudentRegistry.Application.Constants;
 using StudentRegistry.Application.Interfaces;
@@ -23,7 +25,47 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 
-var builder = WebApplication.CreateBuilder(args);
+// Bootstrap logger — active only until the full Serilog pipeline (registered below via
+// UseSerilog) takes over, so that a crash during host/DI setup itself (bad connection string,
+// missing config, DI resolution failure...) still gets written to the log file instead of being
+// lost. Same file target as the full pipeline, so bootstrap-phase and steady-state logs land in
+// the same daily file.
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.File(
+        Path.Combine(AppContext.BaseDirectory, "Logs", "log-.txt"),
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 30)
+    .CreateBootstrapLogger();
+
+try
+{
+    Log.Information("جاري بدء تشغيل التطبيق...");
+
+    var builder = WebApplication.CreateBuilder(args);
+
+    // Full logging pipeline: every log statement in the app (framework + our own ILogger<T> calls,
+    // including the global ExceptionMiddleware below) flows through here — to the console (visible
+    // while the process is attached to a terminal) and to a rolling daily file under Logs/, so
+    // production failures (DB, file storage, PDF export, auth, unhandled exceptions, every HTTP
+    // request/response) are all recoverable after the fact, not just while someone is watching the
+    // console. EF Core's per-query SQL command logging is dropped down to Warning so the file
+    // doesn't fill up with routine SELECT/INSERT statements — only slow/failing queries and actual
+    // errors get through at their natural level.
+    builder.Host.UseSerilog((context, services, loggerConfiguration) => loggerConfiguration
+        .MinimumLevel.Information()
+        .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+        .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Warning)
+        .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+        .Enrich.FromLogContext()
+        .WriteTo.Console()
+        .WriteTo.File(
+            Path.Combine(context.HostingEnvironment.ContentRootPath, "Logs", "log-.txt"),
+            rollingInterval: RollingInterval.Day,
+            retainedFileCountLimit: 30,
+            outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext}{NewLine}{Message:lj}{NewLine}{Exception}{NewLine}"));
 
 // 1. Configure services
 builder.Services.AddControllers();
@@ -116,6 +158,14 @@ builder.Services.AddAuthorization();
 var app = builder.Build();
 
 // 2. Configure HTTP request pipeline
+
+// One structured log line per HTTP request/response (method, path, status code, elapsed time) —
+// placed first so it wraps every other middleware below, including auth challenges and the global
+// exception handler. This alone answers "what was the site doing right before it failed" without
+// needing to reproduce the failure: every request that ever hit the server, successful or not, is
+// in the log file.
+app.UseSerilogRequestLogging();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -156,6 +206,32 @@ var uploadsPath = Path.Combine(app.Environment.WebRootPath ?? Path.Combine(Direc
 if (!Directory.Exists(uploadsPath))
 {
     Directory.CreateDirectory(uploadsPath);
+}
+
+// Startup database connectivity check — logged explicitly (not left to whichever request happens
+// to hit the DB first) so a broken connection string, unreachable SQL Server, or expired
+// credentials shows up immediately and unambiguously at the top of the log file instead of being
+// buried in the first user's failed request. Deliberately non-fatal: the app still starts and
+// serves static content/the registration form's UI shell even if the database is down, since the
+// database can come back later without a restart.
+using (var dbCheckScope = app.Services.CreateScope())
+{
+    try
+    {
+        var dbContext = dbCheckScope.ServiceProvider.GetRequiredService<StudentRegistryDbContext>();
+        if (await dbContext.Database.CanConnectAsync())
+        {
+            Log.Information("تم الاتصال بقاعدة البيانات بنجاح.");
+        }
+        else
+        {
+            Log.Error("تعذر الاتصال بقاعدة البيانات عند بدء التشغيل — سلسلة الاتصال قد تكون خاطئة أو السيرفر غير متاح.");
+        }
+    }
+    catch (Exception dbEx)
+    {
+        Log.Error(dbEx, "حدث استثناء أثناء فحص الاتصال بقاعدة البيانات عند بدء التشغيل.");
+    }
 }
 
 // Seed the 3 test users (viewer/editor/admin, password "1234") on first run only — never
@@ -202,4 +278,28 @@ using (var seedScope = app.Services.CreateScope())
     }
 }
 
-app.Run();
+Log.Information("اكتمل بدء تشغيل التطبيق بنجاح.");
+
+    app.Run();
+}
+catch (Microsoft.Extensions.Hosting.HostAbortedException)
+{
+    // Deliberately thrown by EF Core's own design-time tooling (dotnet ef migrations/database
+    // update) — it builds the host just far enough to discover the DbContext, then aborts on
+    // purpose before Run() so the CLI command doesn't actually start serving requests. Expected,
+    // not a real failure; must not be logged as Fatal or it looks like the app crashed every time
+    // someone runs a migration command.
+}
+catch (Exception ex)
+{
+    // Anything else that escapes to here happened before/outside the request pipeline (so
+    // ExceptionMiddleware never saw it) — bad config, DI resolution failure, the port already in
+    // use, etc. Fatal, because the process is about to exit; this is the only record of why.
+    Log.Fatal(ex, "فشل تشغيل التطبيق بشكل غير متوقع.");
+}
+finally
+{
+    // Flush any buffered log events to disk/console before the process exits — without this, the
+    // last few log lines (often the most important ones, right before a crash) can be lost.
+    Log.CloseAndFlush();
+}
