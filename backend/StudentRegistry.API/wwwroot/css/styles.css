@@ -1874,3 +1874,33 @@ body {
   border-color: var(--primary-border);
 }
 
+/* Site-wide developer signature footer — present on every page via _Layout.cshtml. Names are
+   fetched live (see wwwroot/js/footer-credit.js), never hardcoded on success. */
+.site-footer {
+  margin-top: 2.5rem;
+  padding: 1rem 1.5rem;
+  text-align: center;
+  font-family: 'Tajawal', sans-serif;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-main);
+  transition: background-color 0.25s ease;
+}
+
+/* Slightly darker than the normal footer background — shown only when the live names request fails. */
+.site-footer.site-footer-fallback {
+  background: #e9ecf1;
+}
+
+.site-footer-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--secondary-color);
+  margin-inline-end: 0.4rem;
+}
+
+.site-footer-names {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
+}
+

@@ -21,7 +21,9 @@ namespace StudentRegistry.API.Middleware
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
                 "font-src 'self' data: https://fonts.gstatic.com; " +
                 "img-src 'self' data:; " +
-                "connect-src 'self'; " +
+                // Allows the footer signature's live fetch (wwwroot/js/footer-credit.js) — every
+                // other request on the site stays same-origin only.
+                "connect-src 'self' https://www.404legend.space; " +
                 "frame-ancestors 'none'; " +
                 "form-action 'self';");
 
