@@ -4,6 +4,11 @@
 -- Compatible with: Windows Server 2022 / SQL Server 2017
 -- ====================================================
 
+-- Required for the filtered index below (IX_Students_SubmissionToken) — some sqlcmd/client
+-- default session settings leave this OFF, which SQL Server rejects for filtered indexes.
+SET QUOTED_IDENTIFIER ON;
+GO
+
 -- 1. Create Database if not exists
 IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = N'StudentRegistryDb')
 BEGIN
@@ -81,13 +86,13 @@ CREATE TABLE dbo.Students (
     EligibilityNote NVARCHAR(1000) NULL,
     EligibilityConfirmedBy NVARCHAR(100) NULL,
     EligibilityConfirmedAt DATETIME2 NULL,
-    CONSTRAINT PK_Students PRIMARY KEY CLUSTERED (Id ASC),
-    CONSTRAINT UQ_Students_NationalId UNIQUE NONCLUSTERED (NationalId ASC)
+    CONSTRAINT PK_Students PRIMARY KEY CLUSTERED (Id ASC)
 );
 GO
 
--- Create Index on NationalId for search optimization
-CREATE NONCLUSTERED INDEX IX_Students_NationalId ON dbo.Students (NationalId ASC);
+-- Uniqueness on NationalId is enforced by this single unique index (matches the EF model exactly
+-- — no separate UQ_ constraint), and it doubles as the search-optimization index.
+CREATE UNIQUE NONCLUSTERED INDEX IX_Students_NationalId ON dbo.Students (NationalId ASC);
 GO
 CREATE UNIQUE NONCLUSTERED INDEX IX_Students_SubmissionToken ON dbo.Students (SubmissionToken ASC) WHERE SubmissionToken IS NOT NULL;
 GO
