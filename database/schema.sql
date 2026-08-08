@@ -16,6 +16,7 @@ GO
 
 -- 2. Drop existing tables if they exist (in reverse order of foreign keys)
 IF OBJECT_ID('dbo.Users', 'U') IS NOT NULL DROP TABLE dbo.Users;
+IF OBJECT_ID('dbo.PendingReviews', 'U') IS NOT NULL DROP TABLE dbo.PendingReviews;
 IF OBJECT_ID('dbo.FieldEdits', 'U') IS NOT NULL DROP TABLE dbo.FieldEdits;
 IF OBJECT_ID('dbo.FieldComments', 'U') IS NOT NULL DROP TABLE dbo.FieldComments;
 IF OBJECT_ID('dbo.DeleteRequests', 'U') IS NOT NULL DROP TABLE dbo.DeleteRequests;
@@ -72,6 +73,14 @@ CREATE TABLE dbo.Students (
     Track NVARCHAR(100) NOT NULL,
     PhotoPath NVARCHAR(500) NOT NULL,
     SubmittedAt DATETIME2(7) NOT NULL CONSTRAINT DF_Students_SubmittedAt DEFAULT SYSUTCDATETIME(),
+    -- Idempotency: lets a retried registration request (e.g. dropped connection) return the
+    -- already-created record instead of inserting a duplicate. Unique only when non-null.
+    SubmissionToken NVARCHAR(64) NULL,
+    -- Admin eligibility confirmation workflow — null until an admin reviews and confirms/rejects.
+    EligibilityStatus NVARCHAR(20) NULL,
+    EligibilityNote NVARCHAR(1000) NULL,
+    EligibilityConfirmedBy NVARCHAR(100) NULL,
+    EligibilityConfirmedAt DATETIME2 NULL,
     CONSTRAINT PK_Students PRIMARY KEY CLUSTERED (Id ASC),
     CONSTRAINT UQ_Students_NationalId UNIQUE NONCLUSTERED (NationalId ASC)
 );
@@ -79,6 +88,8 @@ GO
 
 -- Create Index on NationalId for search optimization
 CREATE NONCLUSTERED INDEX IX_Students_NationalId ON dbo.Students (NationalId ASC);
+GO
+CREATE UNIQUE NONCLUSTERED INDEX IX_Students_SubmissionToken ON dbo.Students (SubmissionToken ASC) WHERE SubmissionToken IS NOT NULL;
 GO
 
 -- 4. Create SaudiStudentTotals Table (One-to-One with Students)
@@ -348,6 +359,7 @@ CREATE TABLE dbo.AmericanDiplomaStudentTotals (
     StudiedAdvancedMath BIT NOT NULL,
     SatIBelowMinimum BIT NOT NULL,
     SatIIBelowMinimum BIT NOT NULL,
+    EquivalentPercentage DECIMAL(6,2) NOT NULL CONSTRAINT DF_AmericanDiplomaStudentTotals_EquivalentPercentage DEFAULT (0),
     CONSTRAINT PK_AmericanDiplomaStudentTotals PRIMARY KEY CLUSTERED (StudentId ASC),
     CONSTRAINT FK_AmericanDiplomaStudentTotals_Students_StudentId FOREIGN KEY (StudentId)
         REFERENCES dbo.Students (Id) ON DELETE CASCADE
@@ -373,6 +385,26 @@ CREATE TABLE dbo.ReviewNotes (
 );
 GO
 CREATE INDEX IX_ReviewNotes_StudentId_FieldName ON dbo.ReviewNotes (StudentId, FieldName);
+GO
+
+-- Pending admin review flags — raised automatically (e.g. after a recalculation changes a total)
+-- or manually, resolved by an admin confirming/rejecting eligibility.
+CREATE TABLE dbo.PendingReviews (
+    Id INT IDENTITY(1,1) NOT NULL,
+    StudentId INT NOT NULL,
+    FlaggedBy NVARCHAR(100) NOT NULL CONSTRAINT DF_PendingReviews_FlaggedBy DEFAULT (N'User'),
+    FlaggedAt DATETIME2 NOT NULL CONSTRAINT DF_PendingReviews_FlaggedAt DEFAULT (SYSUTCDATETIME()),
+    Status NVARCHAR(20) NOT NULL CONSTRAINT DF_PendingReviews_Status DEFAULT (N'pending'),
+    ResolvedBy NVARCHAR(100) NULL,
+    ResolvedAt DATETIME2 NULL,
+    CONSTRAINT PK_PendingReviews PRIMARY KEY CLUSTERED (Id ASC),
+    CONSTRAINT FK_PendingReviews_Students_StudentId FOREIGN KEY (StudentId)
+        REFERENCES dbo.Students (Id) ON DELETE CASCADE
+);
+GO
+CREATE INDEX IX_PendingReviews_Status ON dbo.PendingReviews (Status);
+GO
+CREATE INDEX IX_PendingReviews_StudentId ON dbo.PendingReviews (StudentId);
 GO
 
 -- System users: authentication + role-based access (Viewer/Editor/Admin). Passwords are always
