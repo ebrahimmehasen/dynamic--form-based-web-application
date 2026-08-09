@@ -72,6 +72,7 @@ builder.Services.AddControllers();
 builder.Services.AddRazorPages();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddHttpContextAccessor();
 
 // Register Health Checks for Monitoring
 builder.Services.AddHealthChecks();

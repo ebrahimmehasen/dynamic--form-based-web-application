@@ -1,6 +1,7 @@
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
+using Microsoft.AspNetCore.Http;
 using StudentRegistry.Application.Interfaces;
 using StudentRegistry.Domain.Entities;
 using StudentRegistry.Domain.Interfaces;
@@ -15,27 +16,36 @@ namespace StudentRegistry.Infrastructure.Export
     // Builds a fresh, plain list-style workbook (unlike StudentExcelExportService, which fills a
     // fixed per-student template) — one row per student. All three dashboard exports (eligible,
     // not-eligible, all) share the exact same comprehensive column set — every scalar field on the
-    // Student entity itself (excluding Id/PhotoPath/SubmissionToken, which are internal and not
-    // useful in a spreadsheet) — so admins get the full record regardless of which button they use.
+    // Student entity itself (excluding Id/SubmissionToken, which are internal and not useful in a
+    // spreadsheet) — so admins get the full record regardless of which button they use. PhotoPath
+    // is included, but only as an absolute link in the last column, never the raw relative path.
     public class EligibilityExportService : IEligibilityExportService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public EligibilityExportService(IUnitOfWork unitOfWork)
+        public EligibilityExportService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor)
         {
             _unitOfWork = unitOfWork;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<byte[]> ExportByEligibilityAsync(string eligibilityStatus, DateTime? startDate, DateTime? endDate, string? certification)
         {
             var students = await _unitOfWork.Dashboard.GetStudentsByEligibilityAsync(eligibilityStatus, startDate, endDate, certification);
-            return BuildWorkbook(students);
+            return BuildWorkbook(students, GetBaseUrl());
         }
 
         public async Task<byte[]> ExportAllAsync(DateTime? startDate, DateTime? endDate, string? certification)
         {
             var students = await _unitOfWork.Dashboard.GetAllStudentsFilteredAsync(startDate, endDate, certification);
-            return BuildWorkbook(students);
+            return BuildWorkbook(students, GetBaseUrl());
+        }
+
+        private string GetBaseUrl()
+        {
+            var request = _httpContextAccessor.HttpContext?.Request;
+            return request != null ? $"{request.Scheme}://{request.Host}" : string.Empty;
         }
 
         private static readonly string[] Headers =
@@ -49,10 +59,11 @@ namespace StudentRegistry.Infrastructure.Export
             "اسم ولي الأمر", "صلة القرابة", "الرقم القومي لولي الأمر",
             "وظيفة ولي الأمر", "هاتف ولي الأمر", "الهاتف الأرضي",
             "تاريخ التقديم",
-            "حالة الاستيفاء", "سبب عدم الاستيفاء", "تم التأكيد بواسطة", "تاريخ التأكيد"
+            "حالة الاستيفاء", "سبب عدم الاستيفاء", "تم التأكيد بواسطة", "تاريخ التأكيد",
+            "رابط الصورة الشخصية"
         };
 
-        private static string[] BuildRow(Student s) => new[]
+        private static string[] BuildRow(Student s, string baseUrl) => new[]
         {
             s.StudentName,
             s.StudentNameEn,
@@ -88,7 +99,8 @@ namespace StudentRegistry.Infrastructure.Export
             EligibilityLabel(s.EligibilityStatus),
             s.EligibilityNote ?? string.Empty,
             s.EligibilityConfirmedBy ?? string.Empty,
-            s.EligibilityConfirmedAt?.ToString("dd/MM/yyyy HH:mm") ?? string.Empty
+            s.EligibilityConfirmedAt?.ToString("dd/MM/yyyy HH:mm") ?? string.Empty,
+            !string.IsNullOrWhiteSpace(s.PhotoPath) && !string.IsNullOrEmpty(baseUrl) ? $"{baseUrl}/{s.PhotoPath}" : string.Empty
         };
 
         private static string EligibilityLabel(string? status) => status switch
@@ -142,7 +154,7 @@ namespace StudentRegistry.Infrastructure.Export
             return string.Empty;
         }
 
-        private static byte[] BuildWorkbook(List<Student> students)
+        private static byte[] BuildWorkbook(List<Student> students, string baseUrl)
         {
             using var stream = new MemoryStream();
             using (var doc = SpreadsheetDocument.Create(stream, SpreadsheetDocumentType.Workbook))
@@ -163,16 +175,55 @@ namespace StudentRegistry.Infrastructure.Export
                 });
 
                 sheetData.Append(BuildXlsxRow(Headers));
+
+                // Photo-link column is the last one; track which rows actually have a photo so a
+                // real (clickable) hyperlink relationship can be attached to just those cells.
+                string photoColumn = GetColumnLetter(Headers.Length);
+                var photoLinks = new List<(string CellReference, string Url)>();
+                int rowIndex = 2; // row 1 is the header
                 foreach (var s in students)
                 {
-                    sheetData.Append(BuildXlsxRow(BuildRow(s)));
+                    sheetData.Append(BuildXlsxRow(BuildRow(s, baseUrl)));
+                    if (!string.IsNullOrWhiteSpace(s.PhotoPath) && !string.IsNullOrEmpty(baseUrl))
+                        photoLinks.Add(($"{photoColumn}{rowIndex}", $"{baseUrl}/{s.PhotoPath}"));
+                    rowIndex++;
+                }
+
+                if (photoLinks.Count > 0)
+                {
+                    var hyperlinks = new Hyperlinks();
+                    foreach (var (cellReference, url) in photoLinks)
+                    {
+                        var relationshipId = worksheetPart.AddHyperlinkRelationship(new Uri(url, UriKind.Absolute), isExternal: true).Id;
+                        hyperlinks.Append(new Hyperlink { Reference = cellReference, Id = relationshipId });
+                    }
+                    // Schema order requires <hyperlinks> right after <sheetData> here (no
+                    // mergeCells/conditionalFormatting/etc. exist on this sheet to come between them).
+                    worksheetPart.Worksheet.InsertAfter(hyperlinks, sheetData);
                 }
 
                 worksheetPart.Worksheet.Save();
                 workbookPart.Workbook.Save();
+                // Without this, part relationships added via AddHyperlinkRelationship (the
+                // photo-link column) never get flushed to xl/worksheets/_rels/sheet1.xml.rels —
+                // the <hyperlink r:id="..."/> in the sheet ends up pointing at nothing.
+                doc.Save();
             }
 
             return stream.ToArray();
+        }
+
+        // Converts a 1-based column index to its Excel letter(s) (1 -> A, 27 -> AA, ...).
+        private static string GetColumnLetter(int columnIndex)
+        {
+            string letters = string.Empty;
+            while (columnIndex > 0)
+            {
+                int remainder = (columnIndex - 1) % 26;
+                letters = (char)('A' + remainder) + letters;
+                columnIndex = (columnIndex - 1) / 26;
+            }
+            return letters;
         }
 
         private static Row BuildXlsxRow(IEnumerable<string> values)
