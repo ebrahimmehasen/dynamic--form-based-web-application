@@ -96,7 +96,7 @@ namespace StudentRegistry.Application.Services
             if (existingStudent != null)
             {
                 _logger.LogWarning("محاولة تسجيل مرفوضة: الرقم القومي {NationalId} مسجل مسبقاً.", createDto.NationalId);
-                throw new InvalidOperationException("رقم قومي مسجل مسبقاً. لا يمكن إدخال نفس الرقم القومي مرتين.");
+                throw new InvalidOperationException("رقم قومي مسجل مسبقاً. لا يمكن إدخال نفس الرقم القومي مرتين. تم تسجيل بياناتك بنجاح، ولتعديل أي بيانات يمكن تعديلها عند زيارة الجامعة.");
             }
 
             // 2. Save image to local wwwroot disk directory

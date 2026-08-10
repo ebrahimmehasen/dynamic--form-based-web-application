@@ -3213,14 +3213,24 @@ function sendData(payload, submitBtn, originalText) {
     }));
   }
 
+  // A stalled connection (the "النت علّق" case — packets just stop arriving, nothing actually
+  // errors) leaves a bare fetch() pending forever: no timeout means neither .then() nor .catch()
+  // ever fires, so the button sits on "جاري الحفظ..." indefinitely and the retry banner never
+  // appears. This abort-based timeout guarantees the request always settles one way or another.
+  const REQUEST_TIMEOUT_MS = 20000;
+  const timeoutController = new AbortController();
+  const timeoutId = setTimeout(() => timeoutController.abort(), REQUEST_TIMEOUT_MS);
+
   fetch('/api/students/register', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify(apiPayload)
+    body: JSON.stringify(apiPayload),
+    signal: timeoutController.signal
   })
   .then(async response => {
+    clearTimeout(timeoutId);
     let result = {};
     try {
       result = await response.json();
@@ -3233,15 +3243,30 @@ function sendData(payload, submitBtn, originalText) {
       submitBtn.disabled = false;
       submitBtn.innerHTML = originalText;
       showSuccessScreen(payload, result.data.id, result.data);
-    } else {
-      throw new Error(result.message || 'Server error occurred');
+      return;
     }
+
+    // The server was reached and responded — this is a rejected request (validation error,
+    // duplicate national ID, etc.), not a connectivity problem. Show the real reason and stop
+    // here: no retry banner, since resubmitting the exact same payload will just fail again the
+    // same way. The user needs to fix a field and resubmit via the normal submit button.
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalText;
+    showAlert('form-alert', result.message || 'حدث خطأ أثناء إرسال البيانات.', 'danger');
   })
   .catch(error => {
+    clearTimeout(timeoutId);
     console.warn('Submission failed, keeping form data in memory for retry.', error);
     submitBtn.disabled = false;
     submitBtn.innerHTML = originalText;
-    showAlert('form-alert', 'فشل الإرسال - تحقق من اتصالك بالإنترنت', 'danger');
+    const timedOut = error.name === 'AbortError';
+    showAlert(
+      'form-alert',
+      timedOut
+        ? 'انتهت مهلة الاتصال بالخادم. تأكد من اتصالك بالإنترنت ثم اضغط إعادة المحاولة.'
+        : 'فشل الإرسال - تحقق من اتصالك بالإنترنت',
+      'danger'
+    );
     showRetryBanner();
   });
 }
