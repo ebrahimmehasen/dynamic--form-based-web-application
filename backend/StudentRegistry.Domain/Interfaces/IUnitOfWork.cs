@@ -13,6 +13,7 @@ namespace StudentRegistry.Domain.Interfaces
         IDeleteRequestRepository DeleteRequests { get; }
         IPendingReviewRepository PendingReviews { get; }
         IDashboardRepository Dashboard { get; }
+        ICertificationDisplaySettingRepository CertificationDisplaySettings { get; }
         Task<int> CompleteAsync();
     }
 }

@@ -23,6 +23,7 @@ using StudentRegistry.Infrastructure.Storage;
 using StudentRegistry.Repository.Implementations;
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 // Bootstrap logger — active only until the full Serilog pipeline (registered below via
@@ -101,6 +102,7 @@ builder.Services.AddScoped<IAdminReviewService, AdminReviewService>();
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 builder.Services.AddScoped<IEligibilityExportService, EligibilityExportService>();
+builder.Services.AddScoped<IDisplaySettingsService, DisplaySettingsService>();
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 
 // Register AutoMapper
@@ -261,22 +263,45 @@ using (var seedScope = app.Services.CreateScope())
         await unitOfWork.CompleteAsync();
     }
 
-    // Root admin account, seeded independently of the block above (so it's created even on a
-    // database that already has the viewer/editor/admin test users). Protected: its username,
-    // password and role can never be changed through the Admin UI (see UserManagementService).
-    const string rootAdminUsername = "Mohamed";
-    if (await unitOfWork.Users.GetByUsernameAsync(rootAdminUsername) == null)
+    // Root admin accounts, seeded independently of the block above (so they're created even on a
+    // database that already has the viewer/editor/admin test users). Protected: their username,
+    // password and role can never be changed through the Admin UI (see UserManagementService), and
+    // they're the only accounts allowed into "إعدادات العرض" (see AdminDisplaySettingsController).
+    var rootAdmins = new (string Username, string Password)[]
     {
+        ("Mohamed", "MohamedHosni_2026"),
+        ("Ebrahim", "442004@#$")
+    };
+    foreach (var (username, password) in rootAdmins)
+    {
+        if (await unitOfWork.Users.GetByUsernameAsync(username) != null) continue;
+
         var rootAdmin = new User
         {
-            Username = rootAdminUsername,
+            Username = username,
             Role = AuthConstants.RoleAdmin,
             IsProtected = true
         };
-        rootAdmin.PasswordHash = passwordHasher.HashPassword(rootAdmin, "MohamedHosni_2026");
+        rootAdmin.PasswordHash = passwordHasher.HashPassword(rootAdmin, password);
         await unitOfWork.Users.AddAsync(rootAdmin);
         await unitOfWork.CompleteAsync();
     }
+
+    // One row per certification type, defaulting to visible — only inserts rows that don't already
+    // exist yet, so re-running this never overwrites an admin's existing toggle choice.
+    var existingDisplaySettingKeys = (await unitOfWork.CertificationDisplaySettings.GetAllAsync())
+        .Select(s => s.CertificationKey)
+        .ToHashSet();
+    foreach (var (key, _) in CertificationCatalog.All)
+    {
+        if (existingDisplaySettingKeys.Contains(key)) continue;
+        await unitOfWork.CertificationDisplaySettings.AddAsync(new CertificationDisplaySetting
+        {
+            CertificationKey = key,
+            IsResultVisible = true
+        });
+    }
+    await unitOfWork.CompleteAsync();
 }
 
 Log.Information("اكتمل بدء تشغيل التطبيق بنجاح.");

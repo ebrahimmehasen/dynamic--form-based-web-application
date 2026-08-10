@@ -3,7 +3,7 @@
 
 var reviewState = {
   currentStudentId: null,
-  notesByField: new Map(), // fieldName -> ReviewNoteResponseDto[]
+  notesByField: new Map(), // fieldName -> FieldCommentResponseDto[] (same FieldComments Editor reviews)
   currentFieldName: null,
   currentFieldSnapshot: null,
   currentQuery: '',
@@ -38,6 +38,35 @@ function formatDate(isoString) {
 function displayValue(value) {
   if (value === null || value === undefined || value === '') return '—';
   return escapeHtml(value);
+}
+
+// Mirrors StudentRegistry.Application.Editor.FieldPath on the server ("Group.Prop" or
+// "Group#RowId.Prop") and editor-shared.js's own copy (not included on this page) — the one
+// canonical field address FieldComments are keyed by, shared with Editor's own comment inbox.
+function formatFieldPath(entityGroup, entityRowId, propertyName) {
+  return entityRowId !== null && entityRowId !== undefined ? `${entityGroup}#${entityRowId}.${propertyName}` : `${entityGroup}.${propertyName}`;
+}
+
+function parseFieldPath(fieldPath) {
+  const dotIndex = fieldPath.lastIndexOf('.');
+  const head = fieldPath.slice(0, dotIndex);
+  const propertyName = fieldPath.slice(dotIndex + 1);
+  const hashIndex = head.indexOf('#');
+  if (hashIndex >= 0) {
+    return { entityGroup: head.slice(0, hashIndex), entityRowId: parseInt(head.slice(hashIndex + 1), 10), propertyName };
+  }
+  return { entityGroup: head, entityRowId: null, propertyName };
+}
+
+// Which real EditableFieldRegistry group + "anchor" property a grade-row comment targets, per the
+// totals-field prefix already used to render that cert's summary fields (§ renderCertTotalsAndGrades
+// below). Everything not listed shares the generic "StandardGrades" table (see EditableFieldRegistry.cs).
+const GRADE_GROUP_BY_TOTALS_PREFIX = {
+  SaudiTotals: { group: 'SaudiGrades', anchorProperty: 'SubjectName' },
+  IgGrades: { group: 'IgGradeCounts', anchorProperty: 'GradeType' }
+};
+function gradeRowTarget(fieldPrefix) {
+  return GRADE_GROUP_BY_TOTALS_PREFIX[fieldPrefix] || { group: 'StandardGrades', anchorProperty: 'SubjectName' };
 }
 
 // ---------- Search & table ----------
@@ -121,7 +150,7 @@ async function openStudentDetail(studentId) {
   try {
     const [studentRes, notesRes] = await Promise.all([
       fetch(`/api/students/${studentId}`),
-      fetch(`/api/reviewnotes/student/${studentId}`)
+      fetch(`/api/editor/fieldcomments/student/${studentId}`)
     ]);
     const studentPayload = await studentRes.json();
     const notesPayload = await notesRes.json();
@@ -401,7 +430,7 @@ function renderCertTotalsAndGrades(totals, grades, fieldPrefix, totalsFields, gr
     const jsProp = prop.charAt(0).toLowerCase() + prop.slice(1);
     const value = totals[jsProp];
     const displayed = typeof value === 'boolean' ? (value ? 'نعم' : 'لا') : value;
-    const fieldName = `${fieldPrefix}.${prop}`;
+    const fieldName = formatFieldPath(fieldPrefix, null, prop);
     return `
       <div class="review-field-item">
         <span class="review-field-item-label">${escapeHtml(label)}</span>
@@ -417,7 +446,8 @@ function renderCertTotalsAndGrades(totals, grades, fieldPrefix, totalsFields, gr
   if (gradeFormatter && grades && grades.length > 0) {
     const rows = grades.map((g, idx) => {
       const label = gradeFormatter(g);
-      const fieldName = `${fieldPrefix}.Grades[${idx}]`;
+      const target = gradeRowTarget(fieldPrefix);
+      const fieldName = formatFieldPath(target.group, g.id, target.anchorProperty);
       return `
         <div class="review-field-item">
           <span class="review-clickable-field${reviewState.notesByField.has(fieldName) ? ' field-reviewed' : ''}"
@@ -540,7 +570,7 @@ function openFieldReviewModal({ fieldName, label, value, type }) {
     historyEl.innerHTML = notes.map(n => `
       <div class="review-field-history-item">
         <div class="review-field-history-meta">${escapeHtml(n.author)} — ${formatDate(n.createdAt)}</div>
-        <div>${escapeHtml(n.reviewerNote)}</div>
+        <div>${escapeHtml(n.commentText)}</div>
       </div>`).join('');
   } else if (historyWrap) {
     historyWrap.style.display = 'none';
@@ -561,14 +591,17 @@ async function saveFieldNote() {
   if (!reviewState.currentStudentId || !reviewState.currentFieldName) return;
 
   try {
-    const response = await fetch('/api/reviewnotes', {
+    const { entityGroup, entityRowId, propertyName } = parseFieldPath(reviewState.currentFieldName);
+    const response = await fetch('/api/editor/fieldcomments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         studentId: reviewState.currentStudentId,
-        fieldName: reviewState.currentFieldName,
-        fieldValueSnapshot: reviewState.currentFieldSnapshot,
-        reviewerNote: noteText
+        entityGroup,
+        entityRowId,
+        propertyName,
+        fieldSnapshot: reviewState.currentFieldSnapshot,
+        commentText: noteText
       })
     });
     const payload = await response.json();

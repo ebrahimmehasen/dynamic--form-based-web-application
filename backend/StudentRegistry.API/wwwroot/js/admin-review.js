@@ -22,14 +22,21 @@ function initAdminTabs() {
     users: { btn: 'admin-tab-btn-users', panel: 'admin-tab-users', load: typeof loadUsers === 'function' ? loadUsers : () => {} },
     // editor-page.js already loads itself and its data on DOMContentLoaded (same as the Editor's
     // own page) — nothing to (re)load when switching to this tab.
-    records: { btn: 'admin-tab-btn-records', panel: 'admin-tab-records', load: () => {} }
+    records: { btn: 'admin-tab-btn-records', panel: 'admin-tab-records', load: () => {} },
+    // Server-rendered only for the root admin ("Mohamed") — the button/panel simply don't exist in
+    // the DOM for anyone else, filtered out just below.
+    displaySettings: { btn: 'admin-tab-btn-display-settings', panel: 'admin-tab-display-settings', load: typeof loadDisplaySettings === 'function' ? loadDisplaySettings : () => {} }
   };
 
-  Object.entries(tabs).forEach(([key, cfg]) => {
+  // Only keep tabs whose button AND panel both actually exist in the DOM for the current user —
+  // a tab conditionally rendered server-side (§ إعدادات العرض) must render both together, but this
+  // guards against ever crashing every other tab's click handler again if that ever drifts.
+  const existingTabs = Object.values(tabs).filter(cfg => document.getElementById(cfg.btn) && document.getElementById(cfg.panel));
+
+  existingTabs.forEach(cfg => {
     const btn = document.getElementById(cfg.btn);
-    if (!btn) return;
     btn.addEventListener('click', () => {
-      Object.values(tabs).forEach(other => {
+      existingTabs.forEach(other => {
         document.getElementById(other.btn).classList.toggle('editor-tab-active', other === cfg);
         document.getElementById(other.panel).style.display = other === cfg ? '' : 'none';
       });

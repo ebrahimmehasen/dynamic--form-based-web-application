@@ -20,6 +20,7 @@ USE [StudentRegistryDb];
 GO
 
 -- 2. Drop existing tables if they exist (in reverse order of foreign keys)
+IF OBJECT_ID('dbo.CertificationDisplaySettings', 'U') IS NOT NULL DROP TABLE dbo.CertificationDisplaySettings;
 IF OBJECT_ID('dbo.Users', 'U') IS NOT NULL DROP TABLE dbo.Users;
 IF OBJECT_ID('dbo.PendingReviews', 'U') IS NOT NULL DROP TABLE dbo.PendingReviews;
 IF OBJECT_ID('dbo.FieldEdits', 'U') IS NOT NULL DROP TABLE dbo.FieldEdits;
@@ -428,6 +429,20 @@ CREATE TABLE dbo.Users (
 );
 GO
 CREATE UNIQUE INDEX IX_Users_Username ON dbo.Users (Username);
+GO
+
+-- إعدادات العرض: هل تُعرض النتيجة النهائية للطالب على شاشة النجاح بعد التسجيل، لكل نوع شهادة على
+-- حدة. يبدأ فارغًا (كل الشهادات تُعرض افتراضيًا) — يُنشأ صف فقط عند أول تبديل لتلك الشهادة.
+CREATE TABLE dbo.CertificationDisplaySettings (
+    Id INT IDENTITY(1,1) NOT NULL,
+    CertificationKey NVARCHAR(50) NOT NULL,
+    IsResultVisible BIT NOT NULL CONSTRAINT DF_CertificationDisplaySettings_IsResultVisible DEFAULT (1),
+    UpdatedAt DATETIME2 NULL,
+    UpdatedByUsername NVARCHAR(50) NULL,
+    CONSTRAINT PK_CertificationDisplaySettings PRIMARY KEY CLUSTERED (Id ASC)
+);
+GO
+CREATE UNIQUE INDEX IX_CertificationDisplaySettings_CertificationKey ON dbo.CertificationDisplaySettings (CertificationKey);
 GO
 
 -- Student Records Editor: per-field edit audit trail (append-only — every save is a new row).

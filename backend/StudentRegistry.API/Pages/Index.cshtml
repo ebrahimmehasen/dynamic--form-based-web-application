@@ -358,6 +358,14 @@
       </div>
       <p class="section-desc" id="section-grades-desc">أدخل الدرجة والنسبة الموزونة لكل مادة أدناه. سيتم احتساب الدرجة المتحصلة تلقائياً.</p>
 
+      <!-- Shown instead of the grades table whenever the admin has hidden this certification's
+           final result (إعدادات العرض) — the student skips straight to submitting, and the actual
+           grades are entered later by the university's editor/admin staff. -->
+      <div class="alert alert-warning" id="section-grades-deferred-notice" style="display: none; margin-bottom: 1.25rem; line-height: 1.9;">
+        <strong>ℹ️ لا داعي لإدخال الدرجات الآن</strong>
+        <p style="margin: 0.5rem 0 0;">سيتم استكمال بيانات الدرجات لاحقًا من قبل إدارة الجامعة. يمكنك المتابعة مباشرة لحفظ وإرسال بياناتك.</p>
+      </div>
+
       <!-- General certification alert — shown for every certificate except "أخرى" and الشهادة
            البحرينية (التي لها تنبيهها الخاص). Display-only, no effect on any calculation. -->
       <div id="general-cert-alert" class="alert alert-warning" style="display: none; margin-bottom: 1.25rem; line-height: 1.9;">
@@ -1027,6 +1035,10 @@
             <div class="result-flex-item" style="border-right: 1px solid var(--border-color); padding-right: 1.5rem;">
               <div class="result-title-label">النسبة الأساسية (من 40):</div>
               <div class="result-value" id="american-diploma-base-percentage">0.00 / 40</div>
+            </div>
+            <div class="result-flex-item" style="border-right: 1px solid var(--border-color); padding-right: 1.5rem;">
+              <div class="result-title-label">النسبة النهائية المعادلة:</div>
+              <div class="result-value" id="american-diploma-equivalent-percentage">0.00%</div>
             </div>
           </div>
         </div>

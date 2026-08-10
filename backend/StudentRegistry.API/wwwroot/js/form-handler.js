@@ -1653,6 +1653,73 @@ function generateAmericanDiplomaGradesUI() {
   }
 }
 
+// بحث مباشر في جدول التعادل (ACT -> SAT)؛ وإلا استيفاء خطي بين أقرب قيمتين؛ مع تثبيت (clamp)
+// القيم خارج نطاق الجدول عند أقرب حد — يطابق ConvertUsingConcordance في AmericanDiplomaConstants.cs.
+function convertActUsingConcordance(actScore, table) {
+  if (!table) return null;
+  const keys = Object.keys(table).map(Number);
+  const minKey = Math.min(...keys);
+  const maxKey = Math.max(...keys);
+
+  if (actScore <= minKey) return table[minKey];
+  if (actScore >= maxKey) return table[maxKey];
+  if (table[actScore] !== undefined) return table[actScore];
+
+  const lowerKey = Math.max(...keys.filter(k => k < actScore));
+  const upperKey = Math.min(...keys.filter(k => k > actScore));
+  const t = (actScore - lowerKey) / (upperKey - lowerKey);
+  const interpolated = table[lowerKey] + t * (table[upperKey] - table[lowerKey]);
+  return Math.round(interpolated);
+}
+
+// النسبة النهائية المعادلة (مكتب تنسيق الجامعات الحكومية والمعاهد العليا):
+// (SatI ÷ 1600 × وزن) + (SatII ÷ 1600 × 15 إذا كانت SatII >= الحد الأدنى) + basePercentage (من 40) —
+// مطابق تمامًا لصيغة الباك اند بعد التصحيح في ProcessAmericanDiplomaCertificate/RecalculateAmericanDiplomaTotals.
+// يرجع null لو البيانات المطلوبة (SAT I على الأقل) لسه مش متوفرة، عشان نعرض "—" بدل رقم مضلل.
+function computeAmericanDiplomaEquivalentPercentage(basePercentage) {
+  if (!americanDiplomaConfig) return null;
+
+  const testType1 = document.getElementById('american-diploma-test-type-1');
+  const isAct1 = testType1 && testType1.value === 'ACT';
+  let satI;
+  if (isAct1) {
+    const act1Val = parseFloat(document.getElementById('american-diploma-act1')?.value);
+    if (isNaN(act1Val)) return null;
+    satI = convertActUsingConcordance(act1Val, americanDiplomaConfig.act_to_sat_concordance);
+  } else {
+    const sat1Val = parseFloat(document.getElementById('american-diploma-sat1')?.value);
+    if (isNaN(sat1Val)) return null;
+    satI = sat1Val;
+  }
+
+  const collegeVal = document.getElementById('wish-college')?.value || '';
+  const satIIApplicable = americanDiplomaConfig.sat_ii_applicable_colleges.includes(collegeVal);
+  const testType2 = document.getElementById('american-diploma-test-type-2');
+  const isAct2 = testType2 && testType2.value === 'ACT';
+
+  let satII = null;
+  if (satIIApplicable) {
+    if (isAct2) {
+      const act2Val = parseFloat(document.getElementById('american-diploma-act2-math')?.value);
+      if (!isNaN(act2Val)) satII = convertActUsingConcordance(act2Val, americanDiplomaConfig.act_math_to_sat_math_concordance);
+    } else {
+      const sat2Val = parseFloat(document.getElementById('american-diploma-sat2')?.value);
+      if (!isNaN(sat2Val)) satII = sat2Val;
+    }
+  }
+
+  const equivalentWeight = satI >= americanDiplomaConfig.equivalent_formula_bonus_threshold
+    ? americanDiplomaConfig.equivalent_formula_weight_with_bonus
+    : americanDiplomaConfig.equivalent_formula_weight_base;
+
+  const testIContribution = (satI / americanDiplomaConfig.sat_max) * equivalentWeight;
+  const testIIContribution = (satII !== null && satII >= americanDiplomaConfig.equivalent_formula_sat_ii_count_threshold)
+    ? (satII / americanDiplomaConfig.sat_max) * americanDiplomaConfig.equivalent_formula_sat_ii_weight
+    : 0;
+
+  return testIContribution + testIIContribution + basePercentage;
+}
+
 // §2 — المعدل = مجموع أفضل 8 مواد ÷ 8؛ النسبة الأساسية = المعدل × 40 ÷ 100 (من 40، وليس من 100 —
 // مطابق تمامًا لصيغة الباك اند في ProcessAmericanDiplomaCertificate).
 function recalculateAmericanDiploma() {
@@ -1672,6 +1739,12 @@ function recalculateAmericanDiploma() {
   if (averageEl) averageEl.textContent = average.toFixed(2);
   if (baseEl) baseEl.textContent = basePercentage.toFixed(2) + ' / ' + weight;
 
+  const equivalentEl = document.getElementById('american-diploma-equivalent-percentage');
+  if (equivalentEl) {
+    const equivalentPercentage = computeAmericanDiplomaEquivalentPercentage(basePercentage);
+    equivalentEl.textContent = equivalentPercentage === null ? '—' : equivalentPercentage.toFixed(2) + '%';
+  }
+
   updateProgressIndicator();
 }
 
@@ -1683,21 +1756,25 @@ function setupAmericanDiplomaCalculatorListeners() {
   if (sat1) {
     sat1.addEventListener('input', () => {
       if (typeof updateAmericanDiplomaWarnings === 'function') updateAmericanDiplomaWarnings();
+      recalculateAmericanDiploma();
     });
   }
   if (sat2) {
     sat2.addEventListener('input', () => {
       if (typeof updateAmericanDiplomaWarnings === 'function') updateAmericanDiplomaWarnings();
+      recalculateAmericanDiploma();
     });
   }
   if (act1) {
     act1.addEventListener('input', () => {
       if (typeof updateAmericanDiplomaWarnings === 'function') updateAmericanDiplomaWarnings();
+      recalculateAmericanDiploma();
     });
   }
   if (act2Math) {
     act2Math.addEventListener('input', () => {
       if (typeof updateAmericanDiplomaWarnings === 'function') updateAmericanDiplomaWarnings();
+      recalculateAmericanDiploma();
     });
   }
   // Level 1/2 test-type selectors toggle which raw-score input is shown/required — the conversion
@@ -1706,12 +1783,14 @@ function setupAmericanDiplomaCalculatorListeners() {
   if (testType1) {
     testType1.addEventListener('change', () => {
       if (typeof refreshAmericanDiplomaTestType1Fields === 'function') refreshAmericanDiplomaTestType1Fields();
+      recalculateAmericanDiploma();
     });
   }
   const testType2 = document.getElementById('american-diploma-test-type-2');
   if (testType2) {
     testType2.addEventListener('change', () => {
       if (typeof refreshAmericanDiplomaSatIIFields === 'function') refreshAmericanDiplomaSatIIFields();
+      recalculateAmericanDiploma();
     });
   }
   // "Studied advanced math" only ever flips the engineering group's SAT II mandatory/optional
@@ -1720,6 +1799,15 @@ function setupAmericanDiplomaCalculatorListeners() {
   if (advancedMathCheckbox) {
     advancedMathCheckbox.addEventListener('change', () => {
       if (typeof refreshAmericanDiplomaSatIIFields === 'function') refreshAmericanDiplomaSatIIFields();
+      recalculateAmericanDiploma();
+    });
+  }
+  // Wish-college drives whether SAT II is even part of the formula (medical/engineering only) —
+  // re-run the equivalent-percentage calculation whenever it changes, same as the SAT II fields refresh.
+  const wishCollege = document.getElementById('wish-college');
+  if (wishCollege) {
+    wishCollege.addEventListener('change', () => {
+      recalculateAmericanDiploma();
     });
   }
   // Subject rows are generated once by generateAmericanDiplomaGradesUI (called directly from the
@@ -2562,7 +2650,11 @@ function compilePayload() {
     addressStreet: document.getElementById('address-street').value.trim(),
     addressBuilding: document.getElementById('address-building').value.trim(),
     addressFloor: document.getElementById('address-floor').value.trim(),
-    submissionToken: currentSubmissionToken
+    submissionToken: currentSubmissionToken,
+    // The camelCase cert-select value (e.g. "saudi", "americanDiploma") — distinct from
+    // `certification` above (the Arabic display label) — used only client-side by showSuccessScreen
+    // to look up appConfig.result_visibility for the admin "إعدادات العرض" toggle.
+    certificationKey: certSelect.value
   };
 
   if (certSelect.value === 'qatari') {
@@ -3272,6 +3364,16 @@ function sendData(payload, submitBtn, originalText) {
 }
 
 // Show Success Receipt Screen
+// Admin "إعدادات العرض" toggle (per certification type) — appConfig.result_visibility is loaded
+// once at page load from /api/config/subjects (see loadSubjectsConfig in conditional.js). Any key
+// missing from the map (config failed to load, or a brand-new cert not seeded yet) defaults to
+// visible, matching the server's own default.
+function isFinalScoreVisible(certificationKey) {
+  if (!appConfig || !appConfig.result_visibility) return true;
+  const isVisible = appConfig.result_visibility[certificationKey];
+  return isVisible !== false;
+}
+
 function showSuccessScreen(payload, studentId, serverData = null) {
   document.getElementById('student-reg-form').style.display = 'none';
   document.getElementById('step-bar-container').style.display = 'none';
@@ -3284,6 +3386,7 @@ function showSuccessScreen(payload, studentId, serverData = null) {
   document.getElementById('receipt-id').textContent = payload.nationalId;
   document.getElementById('receipt-cert').textContent = payload.certification;
 
+  const scoreVisible = isFinalScoreVisible(payload.certificationKey);
   const programRow = document.getElementById('receipt-program-row');
   const yearRow = document.getElementById('receipt-year-row');
   const yearLabel = document.getElementById('receipt-year-label');
@@ -3302,8 +3405,12 @@ function showSuccessScreen(payload, studentId, serverData = null) {
     document.getElementById('receipt-year').textContent = yearsText;
 
     if (saudiGpaRow && saudiGpaVal) {
-      saudiGpaRow.style.display = 'flex';
-      saudiGpaVal.textContent = payload.overallTotals.finalPercentage.toFixed(2) + '%';
+      if (scoreVisible) {
+        saudiGpaRow.style.display = 'flex';
+        saudiGpaVal.textContent = payload.overallTotals.finalPercentage.toFixed(2) + '%';
+      } else {
+        saudiGpaRow.style.display = 'none';
+      }
     }
   } else if (payload.igProgram) {
     if (programRow) {
@@ -3322,63 +3429,107 @@ function showSuccessScreen(payload, studentId, serverData = null) {
       document.getElementById('receipt-year').textContent = kuwaitiYearsCountLabel(payload.kuwaitiData.yearsCount);
     }
     if (saudiGpaRow && saudiGpaVal) {
-      saudiGpaRow.style.display = 'flex';
-      saudiGpaVal.textContent = (payload.finalPercentage || 0).toFixed(2) + '%';
+      if (scoreVisible) {
+        saudiGpaRow.style.display = 'flex';
+        saudiGpaVal.textContent = (payload.finalPercentage || 0).toFixed(2) + '%';
+      } else {
+        saudiGpaRow.style.display = 'none';
+      }
     }
   } else if (payload.qatariData) {
     if (programRow) programRow.style.display = 'none';
     if (yearRow) {
-      yearRow.style.display = 'flex';
-      if (yearLabel) yearLabel.textContent = 'المجموع الاعتباري (من 410):';
-      document.getElementById('receipt-year').textContent = (payload.equivalentTotal || 0).toFixed(2) + ' / 410';
+      if (scoreVisible) {
+        yearRow.style.display = 'flex';
+        if (yearLabel) yearLabel.textContent = 'المجموع الاعتباري (من 410):';
+        document.getElementById('receipt-year').textContent = (payload.equivalentTotal || 0).toFixed(2) + ' / 410';
+      } else {
+        yearRow.style.display = 'none';
+      }
     }
     if (saudiGpaRow && saudiGpaVal) {
-      saudiGpaRow.style.display = 'flex';
-      saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+      if (scoreVisible) {
+        saudiGpaRow.style.display = 'flex';
+        saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+      } else {
+        saudiGpaRow.style.display = 'none';
+      }
     }
   } else if (payload.omaniData) {
     if (programRow) programRow.style.display = 'none';
     if (yearRow) {
-      yearRow.style.display = 'flex';
-      if (yearLabel) yearLabel.textContent = 'المجموع الاعتباري (من 410):';
-      document.getElementById('receipt-year').textContent = (payload.equivalentTotal || 0).toFixed(2) + ' / 410';
+      if (scoreVisible) {
+        yearRow.style.display = 'flex';
+        if (yearLabel) yearLabel.textContent = 'المجموع الاعتباري (من 410):';
+        document.getElementById('receipt-year').textContent = (payload.equivalentTotal || 0).toFixed(2) + ' / 410';
+      } else {
+        yearRow.style.display = 'none';
+      }
     }
     if (saudiGpaRow && saudiGpaVal) {
-      saudiGpaRow.style.display = 'flex';
-      saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+      if (scoreVisible) {
+        saudiGpaRow.style.display = 'flex';
+        saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+      } else {
+        saudiGpaRow.style.display = 'none';
+      }
     }
   } else if (payload.yemeniData) {
     if (programRow) programRow.style.display = 'none';
     if (yearRow) {
-      yearRow.style.display = 'flex';
-      if (yearLabel) yearLabel.textContent = 'المجموع الاعتباري (من 410):';
-      document.getElementById('receipt-year').textContent = (payload.equivalentTotal || 0).toFixed(2) + ' / 410';
+      if (scoreVisible) {
+        yearRow.style.display = 'flex';
+        if (yearLabel) yearLabel.textContent = 'المجموع الاعتباري (من 410):';
+        document.getElementById('receipt-year').textContent = (payload.equivalentTotal || 0).toFixed(2) + ' / 410';
+      } else {
+        yearRow.style.display = 'none';
+      }
     }
     if (saudiGpaRow && saudiGpaVal) {
-      saudiGpaRow.style.display = 'flex';
-      saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+      if (scoreVisible) {
+        saudiGpaRow.style.display = 'flex';
+        saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+      } else {
+        saudiGpaRow.style.display = 'none';
+      }
     }
   } else if (payload.bahrainiData) {
     if (programRow) programRow.style.display = 'none';
     if (yearRow) {
-      yearRow.style.display = 'flex';
-      if (yearLabel) yearLabel.textContent = 'المجموع الاعتباري (من 410):';
-      document.getElementById('receipt-year').textContent = (payload.equivalentTotal || 0).toFixed(2) + ' / 410';
+      if (scoreVisible) {
+        yearRow.style.display = 'flex';
+        if (yearLabel) yearLabel.textContent = 'المجموع الاعتباري (من 410):';
+        document.getElementById('receipt-year').textContent = (payload.equivalentTotal || 0).toFixed(2) + ' / 410';
+      } else {
+        yearRow.style.display = 'none';
+      }
     }
     if (saudiGpaRow && saudiGpaVal) {
-      saudiGpaRow.style.display = 'flex';
-      saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+      if (scoreVisible) {
+        saudiGpaRow.style.display = 'flex';
+        saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+      } else {
+        saudiGpaRow.style.display = 'none';
+      }
     }
   } else if (payload.palestinianData) {
     if (programRow) programRow.style.display = 'none';
     if (yearRow) {
-      yearRow.style.display = 'flex';
-      if (yearLabel) yearLabel.textContent = 'المجموع الاعتباري (من 410):';
-      document.getElementById('receipt-year').textContent = (payload.equivalentTotal || 0).toFixed(2) + ' / 410';
+      if (scoreVisible) {
+        yearRow.style.display = 'flex';
+        if (yearLabel) yearLabel.textContent = 'المجموع الاعتباري (من 410):';
+        document.getElementById('receipt-year').textContent = (payload.equivalentTotal || 0).toFixed(2) + ' / 410';
+      } else {
+        yearRow.style.display = 'none';
+      }
     }
     if (saudiGpaRow && saudiGpaVal) {
-      saudiGpaRow.style.display = 'flex';
-      saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+      if (scoreVisible) {
+        saudiGpaRow.style.display = 'flex';
+        saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+      } else {
+        saudiGpaRow.style.display = 'none';
+      }
     }
   } else if (payload.otherData) {
     if (programRow) {
@@ -3389,8 +3540,12 @@ function showSuccessScreen(payload, studentId, serverData = null) {
     }
     if (yearRow) yearRow.style.display = 'none';
     if (saudiGpaRow && saudiGpaVal) {
-      saudiGpaRow.style.display = 'flex';
-      saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+      if (scoreVisible) {
+        saudiGpaRow.style.display = 'flex';
+        saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+      } else {
+        saudiGpaRow.style.display = 'none';
+      }
     }
   } else if (payload.egyptianData) {
     // This IS the target Egyptian certificate — no equivalent-total row, unlike every foreign cert.
@@ -3401,35 +3556,59 @@ function showSuccessScreen(payload, studentId, serverData = null) {
       document.getElementById('receipt-program').textContent = payload.egyptianData.subjectSystem;
     }
     if (yearRow) {
-      yearRow.style.display = 'flex';
-      if (yearLabel) yearLabel.textContent = 'المجموع (من ' + (payload.denominator || 0) + '):';
-      document.getElementById('receipt-year').textContent = (payload.finalTotal || 0).toFixed(2) + ' / ' + (payload.denominator || 0);
+      if (scoreVisible) {
+        yearRow.style.display = 'flex';
+        if (yearLabel) yearLabel.textContent = 'المجموع (من ' + (payload.denominator || 0) + '):';
+        document.getElementById('receipt-year').textContent = (payload.finalTotal || 0).toFixed(2) + ' / ' + (payload.denominator || 0);
+      } else {
+        yearRow.style.display = 'none';
+      }
     }
     if (saudiGpaRow && saudiGpaVal) {
-      saudiGpaRow.style.display = 'flex';
-      saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+      if (scoreVisible) {
+        saudiGpaRow.style.display = 'flex';
+        saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+      } else {
+        saudiGpaRow.style.display = 'none';
+      }
     }
   } else if (payload.azharData) {
     if (programRow) programRow.style.display = 'none';
     if (yearRow) {
-      yearRow.style.display = 'flex';
-      if (yearLabel) yearLabel.textContent = 'المجموع الاعتباري (من 410):';
-      document.getElementById('receipt-year').textContent = (payload.equivalentTotal || 0).toFixed(2) + ' / 410';
+      if (scoreVisible) {
+        yearRow.style.display = 'flex';
+        if (yearLabel) yearLabel.textContent = 'المجموع الاعتباري (من 410):';
+        document.getElementById('receipt-year').textContent = (payload.equivalentTotal || 0).toFixed(2) + ' / 410';
+      } else {
+        yearRow.style.display = 'none';
+      }
     }
     if (saudiGpaRow && saudiGpaVal) {
-      saudiGpaRow.style.display = 'flex';
-      saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+      if (scoreVisible) {
+        saudiGpaRow.style.display = 'flex';
+        saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+      } else {
+        saudiGpaRow.style.display = 'none';
+      }
     }
   } else if (payload.emiratiData) {
     if (programRow) programRow.style.display = 'none';
     if (yearRow) {
-      yearRow.style.display = 'flex';
-      if (yearLabel) yearLabel.textContent = 'المجموع الاعتباري (من 410):';
-      document.getElementById('receipt-year').textContent = (payload.equivalentTotal || 0).toFixed(2) + ' / 410';
+      if (scoreVisible) {
+        yearRow.style.display = 'flex';
+        if (yearLabel) yearLabel.textContent = 'المجموع الاعتباري (من 410):';
+        document.getElementById('receipt-year').textContent = (payload.equivalentTotal || 0).toFixed(2) + ' / 410';
+      } else {
+        yearRow.style.display = 'none';
+      }
     }
     if (saudiGpaRow && saudiGpaVal) {
-      saudiGpaRow.style.display = 'flex';
-      saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+      if (scoreVisible) {
+        saudiGpaRow.style.display = 'flex';
+        saudiGpaVal.textContent = (payload.percentage || 0).toFixed(2) + '%';
+      } else {
+        saudiGpaRow.style.display = 'none';
+      }
     }
   } else if (payload.americanDiplomaData) {
     // No single equivalent total for this certificate (§8) — show the 3 admission criteria instead.
@@ -3450,20 +3629,29 @@ function showSuccessScreen(payload, studentId, serverData = null) {
       document.getElementById('receipt-program').textContent = `${level1Display} / ${level2Display}`;
     }
     if (yearRow) {
-      yearRow.style.display = 'flex';
-      if (yearLabel) yearLabel.textContent = 'النسبة الأساسية (من 40):';
-      document.getElementById('receipt-year').textContent = (payload.basePercentage || 0).toFixed(2) + ' / 40';
+      if (scoreVisible) {
+        yearRow.style.display = 'flex';
+        if (yearLabel) yearLabel.textContent = 'النسبة الأساسية (من 40):';
+        document.getElementById('receipt-year').textContent = (payload.basePercentage || 0).toFixed(2) + ' / 40';
+      } else {
+        yearRow.style.display = 'none';
+      }
     }
     if (saudiGpaRow && saudiGpaVal) {
-      saudiGpaRow.style.display = 'flex';
-      saudiGpaVal.textContent = 'المعدل: ' + (payload.averageScore || 0).toFixed(2) + ' / 100';
+      if (scoreVisible) {
+        saudiGpaRow.style.display = 'flex';
+        saudiGpaVal.textContent = 'المعدل: ' + (payload.averageScore || 0).toFixed(2) + ' / 100';
+      } else {
+        saudiGpaRow.style.display = 'none';
+      }
     }
     // النسبة النهائية المعادلة قيمة محسوبة على الخادم فقط (تعتمد على تحويل ACT عند الحاجة)،
-    // فتُعرض فقط لو الاستمارة اتحفظت فعليًا على الخادم ورجع لنا الرد الكامل.
+    // فتُعرض فقط لو الاستمارة اتحفظت فعليًا على الخادم ورجع لنا الرد الكامل — وطالما "عرض النتائج
+    // النهائية" مفعّل لهذه الشهادة (إعدادات العرض).
     const equivalentPercentageRow = document.getElementById('receipt-equivalent-percentage-row');
     const equivalentPercentageVal = document.getElementById('receipt-equivalent-percentage');
     if (equivalentPercentageRow && equivalentPercentageVal) {
-      if (serverData && serverData.americanDiplomaTotals) {
+      if (scoreVisible && serverData && serverData.americanDiplomaTotals) {
         equivalentPercentageRow.style.display = 'flex';
         equivalentPercentageVal.textContent = (serverData.americanDiplomaTotals.equivalentPercentage || 0).toFixed(2) + '%';
       } else {

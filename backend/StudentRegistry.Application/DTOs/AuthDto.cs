@@ -16,5 +16,9 @@ namespace StudentRegistry.Application.DTOs
         public string? Username { get; set; }
         public string? Role { get; set; }
         public string? RedirectUrl { get; set; }
+        // True only for a protected root admin (User.IsProtected) — drives the "IsProtected" claim,
+        // which gates access to admin-only-of-admins features like "إعدادات العرض" (never keyed off
+        // a specific hardcoded username, so any number of protected admins can be seeded).
+        public bool IsProtected { get; set; }
     }
 }

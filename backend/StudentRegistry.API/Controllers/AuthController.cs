@@ -37,7 +37,8 @@ namespace StudentRegistry.API.Controllers
             var claims = new[]
             {
                 new Claim(ClaimTypes.Name, result.Username),
-                new Claim(ClaimTypes.Role, result.Role)
+                new Claim(ClaimTypes.Role, result.Role),
+                new Claim("IsProtected", result.IsProtected ? "true" : "false")
             };
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var principal = new ClaimsPrincipal(identity);

@@ -61,7 +61,13 @@ namespace StudentRegistry.Application.Services
 
             var studentIds = mapped.Select(m => m.Id).ToList();
             var notes = await _unitOfWork.ReviewNotes.GetByStudentIdsAsync(studentIds);
-            var notedIds = notes.Select(n => n.StudentId).ToHashSet();
+            // Field comments now cover the same "has an open review remark" signal as ReviewNotes
+            // (Viewer's review page posts into FieldComments too, so Editor sees them) — a student
+            // is flagged if either source has an entry, old ReviewNotes rows included.
+            var fieldComments = await _unitOfWork.FieldComments.GetByStudentIdsAsync(studentIds);
+            var notedIds = notes.Select(n => n.StudentId)
+                .Concat(fieldComments.Select(c => c.StudentId))
+                .ToHashSet();
             var pendingReviews = await _unitOfWork.PendingReviews.GetPendingByStudentIdsAsync(studentIds);
             var pendingIds = pendingReviews.Select(p => p.StudentId).ToHashSet();
 
@@ -566,7 +572,7 @@ namespace StudentRegistry.Application.Services
                 ? (decimal)satII.Value / AmericanDiplomaConstants.SatMax * AmericanDiplomaConstants.EquivalentFormulaSatIIWeight
                 : 0m;
 
-            decimal equivalentPercentage = Math.Round(testIContribution + testIIContribution + average, 2);
+            decimal equivalentPercentage = Math.Round(testIContribution + testIIContribution + basePercentage, 2);
             bool satIBelowMinimum = satI < AmericanDiplomaConstants.SatIMinimumThreshold;
             bool satIIBelowMinimum = satIIProvided && satII!.Value < AmericanDiplomaConstants.SatIIMinimumThreshold;
 
@@ -1253,7 +1259,7 @@ namespace StudentRegistry.Application.Services
                 ? (decimal)satII.Value / AmericanDiplomaConstants.SatMax * AmericanDiplomaConstants.EquivalentFormulaSatIIWeight
                 : 0m;
 
-            decimal equivalentPercentage = Math.Round(testIContribution + testIIContribution + average, 2);
+            decimal equivalentPercentage = Math.Round(testIContribution + testIIContribution + basePercentage, 2);
 
             student.AmericanDiplomaTotals = new AmericanDiplomaStudentTotals
             {

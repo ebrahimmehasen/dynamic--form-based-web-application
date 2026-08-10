@@ -69,7 +69,8 @@ namespace StudentRegistry.Application.Services
                 Message = "تم تسجيل الدخول بنجاح.",
                 Username = user.Username,
                 Role = user.Role,
-                RedirectUrl = AuthConstants.GetRedirectUrl(user.Role)
+                RedirectUrl = AuthConstants.GetRedirectUrl(user.Role),
+                IsProtected = user.IsProtected
             };
         }
     }

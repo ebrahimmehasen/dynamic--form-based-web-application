@@ -18,6 +18,10 @@
       <button type="button" class="editor-tab-btn" id="admin-tab-btn-comments">التعليقات</button>
       <button type="button" class="editor-tab-btn" id="admin-tab-btn-users">إدارة المستخدمين</button>
       <button type="button" class="editor-tab-btn" id="admin-tab-btn-records">سجلات الطلاب</button>
+      @if (User.HasClaim(c => c.Type == "IsProtected" && c.Value == "true"))
+      {
+        <button type="button" class="editor-tab-btn" id="admin-tab-btn-display-settings">إعدادات العرض</button>
+      }
     </div>
 
     <div id="admin-tab-dashboard">
@@ -150,6 +154,22 @@
         <div class="editor-pagination" id="editor-pagination"></div>
       </div>
     </div>
+
+    @if (User.HasClaim(c => c.Type == "IsProtected" && c.Value == "true"))
+    {
+      <div id="admin-tab-display-settings" style="display:none;">
+        <div class="dashboard-widget">
+          <h3 class="dashboard-widget-title">عرض النتائج النهائية</h3>
+          <p class="field-hint">
+            بتحكم في كل نوع شهادة على حدة: لو أوقفت التفعيل، لما طالب يسجل بهذه الشهادة ويملأ كل بياناته،
+            مش هيشوف مجموع الدرجات/النسبة النهائية في شاشة النجاح بعد التسجيل — البيانات نفسها بتتحفظ عادي
+            في قاعدة البيانات وتظهر للإدارة كالمعتاد، فقط لا تُعرض للطالب. أي تعديل هنا محتاج تأكيد
+            + كتابة كلمة مرور حسابك.
+          </p>
+          <div id="admin-display-settings-body"></div>
+        </div>
+      </div>
+    }
   </div>
 
   <!-- Large student profile modal (Student Records Editor parity — see admin-tab-records above) -->
@@ -252,4 +272,5 @@
   <script src="~/js/admin-users.js" asp-append-version="true"></script>
   <script src="~/js/admin-dashboard.js" asp-append-version="true"></script>
   <script src="~/js/editor-page.js" asp-append-version="true"></script>
+  <script src="~/js/admin-display-settings.js" asp-append-version="true"></script>
 }

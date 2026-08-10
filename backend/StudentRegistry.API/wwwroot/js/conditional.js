@@ -843,6 +843,7 @@ function initConditionals() {
         if (certKey === 'americanDiploma' && typeof generateAmericanDiplomaGradesUI === 'function') {
           generateAmericanDiplomaGradesUI();
         }
+        applyDeferredGradesIfHidden(certKey);
       } else {
         // Populate track options — Egyptian's and Azhar's options are restricted by the Wish
         // college (§5).
@@ -869,6 +870,13 @@ function initConditionals() {
     document.getElementById('other-cert-alert').style.display =
       (certKey === 'other') ? 'block' : 'none';
 
+    // Certifications with no track step at all (other/emirati/americanDiploma) already resolved
+    // their deferred-grades state just above; for every other certification, the notice — if
+    // any — was left over from a previous selection and no longer applies until a track is chosen.
+    if (certKey !== 'other' && certKey !== 'emirati' && certKey !== 'americanDiploma') {
+      const notice = document.getElementById('section-grades-deferred-notice');
+      if (notice) notice.style.display = 'none';
+    }
     updateProgressIndicator();
   });
 
@@ -944,6 +952,7 @@ function initConditionals() {
       deactivateSection('section-grades');
     }
 
+    if (trackVal) applyDeferredGradesIfHidden(certKey);
     updateProgressIndicator();
   });
 
@@ -954,6 +963,7 @@ function initConditionals() {
     if (yearVal) {
       generateGradesTable(yearVal);
       activateSection('section-grades');
+      applyDeferredGradesIfHidden(certSelect.value);
     } else {
       deactivateSection('section-grades');
     }
@@ -976,4 +986,97 @@ function deactivateSection(sectionId) {
   if (section) {
     section.classList.remove('active');
   }
+}
+
+// إعدادات العرض (admin "إعدادات العرض" tab) — true whenever the admin has turned OFF the final
+// result for this certification. When true, the student never sees (or fills) the grades table at
+// all for this certification — see applyDeferredGradesIfHidden below.
+function isResultHiddenForCert(certKey) {
+  return !!(appConfig && appConfig.result_visibility && appConfig.result_visibility[certKey] === false);
+}
+
+// Per-certification id of the container that actually holds its grade/subject inputs (see
+// Index.cshtml section-grades) — used only by applyDeferredGradesIfHidden below.
+const CERT_GRADES_CONTAINER_ID = {
+  saudi: 'non-ig-grades-container',
+  ig: 'ig-grades-container',
+  kuwaiti: 'kuwaiti-grades-container',
+  qatari: 'qatari-grades-container',
+  omani: 'omani-grades-container',
+  yemeni: 'yemeni-grades-container',
+  bahraini: 'bahraini-grades-container',
+  palestinian: 'palestinian-grades-container',
+  egyptian: 'egyptian-grades-container',
+  azhar: 'azhar-grades-container',
+  emirati: 'emirati-grades-container',
+  americanDiploma: 'american-diploma-grades-container',
+  other: 'other-grades-container'
+};
+
+// When the admin has hidden this certification's final result (§ إعدادات العرض): the student never
+// enters real grades for it — the last field they fill in is the academic track/certification
+// choice, then the submit button. To do that WITHOUT touching the 13 separate calculators or the
+// backend, this quietly fills whatever grade inputs the normal generator just built with safe
+// placeholder/minimum values (so the existing submit validation passes untouched), hides that
+// container, and shows a short notice instead. An editor fills in the real grades later through the
+// Student Records Editor, exactly like any other post-registration correction.
+function applyDeferredGradesIfHidden(certKey) {
+  const notice = document.getElementById('section-grades-deferred-notice');
+  const containerId = CERT_GRADES_CONTAINER_ID[certKey];
+  if (!isResultHiddenForCert(certKey) || !containerId) {
+    if (notice) notice.style.display = 'none';
+    return;
+  }
+
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  // American Diploma only: avoid forcing a real SAT II value by declaring "studied advanced math"
+  // (relaxes SAT II from mandatory to optional for engineering colleges — mirrors a real student
+  // who'd tick this box anyway when they don't have a SAT II score yet).
+  const advancedMathCheckbox = document.getElementById('american-diploma-advanced-math-checkbox');
+  if (certKey === 'americanDiploma' && advancedMathCheckbox && !advancedMathCheckbox.checked) {
+    advancedMathCheckbox.checked = true;
+    advancedMathCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  // Pass 1: selects that gate table generation (Kuwaiti's years-count, Egyptian's نظام المواد) —
+  // pick their first real option and fire it so the actual grade rows get built.
+  container.querySelectorAll('select').forEach(sel => {
+    if (!sel.disabled && !sel.value && sel.options.length > 1) {
+      sel.value = sel.options[1].value;
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+
+  // Pass 2: fill every empty text/number input now that the real rows exist (min-valid numbers,
+  // a clearly-labeled placeholder for free-text subject names).
+  container.querySelectorAll('input[type="text"]').forEach(input => {
+    if (!input.value.trim()) input.value = 'بيانات مؤقتة — تُستكمل لاحقًا من الإدارة';
+  });
+  container.querySelectorAll('input[type="number"]').forEach(input => {
+    if (input.value === '') {
+      input.value = input.min !== '' ? input.min : '0';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+
+  // Pass 3: any select left over that only appeared after the number-fill pass above (e.g. a
+  // subject dropdown gated by another field).
+  container.querySelectorAll('select').forEach(sel => {
+    if (!sel.disabled && !sel.value && sel.options.length > 1) {
+      sel.value = sel.options[1].value;
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+
+  container.style.display = 'none';
+  if (notice) notice.style.display = 'block';
+
+  // The "read carefully before entering grades" alerts no longer apply — nothing is being entered.
+  const generalAlert = document.getElementById('general-cert-alert');
+  const otherAlert = document.getElementById('other-cert-alert');
+  if (generalAlert) generalAlert.style.display = 'none';
+  if (otherAlert) otherAlert.style.display = 'none';
 }

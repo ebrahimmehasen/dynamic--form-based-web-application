@@ -15,6 +15,7 @@ namespace StudentRegistry.Repository.Implementations
         private IDeleteRequestRepository? _deleteRequests;
         private IPendingReviewRepository? _pendingReviews;
         private IDashboardRepository? _dashboard;
+        private ICertificationDisplaySettingRepository? _certificationDisplaySettings;
 
         public UnitOfWork(StudentRegistryDbContext context)
         {
@@ -29,6 +30,8 @@ namespace StudentRegistry.Repository.Implementations
         public IDeleteRequestRepository DeleteRequests => _deleteRequests ??= new DeleteRequestRepository(_context);
         public IPendingReviewRepository PendingReviews => _pendingReviews ??= new PendingReviewRepository(_context);
         public IDashboardRepository Dashboard => _dashboard ??= new DashboardRepository(_context);
+        public ICertificationDisplaySettingRepository CertificationDisplaySettings =>
+            _certificationDisplaySettings ??= new CertificationDisplaySettingRepository(_context);
 
         public async Task<int> CompleteAsync()
         {

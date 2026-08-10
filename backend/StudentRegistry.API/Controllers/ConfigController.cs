@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using StudentRegistry.Application.Constants;
+using StudentRegistry.Application.Interfaces;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace StudentRegistry.API.Controllers
 {
@@ -9,8 +11,15 @@ namespace StudentRegistry.API.Controllers
     [Route("api/[controller]")]
     public class ConfigController : ControllerBase
     {
+        private readonly IDisplaySettingsService _displaySettingsService;
+
+        public ConfigController(IDisplaySettingsService displaySettingsService)
+        {
+            _displaySettingsService = displaySettingsService;
+        }
+
         [HttpGet("subjects")]
-        public IActionResult GetSubjectsConfig()
+        public async Task<IActionResult> GetSubjectsConfig()
         {
             var config = new
             {
@@ -46,7 +55,10 @@ namespace StudentRegistry.API.Controllers
                     { "year_1", new[] { "اللغة العربية", "اللغة الإنجليزية", "الرياضيات", "الكيمياء", "الفيزياء", "الأحياء", "الدراسات الإسلامية", "الدراسات الاجتماعية" } },
                     { "year_2", new[] { "اللغة العربية", "اللغة الإنجليزية", "الرياضيات (2)", "الكيمياء", "الفيزياء", "الأحياء", "الحاسب الآلي", "الدراسات الإسلامية" } },
                     { "year_3", new[] { "اللغة العربية", "اللغة الإنجليزية", "الرياضيات (3)", "الكيمياء", "الفيزياء", "الجيولوجيا والعلوم البيئية", "الدراسات الإسلامية", "التربية الوطنية" } }
-                }
+                },
+                // إعدادات العرض (admin-controlled): certKey -> هل تُعرض النتيجة النهائية للطالب على
+                // شاشة النجاح بعد التسجيل. أي مفتاح غير موجود هنا يُعتبر true افتراضيًا على الفرونت إند.
+                result_visibility = await _displaySettingsService.GetVisibilityMapAsync()
             };
 
             return Ok(config);
@@ -282,7 +294,14 @@ namespace StudentRegistry.API.Controllers
                 medical_second_subject_options = AmericanDiplomaConstants.MedicalSatIISecondSubjectOptions,
                 engineering_second_subject_options = AmericanDiplomaConstants.EngineeringSatIISecondSubjectOptions,
                 sat_ii_date_note = AmericanDiplomaConstants.SatIIDateNote,
-                admission_note = AmericanDiplomaConstants.AdmissionNote
+                admission_note = AmericanDiplomaConstants.AdmissionNote,
+                act_to_sat_concordance = AmericanDiplomaConstants.ActToSatConcordance,
+                act_math_to_sat_math_concordance = AmericanDiplomaConstants.ActMathToSatMathConcordance,
+                equivalent_formula_bonus_threshold = AmericanDiplomaConstants.EquivalentFormulaBonusThreshold,
+                equivalent_formula_weight_with_bonus = AmericanDiplomaConstants.EquivalentFormulaWeightWithBonus,
+                equivalent_formula_weight_base = AmericanDiplomaConstants.EquivalentFormulaWeightBase,
+                equivalent_formula_sat_ii_weight = AmericanDiplomaConstants.EquivalentFormulaSatIIWeight,
+                equivalent_formula_sat_ii_count_threshold = AmericanDiplomaConstants.EquivalentFormulaSatIICountThreshold
             };
 
             return Ok(americanDiplomaConfig);

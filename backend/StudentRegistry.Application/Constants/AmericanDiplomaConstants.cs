@@ -143,8 +143,10 @@ namespace StudentRegistry.Application.Constants
             "لا يوجد تحويل رسمي من ACT لهذه المادة — يُرجى استخدام درجة SAT لهذا المتطلب.";
 
         // معادلة النسبة النهائية المعادلة (مكتب تنسيق الجامعات الحكومية والمعاهد العليا):
-        // (SatI ÷ 1600 × وزن) + (SatII ÷ 1600 × 15 إذا كانت SatII >= الحد الأدنى) + GPA (AverageScore من 100، بدون تعديل).
+        // (SatI ÷ 1600 × وزن) + (SatII ÷ 1600 × 15 إذا كانت SatII >= الحد الأدنى) + BasePercentage (من 40).
         // الوزن = 69 إذا SatI >= BonusThreshold (1090)، وإلا 60 (الوزن الأساسي بدون بونص).
+        // ملاحظة: كانت تُجمع خطأً مع average (المعدل الخام من 100) بدل BasePercentage (من 40)، ما كان
+        // يسمح بوصول الناتج لغاية 184% بدل الحد المنطقي الأقصى ~124% — تم تصحيحها في StudentService.
         public const int EquivalentFormulaBonusThreshold = 1090;
         public const int EquivalentFormulaWeightWithBonus = 69;
         public const int EquivalentFormulaWeightBase = 60;
